@@ -10,7 +10,7 @@
 class CPump
 {
 	public:
-		CPump(const char* portName,float maxForward = 0.5,float maxBackward = 0.5, float maxTurn = 0.5, float fwGain = 10,float turnGain = 10);
+		CPump(const char* portName);
 		~CPump();
 
 		//set robot speeds
