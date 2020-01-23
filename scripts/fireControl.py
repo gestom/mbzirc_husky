@@ -4,7 +4,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float64MultiArray
 
 publisher = None
-rotVel = 0.02
+rotVel = 0.08
 
 def callback(msg):
 
@@ -28,19 +28,12 @@ def callback(msg):
             peak = colHigh[i]
             peakIdx = i
 
-    if peak < 100:
-        print("no fire")
+    if peak < 45:
+        print("no fire", peak)
         return
 
-    vel = 0
-    if peakIdx < 14:
-        print("left", peak)
-        vel = -rotVel
-    elif peakIdx < 18:
-        print("centre", peak)
-    else:
-        print("right", peak)
-        vel = rotVel
+    vel = -((peakIdx-16)/30.)
+    print(vel)
 
     msg = Twist()
     msg.linear.x = 0

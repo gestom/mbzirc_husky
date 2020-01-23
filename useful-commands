@@ -1,0 +1,7 @@
+rosrun map_server map_saver
+
+
+currently 
+echo -ne '\x30' > /dev/ttyACM1 #switch off
+echo -ne '\x31' > /dev/ttyACM1 #switch on
+echo -ne '\x32' > /dev/ttyACM1 #toggle on/off
