@@ -49,11 +49,9 @@ include_directories(
     ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
 )
 
-add_executable(spray src/spray.cpp)
-
+add_executable(spray src/spray.cpp src/CPump.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-
-target_link_libraries (spray  ${catkin_LIBRARIES})
+target_link_libraries (spray ${catkin_LIBRARIES})
 
 #############
 ## Install ##
