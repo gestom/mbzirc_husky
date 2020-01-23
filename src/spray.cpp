@@ -8,6 +8,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
+#include "CPump.h"
 //#include <mbzirc_husky/sprayConfig.h>
 
 #include <pcl_ros/point_cloud.h>
@@ -127,6 +128,7 @@ void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* a
 
 int main(int argc, char** argv)
 {
+	CPump pump("/dev/robot/pump");
 	ros::init(argc, argv, "spray");
 	ros::NodeHandle n;
 
