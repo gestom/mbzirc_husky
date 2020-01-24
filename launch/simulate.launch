@@ -17,7 +17,7 @@
   <arg name="debug" default="false"/>
   <arg name="physics" default="ode"/>
   <arg name="verbose" default="true"/>
-  <arg name="world_name" default="$(find mbzirc)/worlds/mbzirc_fire.world"/>
+  <arg name="world_name" default="$(find mbzirc_husky)/worlds/mbzirc_fire.world"/>
 
   <!-- set use_sim_time flag -->
   <group if="$(arg use_sim_time)">
@@ -43,6 +43,6 @@
     <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen"/>
   </group>
 
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find mbzirc)/config/husky.rviz"/>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find mbzirc_husky)/config/husky.rviz"/>
 
 </launch>

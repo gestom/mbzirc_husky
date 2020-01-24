@@ -38,13 +38,13 @@ ros::Publisher cmd_vel;
 geometry_msgs::Twist base_cmd;
 ros::Subscriber thermalSubscriber;
 
-float fwSpeed = 0.1;
 CTimer timer;
 CPump *pump;
 
 /*Parameters we intend to make dynamically adjustable*/
-float rotationCoefficient = 30; //bigger is slower
-float fireThreshold = 45;
+float fwSpeed = 0.1f;
+float rotationCoefficient = 30.0f; //bigger is slower
+float fireThreshold = 45.0f;
 int sprayTime = 4000; //in miliseconds
 
 /*void callback(mbzirc_husky::sprayConfig &config, uint32_t level) {
@@ -65,6 +65,16 @@ int sprayTime = 4000; //in miliseconds
 void thermalCallback(const std_msgs::String::ConstPtr& msg)
 {
   ROS_INFO("Thermal message received");
+
+
+  if(!(state == TURNING ||
+      state == APPROACHING ||
+      state == ELEVATING ||
+      state == SPRAYING))
+  {
+    //rejecting image
+    return;
+  }
   
   int cameraWidth = 32;
   int cameraHeight = 32;
@@ -75,14 +85,14 @@ void thermalCallback(const std_msgs::String::ConstPtr& msg)
     for(int rowIdx = 0; rowIdx < cameraHeight; rowIdx++)
     {
       int messageIndex = (rowIdx * cameraWidth) + colIdx;
-      if(columnPeaks[colIdx] < msg[messageIndex])
+      if((float)columnPeaks[colIdx] < (float)msg->data[messageIndex])
       {
-        columnPeaks[colIdx] = msg[messageIndex];      
+        columnPeaks[colIdx] = (float)msg->data[messageIndex];      
       }
     }
   }*/
 
-  float peak = .0;
+  float peak = 0.0f;
   int peakIdx = -1;
   for(int i = 0; i < cameraWidth; i++)
   {
