@@ -8,6 +8,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
 #include "CPump.h"
+#include "CTimer.h"
 //#include <mbzirc_husky/sprayConfig.h>
 
 #include <pcl_ros/point_cloud.h>
@@ -35,7 +36,7 @@ ESprayState state = IDLE;
 ros::Publisher cmd_vel;
 geometry_msgs::Twist base_cmd;
 float fwSpeed = 0.1;
-
+CTimer timer;
 
 /*void callback(mbzirc_husky::sprayConfig &config, uint32_t level) {
 
@@ -63,8 +64,11 @@ bool isTerminal(ESprayState state)
 void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* as)
 {
 	mbzirc_husky::sprayResult result;
-	state = ALIGNING;
+	state = SPRAYING;
+	timer.reset();
+	timer.start();
 	while (isTerminal(state) == false){
+		printf("%i\n",timer.getTime());
 		if (state == FINAL) state = SUCCESS; else state = FAIL;
 		usleep(15000);
 	}
@@ -77,10 +81,10 @@ void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* a
 
 int main(int argc, char** argv)
 {
-	CPump pump("/dev/robot/pump");
+	//CPump pump("/dev/robot/pump");
+	CPump pump("/dev/ttyACM1");
 	ros::init(argc, argv, "spray");
 	ros::NodeHandle n;
-
 	// Dynamic reconfiguration server
 	/*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
