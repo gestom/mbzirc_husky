@@ -20,11 +20,11 @@ typedef actionlib::SimpleActionServer<mbzirc_husky::sprayAction> Server;
 Server *server;
 
 typedef enum{
-	IDLE,
+	IDLE = 0,
 	TURNING,
 	APPROACHING,
 	ALIGNING,
-	SPRAYING,
+	SPRAYING = 4,
 	FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -40,10 +40,12 @@ ros::Subscriber thermalSubscriber;
 
 float fwSpeed = 0.1;
 CTimer timer;
+CPump *pump;
 
 /*Parameters we intend to make dynamically adjustable*/
 float rotationCoefficient = 30; //bigger is slower
-float fireThreshold = 45f;
+float fireThreshold = 45;
+int sprayTime = 4000; //in miliseconds
 
 /*void callback(mbzirc_husky::sprayConfig &config, uint32_t level) {
 
@@ -68,7 +70,7 @@ void thermalCallback(const std_msgs::String::ConstPtr& msg)
   int cameraHeight = 32;
   int columnPeaks[cameraWidth];
 
-  for(int colIdx = 0; colIdx < cameraWidth; colIdx++)
+  /*for(int colIdx = 0; colIdx < cameraWidth; colIdx++)
   {
     for(int rowIdx = 0; rowIdx < cameraHeight; rowIdx++)
     {
@@ -78,9 +80,9 @@ void thermalCallback(const std_msgs::String::ConstPtr& msg)
         columnPeaks[colIdx] = msg[messageIndex];      
       }
     }
-  }
+  }*/
 
-  float peak = 0f;
+  float peak = .0;
   int peakIdx = -1;
   for(int i = 0; i < cameraWidth; i++)
   {
@@ -94,7 +96,7 @@ void thermalCallback(const std_msgs::String::ConstPtr& msg)
   if(peak < fireThreshold)
   {
     ROS_INFO("Thermal camera peak below camera threshold, stopping rot");
-    base_cmd.angular.z = 0f;
+    base_cmd.angular.z = 0;
     return;
   }
 
@@ -109,31 +111,38 @@ bool isTerminal(ESprayState state)
 {
  	if (state == ALIGNING) return false;
  	if (state == SPRAYING) return false;
- 	if (state == FINAL) return false;
+	return true;
 }
 
 void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* as)
 {
 	mbzirc_husky::sprayResult result;
-	state = SPRAYING;
-	timer.reset();
-	timer.start();
+	if (state == IDLE){
+		state = SPRAYING;
+		timer.reset();
+		timer.start();
+		pump->on();
+	}
 	while (isTerminal(state) == false){
-		printf("%i\n",timer.getTime());
-		if (state == FINAL) state = SUCCESS; else state = FAIL;
+		if (state == SPRAYING && timer.getTime() > sprayTime){
+		       	state = FINAL;
+			pump->off();
+		}
 		usleep(15000);
 	}
+	pump->off();
+	if (state == FINAL) state = SUCCESS; else state = FAIL;
 	if (state == SUCCESS) 	server->setSucceeded(result);
 	if (state == FAIL) 	server->setAborted(result);
 	if (state == PREEMPTED) server->setPreempted(result);
 	state = STOPPING;
+	state = IDLE;
 }
 
 
 int main(int argc, char** argv)
 {
-	//CPump pump("/dev/robot/pump");
-	CPump pump("/dev/ttyACM1");
+	pump = new CPump("/dev/robot/pump");
 	ros::init(argc, argv, "spray");
 	ros::NodeHandle n;
 	// Dynamic reconfiguration server
@@ -159,4 +168,5 @@ int main(int argc, char** argv)
 		ros::spinOnce();
 		usleep(30000);
 	}
+	delete pump;
 }
