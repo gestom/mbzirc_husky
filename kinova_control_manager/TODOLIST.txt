@@ -1,0 +1,12 @@
+#######################################
+
+from /kinova_driver/src/kinova_arm.cpp
+  function homeArmServiceCallback
+    remove initFingers command -> speedup in hard homing
+
+#######################################
+
+test move_down_until_obstacle
+
+
+#######################################

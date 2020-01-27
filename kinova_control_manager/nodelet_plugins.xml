@@ -1,0 +1,5 @@
+<library path="lib/libArmManager">
+  <class name="kinova_control_manager/ArmManager" type="kinova_control_manager::ArmManager" base_class_type="nodelet::Nodelet">
+    <description>Kinova arm nodelet</description>
+  </class>
+</library>

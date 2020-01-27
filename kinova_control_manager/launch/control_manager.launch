@@ -1,0 +1,31 @@
+<launch>
+  <arg name="ARM_TYPE" default="$(env ARM_TYPE)" />
+  <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager" output="screen"/>
+
+  <node pkg="nodelet" type="nodelet" name="ArmManager" args="load kinova_control_manager/ArmManager standalone_nodelet" output="screen">
+    <rosparam file="$(find kinova_control_manager)/config/$(arg ARM_TYPE).yaml" />
+
+    <!-- output commands to arm driver -->
+    <remap from="~home_out" to="$(arg ARM_TYPE)_driver/in/home_arm" />
+    <remap from="~end_effector_pose_out" to="$(arg ARM_TYPE)_driver/pose_action/tool_pose/goal" />
+    <remap from="~cartesian_velocity_out" to="$(arg ARM_TYPE)_driver/in/cartesian_velocity" />
+    
+    <!-- status input from arm driver -->
+    <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
+    <remap from="~end_effector_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
+
+    <!-- manager status -->
+    <remap from="~arm_status_out" to="kinova/arm_manager/status" />
+
+    <!-- provided commands -->
+    <remap from="~home_in" to="kinova/arm_manager/home_arm" />
+    <remap from="~soft_home_in" to="kinova/arm_manager/soft_home_arm" />
+    <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
+    <remap from="~goto_in" to="kinova/arm_manager/goto" />
+    <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
+
+    <!-- new untested stuff-->
+    <remap from="~move_down_in" to="kinova/arm_manager/move_down_until_obstacle" />
+
+  </node>
+</launch>

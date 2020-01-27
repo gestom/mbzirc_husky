@@ -1,0 +1,37 @@
+name: simulation
+root: ./
+
+startup_window: goto 
+pre_window: export ARM_TYPE=j2n6s300
+windows:
+  - roscore:
+      layout: even-vertical
+      panes:
+        - roscore
+  - kinova_bringup:
+      layout: even-vertical
+      panes:
+        - waitForRos; roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=$ARM_TYPE
+  - arm_manager:
+      layout: even-vertical
+      panes:
+        - waitForRos; roslaunch kinova_control_manager control_manager.launch
+  - home_arm:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/home_arm'
+        - 'history -s rosservice call /kinova/arm_manager/soft_home_arm'
+  - prepare_gripping:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/prepare_gripping'
+  - goto:
+      layout: even-vertical
+      panes:
+        - waitForRos; sleep 3; rostopic echo /kinova/arm_manager/status
+        - 'history -s rosservice call /kinova/arm_manager/goto \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
+  - goto_relative:
+      layout: even-vertical
+      panes:
+        - waitForRos; sleep 3; rostopic echo /kinova/arm_manager/status
+        - 'history -s rosservice call /kinova/arm_manager/goto_relative \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'

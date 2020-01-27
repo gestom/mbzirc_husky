@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>kinova_control_manager</name>
+  <version>0.0.0</version>
+  <description>The mrs kinova_control_manager package</description>
+
+  <author email="stibipet@fel.cvut.cz">Petr Stibinger</author>
+  <maintainer email="stibipet@fel.cvut.cz">Petr Stibinger</maintainer>
+
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <depend>roscpp</depend>
+  <depend>nodelet</depend>
+  <depend>tf</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>kinova_msgs</depend>
+  <depend>kinova_driver</depend>
+  <depend>mrs_lib</depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+  
+  <export>
+    <nodelet plugin="${prefix}/nodelet_plugins.xml" />
+  </export>
+
+</package>

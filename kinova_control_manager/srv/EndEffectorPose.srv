@@ -1,0 +1,4 @@
+float64[6] pose
+---
+bool success
+string message

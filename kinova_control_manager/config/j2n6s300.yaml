@@ -1,0 +1,8 @@
+arm_type: "j2n6s300"
+status_timer_rate: 5 # [Hz]
+motion_check_timer_rate: 2 # [Hz]
+no_move_error_timeout: 3 # [s]
+nearby_position_threshold: 0.08 # [m]
+nearby_rotation_threshold: 0.06 # [rad]
+end_effector_home_pose: [0.21344150602817535, -0.27430403232574463, 0.4928949475288391, 1.5145852127279422, 1.054241403633856, 0.0610631955827729] # [m m m rad rad rad]
+default_gripping_pose: [0.0, -0.5, 0.35, 0.0, -3.14, 0.0] # [rad]
