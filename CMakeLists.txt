@@ -27,10 +27,12 @@ find_package(PCL REQUIRED)
 add_action_files(
     DIRECTORY action 
 	FILES spray.action
+	FILES pickup.action
 )
 
 generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
+  	cfg/pickup.cfg
 )
 
 generate_messages(
@@ -49,9 +51,12 @@ include_directories(
     ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
 )
 
+add_executable(pickup src/pickup.cpp src/CTimer.cpp)
 add_executable(spray src/spray.cpp src/CPump.cpp src/CTimer.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
+target_link_libraries (pickup ${catkin_LIBRARIES})
 
 #############
 ## Install ##

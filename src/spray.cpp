@@ -69,7 +69,7 @@ void thermalCallback(const std_msgs::String::ConstPtr& msg)
 
   if(!(state == TURNING ||
       state == APPROACHING ||
-      state == ELEVATING ||
+//      state == ELEVATING ||
       state == SPRAYING))
   {
     //rejecting image
