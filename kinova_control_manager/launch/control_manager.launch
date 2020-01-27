@@ -12,6 +12,7 @@
     
     <!-- status input from arm driver -->
     <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
+    <remap from="~joint_torques_in" to="$(arg ARM_TYPE)_driver/out/joint_torques" />
     <remap from="~end_effector_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
 
     <!-- manager status -->

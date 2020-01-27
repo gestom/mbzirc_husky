@@ -68,9 +68,10 @@ public:
 
 private:
   ros::NodeHandle nh_;
-  bool            is_initialized       = false;
-  bool            getting_joint_angles = false;
-  bool            getting_effector_pos = false;
+  bool            is_initialized        = false;
+  bool            getting_joint_angles  = false;
+  bool            getting_joint_torques = false;
+  bool            getting_effector_pos  = false;
   std::string     arm_type;
   std::mutex      arm_state_mutex;
 
@@ -79,15 +80,9 @@ private:
   int        status_timer_rate;
   void       statusTimer(const ros::TimerEvent &evt);
 
-  // arm motion checker
-  ros::Timer motion_check_timer;
-  int        motion_check_timer_rate;
-  void       motionCheckTimer(const ros::TimerEvent &evt);
-
   // goto execution
   void goTo(Pose3d pose);
   void goToRelative(Pose3d pose);
-  void goToRelativeGripping(Pose3d pose);
 
   void setVelocity(Eigen::Vector3d cartesian_velocity);
 
@@ -102,18 +97,18 @@ private:
   // arm status
   MotionStatus_t status;
   double         joint_angles[DOF];
+  double         joint_torques[DOF];
 
-  Pose3d end_effector_pose;
-  Pose3d last_goal;
-  double time_since_last_movement;
-
-  double last_joint_angles[DOF];
-  void   updateLastJointAngles();
+  Pose3d    end_effector_pose;
+  Pose3d    last_goal;
+  double    last_joint_angles[DOF];
+  ros::Time time_of_last_motion;
 
   // geometry & utilities
   bool               nearbyPose(Pose3d p, Pose3d q);
   bool               nearbyAngleDeg(float a, float b);
   bool               nearbyAngleRad(float a, float b);
+  bool               nearbyVector(Eigen::Vector3d u, Eigen::Vector3d v);
   Eigen::Vector3d    quaternionToEuler(Eigen::Quaterniond q);
   Eigen::Quaterniond eulerToQuaternion(Eigen::Vector3d euler);
   std::string        statusToString(MotionStatus_t ms);
@@ -132,6 +127,7 @@ private:
 
   // subscribers
   ros::Subscriber subscriber_joint_angles;
+  ros::Subscriber subscriber_joint_torques;
   ros::Subscriber subscriber_end_effector_pose;
 
   // publishers
@@ -151,6 +147,7 @@ private:
 
   // subscriber callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
+  void callbackJointTorqueTopic(const kinova_msgs::JointTorqueConstPtr &msg);
   void callbackEndEffectorPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg);
 };
 //}
@@ -171,7 +168,6 @@ void ArmManager::onInit() {
   mrs_lib::ParamLoader param_loader(nh_, "ArmManager");
   param_loader.load_param("arm_type", arm_type);
   param_loader.load_param("status_timer_rate", status_timer_rate);
-  param_loader.load_param("motion_check_timer_rate", motion_check_timer_rate);
   param_loader.load_param("no_move_error_timeout", no_move_error_timeout);
   param_loader.load_param("nearby_position_threshold", nearby_position_threshold);
   param_loader.load_param("nearby_rotation_threshold", nearby_rotation_threshold);
@@ -219,6 +215,7 @@ void ArmManager::onInit() {
 
   // subscribers
   subscriber_joint_angles      = nh_.subscribe("joint_angles_in", 1, &ArmManager::callbackJointAnglesTopic, this, ros::TransportHints().tcpNoDelay());
+  subscriber_joint_torques     = nh_.subscribe("joint_torques_in", 1, &ArmManager::callbackJointTorqueTopic, this, ros::TransportHints().tcpNoDelay());
   subscriber_end_effector_pose = nh_.subscribe("end_effector_pose_in", 1, &ArmManager::callbackEndEffectorPoseTopic, this, ros::TransportHints().tcpNoDelay());
 
   // publishers
@@ -227,8 +224,7 @@ void ArmManager::onInit() {
   publisher_cartesian_velocity = nh_.advertise<kinova_msgs::PoseVelocity>("cartesian_velocity_out", 1);
 
   // timers
-  status_timer       = nh_.createTimer(ros::Rate(status_timer_rate), &ArmManager::statusTimer, this);
-  motion_check_timer = nh_.createTimer(ros::Rate(motion_check_timer_rate), &ArmManager::motionCheckTimer, this);
+  status_timer = nh_.createTimer(ros::Rate(status_timer_rate), &ArmManager::statusTimer, this);
 
   status = MotionStatus_t::IDLE;
 
@@ -238,7 +234,7 @@ void ArmManager::onInit() {
   }
   ROS_INFO("[ArmManager]: Waiting for arm feedback...");
 
-  while (!getting_joint_angles || !getting_effector_pos) {
+  while (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ros::spinOnce();
     ros::Duration(0.1).sleep();
   }
@@ -251,15 +247,16 @@ void ArmManager::onInit() {
 /* callbackHomingService //{ */
 bool ArmManager::callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
-  if (!getting_effector_pos || !getting_joint_angles) {
+  if (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ROS_ERROR("[ArmManager]: Cannot move, internal arm feedback missing!");
     res.success = false;
     return false;
   }
 
   ROS_INFO("[ArmManager]: Reset last arm goal. Homing...");
-  status    = MotionStatus_t::HOMING;
-  last_goal = home_pose;
+  status              = MotionStatus_t::HOMING;
+  time_of_last_motion = ros::Time::now();
+  last_goal           = home_pose;
 
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
@@ -271,15 +268,16 @@ bool ArmManager::callbackHomingService([[maybe_unused]] std_srvs::Trigger::Reque
 /* callbackSoftHomingService //{ */
 bool ArmManager::callbackSoftHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
-  if (!getting_effector_pos || !getting_joint_angles) {
+  if (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ROS_ERROR("[ArmManager]: Cannot move, internal arm feedback missing!");
     res.success = false;
     return false;
   }
 
   ROS_INFO("[ArmManager]: Reset last arm goal. Soft homing...");
-  status    = MotionStatus_t::HOMING;
-  last_goal = home_pose;
+  status              = MotionStatus_t::HOMING;
+  time_of_last_motion = ros::Time::now();
+  last_goal           = home_pose;
   goTo(home_pose);
 
   res.success = true;
@@ -290,15 +288,16 @@ bool ArmManager::callbackSoftHomingService([[maybe_unused]] std_srvs::Trigger::R
 /* callbackPrepareGrippingService //{ */
 bool ArmManager::callbackPrepareGrippingService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
-  if (!getting_effector_pos || !getting_joint_angles) {
+  if (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ROS_ERROR("[ArmManager]: Cannot move, internal arm feedback missing!");
     res.success = false;
     return false;
   }
 
   ROS_INFO("[ArmManager]: Assuming a default gripping pose");
-  status    = MotionStatus_t::MOVING;
-  last_goal = default_gripping_pose;
+  status              = MotionStatus_t::MOVING;
+  time_of_last_motion = ros::Time::now();
+  last_goal           = default_gripping_pose;
   goTo(default_gripping_pose);
 
   res.success = true;
@@ -317,7 +316,7 @@ bool ArmManager::callbackGoToService(kinova_control_manager::EndEffectorPoseRequ
     return true;
   }
 
-  if (!getting_effector_pos || !getting_joint_angles) {
+  if (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ROS_ERROR("[ArmManager]: Cannot execute \"goTo\", internal arm feedback missing!");
     res.success = false;
     return false;
@@ -329,11 +328,12 @@ bool ArmManager::callbackGoToService(kinova_control_manager::EndEffectorPoseRequ
     res.message = "Cannot execute \"goTo\", arm is not IDLE!";
     return true;
   }
+  status              = MotionStatus_t::MOVING;
+  time_of_last_motion = ros::Time::now();
 
   Pose3d pose;
   pose.pos = Eigen::Vector3d(req.pose[0], req.pose[1], req.pose[2]);
   pose.rot = eulerToQuaternion(Eigen::Vector3d(req.pose[3], req.pose[4], req.pose[5]));
-  status   = MotionStatus_t::MOVING;
   goTo(pose);
   res.success = true;
   return true;
@@ -351,7 +351,7 @@ bool ArmManager::callbackGoToRelativeService(kinova_control_manager::EndEffector
     return true;
   }
 
-  if (!getting_effector_pos || !getting_joint_angles) {
+  if (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ROS_ERROR("[ArmManager]: Cannot execute \"goToRelative\", internal arm feedback missing!");
     res.success = false;
     return false;
@@ -363,11 +363,12 @@ bool ArmManager::callbackGoToRelativeService(kinova_control_manager::EndEffector
     res.message = "Cannot execute \"goToRelative\", arm is not IDLE!";
     return true;
   }
+  status              = MotionStatus_t::MOVING;
+  time_of_last_motion = ros::Time::now();
 
   Pose3d pose;
   pose.pos = Eigen::Vector3d(req.pose[0], req.pose[1], req.pose[2]);
   pose.rot = eulerToQuaternion(Eigen::Vector3d(req.pose[3], req.pose[4], req.pose[5]));
-  status   = MotionStatus_t::MOVING;
   goToRelative(pose);
   res.success = true;
   return true;
@@ -385,7 +386,7 @@ bool ArmManager::callbackMoveDownUntilObstacleService(std_srvs::TriggerRequest &
     return true;
   }
 
-  if (!getting_effector_pos || !getting_joint_angles) {
+  if (!getting_joint_angles || !getting_effector_pos || !getting_joint_torques) {
     ROS_ERROR("[ArmManager]: Cannot set end effector velocity, internal arm feedback missing!");
     res.success = false;
     return false;
@@ -397,9 +398,10 @@ bool ArmManager::callbackMoveDownUntilObstacleService(std_srvs::TriggerRequest &
     res.message = "Cannot set end effector velocity, arm is not IDLE!";
     return true;
   }
+  status              = MotionStatus_t::MOVING;
+  time_of_last_motion = ros::Time::now();
 
   Eigen::Vector3d vel(0.0, 0.0, -0.3);
-  status = MotionStatus_t::MOVING;
   setVelocity(vel);
   res.success = true;
   return true;
@@ -410,12 +412,68 @@ bool ArmManager::callbackMoveDownUntilObstacleService(std_srvs::TriggerRequest &
 void ArmManager::callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg) {
   std::scoped_lock lock(arm_state_mutex);
   getting_joint_angles = true;
-  joint_angles[0]      = msg->joint1;
-  joint_angles[1]      = msg->joint2;
-  joint_angles[2]      = msg->joint3;
-  joint_angles[3]      = msg->joint4;
-  joint_angles[4]      = msg->joint5;
-  joint_angles[5]      = msg->joint6;
+
+  for (int i = 0; i < DOF; i++) {
+    last_joint_angles[i] = joint_angles[i];
+  }
+
+  joint_angles[0] = msg->joint1;
+  joint_angles[1] = msg->joint2;
+  joint_angles[2] = msg->joint3;
+  joint_angles[3] = msg->joint4;
+  joint_angles[4] = msg->joint5;
+  joint_angles[5] = msg->joint6;
+
+  for (int i = 0; i < DOF; i++) {
+    if (!nearbyAngleRad(joint_angles[i], last_joint_angles[i])) {
+      /* ROS_INFO("[Arm manager]: Joint %d is moving", i); */
+      time_of_last_motion = ros::Time::now();
+      return;
+    }
+  }
+
+  /* idle handler //{ */
+  if (status == MotionStatus_t::IDLE) {
+    return;
+  }
+  //}
+
+  if (time_of_last_motion.sec - ros::Time::now().sec > no_move_error_timeout) {
+
+    /* homing handler //{ */
+    if (status == MotionStatus_t::HOMING) {
+      if (nearbyPose(home_pose, end_effector_pose)) {
+        ROS_INFO("[Arm manager]: Homing complete");
+      } else {
+        ROS_ERROR("[Arm manager]: Homing error! Check arm collisions");
+      }
+      status = MotionStatus_t::IDLE;
+    }
+    //}
+
+    /* moving handler //{ */
+    if (status == MotionStatus_t::MOVING) {
+      if (nearbyPose(last_goal, end_effector_pose)) {
+        ROS_INFO("[Arm manager]: Goal reached");
+      } else {
+        Eigen::Vector3d p_euler = quaternionToEuler(last_goal.rot);
+        Eigen::Vector3d q_euler = quaternionToEuler(end_effector_pose.rot);
+        Eigen::Vector3d angular_diff;
+
+        for (int i = 0; i < 3; i++) {
+          angular_diff[i] = std::abs(p_euler[i] - q_euler[i]);
+          if (angular_diff[i] > 3.0) {
+            angular_diff[i] = std::abs(angular_diff[i] - 3.0);
+          }
+        }
+        double pos_error = (last_goal.pos - end_effector_pose.pos).norm();
+        ROS_WARN("[Arm manager]: Destination unreachable. Position error: %.4f, Rotation error: %.2f, %.2f, %.2f", pos_error, angular_diff[0], angular_diff[1],
+                 angular_diff[2]);
+      }
+      status = MotionStatus_t::IDLE;
+    }
+    //}
+  }
 }
 //}
 
@@ -431,6 +489,19 @@ void ArmManager::callbackEndEffectorPoseTopic(const geometry_msgs::PoseStampedCo
   end_effector_pose.rot.x() = msg->pose.orientation.x;
   end_effector_pose.rot.y() = msg->pose.orientation.y;
   end_effector_pose.rot.z() = msg->pose.orientation.z;
+}
+//}
+
+/* callbackJointTorqueTopic //{ */
+void ArmManager::callbackJointTorqueTopic(const kinova_msgs::JointTorqueConstPtr &msg) {
+  std::scoped_lock lock(arm_state_mutex);
+  getting_joint_torques = true;
+  joint_torques[0]      = msg->joint1;
+  joint_torques[1]      = msg->joint2;
+  joint_torques[2]      = msg->joint3;
+  joint_torques[3]      = msg->joint4;
+  joint_torques[4]      = msg->joint5;
+  joint_torques[5]      = msg->joint6;
 }
 //}
 
@@ -529,63 +600,10 @@ void ArmManager::statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
     status_msg.last_goal[i]             = last_goal.pos[i];
     status_msg.last_goal[i + 3]         = last_euler[i];
   }
-
+  for(int i = 0; i < DOF; i++){
+    status_msg.joint_torques[i] = joint_torques[i];
+  }
   publisher_arm_status.publish(status_msg);
-}
-//}
-
-/* motionCheckTimer //{ */
-void ArmManager::motionCheckTimer([[maybe_unused]] const ros::TimerEvent &evt) {
-
-  if (!is_initialized) {
-    return;
-  }
-
-  time_since_last_movement += 1.0 / motion_check_timer_rate;
-
-  if (status == MotionStatus_t::IDLE) {
-    updateLastJointAngles();
-    return;
-  }
-
-  if (status == MotionStatus_t::HOMING) {
-    if (nearbyPose(end_effector_pose, home_pose)) {
-      ROS_INFO("[ArmManager]: Homing complete");
-      status = MotionStatus_t::IDLE;
-    }
-    updateLastJointAngles();
-    return;
-  }
-
-  bool motion_stopped = true;
-  for (int i = 0; i < DOF; i++) {
-    motion_stopped = motion_stopped && nearbyAngleDeg(joint_angles[i], last_joint_angles[i]);
-  }
-
-  if (!motion_stopped) {
-    time_since_last_movement = 0.0;
-  }
-
-  if (motion_stopped && time_since_last_movement > no_move_error_timeout) {
-    status = MotionStatus_t::IDLE;
-    if (nearbyPose(end_effector_pose, last_goal)) {
-      ROS_INFO("[Arm manager]: Goal reached");
-    } else {
-      ROS_WARN("[Arm manager]: Goal unreachable!");
-    }
-  }
-  updateLastJointAngles();
-  return;
-}
-//}
-
-/* updateLastJointAngles //{ */
-void ArmManager::updateLastJointAngles() {
-
-  std::scoped_lock lock(arm_state_mutex);
-  for (int i = 0; i < DOF; i++) {
-    last_joint_angles[i] = joint_angles[i];
-  }
 }
 //}
 
@@ -602,9 +620,15 @@ std::string ArmManager::statusToString(MotionStatus_t ms) {
 }
 //}
 
+/* nearbyVector //{ */
+bool ArmManager::nearbyVector(Eigen::Vector3d u, Eigen::Vector3d v) {
+  return (u - v).norm() < nearby_position_threshold;
+}
+//}
+
 /* nearbyPose //{ */
 bool ArmManager::nearbyPose(Pose3d p, Pose3d q) {
-  /* double pos_diff = (p.pos - q.pos).norm(); */
+  double pos_diff = (p.pos - q.pos).norm();
   /* std::cout << "Pos diff: " << pos_diff << "\n"; */
 
   Eigen::Vector3d p_euler = quaternionToEuler(p.rot);
@@ -616,14 +640,14 @@ bool ArmManager::nearbyPose(Pose3d p, Pose3d q) {
   }
   /* std::cout << "Angular diff: " << angular_diff[0] << ", " << angular_diff[1] << ", " << angular_diff[2] << "\n"; */
 
-  return (p.pos - q.pos).norm() < nearby_position_threshold && angular_diff[0] < nearby_rotation_threshold && angular_diff[1] < nearby_rotation_threshold &&
-         angular_diff[2] < nearby_rotation_threshold;
+  return (pos_diff < nearby_position_threshold) && (angular_diff[0] < nearby_rotation_threshold) && (angular_diff[1] < nearby_rotation_threshold) &&
+         (angular_diff[2] < nearby_rotation_threshold);
 }
 //}
 
 /* nearbyAngleDeg //{ */
 bool ArmManager::nearbyAngleDeg(float a, float b) {
-  return (std::abs(b - a) * M_PI) / 180 < nearby_rotation_threshold;
+  return ((std::abs(b - a) * M_PI) / 180) < nearby_rotation_threshold;
 }
 //}
 

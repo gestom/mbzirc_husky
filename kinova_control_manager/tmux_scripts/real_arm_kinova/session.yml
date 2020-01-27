@@ -11,11 +11,11 @@ windows:
   - kinova_bringup:
       layout: even-vertical
       panes:
-        - waitForRos; roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=$ARM_TYPE
+        - sleep 1; roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=$ARM_TYPE
   - arm_manager:
       layout: even-vertical
       panes:
-        - waitForRos; roslaunch kinova_control_manager control_manager.launch
+        - sleep 2; roslaunch kinova_control_manager control_manager.launch
   - home_arm:
       layout: even-vertical
       panes:
@@ -28,10 +28,10 @@ windows:
   - goto:
       layout: even-vertical
       panes:
-        - waitForRos; sleep 3; rostopic echo /kinova/arm_manager/status
+        - sleep 5; rostopic echo /kinova/arm_manager/status
         - 'history -s rosservice call /kinova/arm_manager/goto \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
   - goto_relative:
       layout: even-vertical
       panes:
-        - waitForRos; sleep 3; rostopic echo /kinova/arm_manager/status
+        - sleep 5; rostopic echo /kinova/arm_manager/status
         - 'history -s rosservice call /kinova/arm_manager/goto_relative \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
