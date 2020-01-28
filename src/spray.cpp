@@ -45,7 +45,7 @@ CPump *pump;
 float fwSpeed = 0.1f;
 float rotationCoefficient = 30.0f; //bigger is slower
 float fireThreshold = 45.0f;
-int sprayTime = 4000; //in miliseconds
+int sprayTime = 1000; //in miliseconds
 
 /*void callback(mbzirc_husky::sprayConfig &config, uint32_t level) {
 
@@ -126,6 +126,7 @@ bool isTerminal(ESprayState state)
 
 void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* as)
 {
+	sprayTime = goal->duration;
 	mbzirc_husky::sprayResult result;
 	if (state == IDLE){
 		state = SPRAYING;

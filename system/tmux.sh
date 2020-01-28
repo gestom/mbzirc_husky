@@ -13,4 +13,4 @@ tmux split-window
 sleep 0.2
 tmux send-keys 'roslaunch mbzirc_husky realsense.launch'
 tmux new-window -n:"Slam"
-tmux send-keys 'roslaunch mbzirc_husky gmapping'
+tmux send-keys 'roslaunch mbzirc_husky gmapping.launch'
