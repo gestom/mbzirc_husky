@@ -20,10 +20,6 @@
   <!--rviz-->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find mbzirc_husky)/cfg/husky.rviz"/>
 
-  <!--tf-publishers-->
-  <!--<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />-->
-
   <!--velo to laserscan-->
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_node" args="cloud_in:=/velodyne_points" respawn="false">
     <param name="range_min" value="1.5"/>
@@ -33,5 +29,11 @@
   <!--launch regular husky files-->
   <arg name="node_start_delay" default="15.0" />  
   <include file="$(find mbzirc_husky)/launch/gmapping.launch" />
-  
+
+  <!--thermal camera-->
+  <include file="$(find fire_detect)/launch/single_node.launch" args="RUN_TYPE=simulation">
+    <arg name="UAV_NAME" value="husky"/>
+  </include>
+  <include file="$(find fire_detect)/launch/husky.launch"/>
+
 </launch>
