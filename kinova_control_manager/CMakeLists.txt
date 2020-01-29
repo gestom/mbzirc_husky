@@ -9,10 +9,11 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   kinova_msgs
   kinova_driver
-  mrs_lib
   std_msgs
   geometry_msgs
   tf
+  mrs_msgs
+  # mrs_lib
   # moveit_ros_planning_interface
   # sensor_msgs
   # moveit_msgs

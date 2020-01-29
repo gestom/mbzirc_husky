@@ -1,12 +1,18 @@
 #######################################
 
-from /kinova_driver/src/kinova_arm.cpp
-  function homeArmServiceCallback
-    remove initFingers command -> speedup in hard homing
+[DONE]: implement gripping service
+[TODO]: test gripping one brick
 
 #######################################
 
-test move_down_until_obstacle
+[DONE]: compute tf from arm frame to husky map frame
+[TODO]: check it in rviz 
 
+#######################################
+
+[TODO]:
+from /kinova_driver/src/kinova_arm.cpp
+  function homeArmServiceCallback
+    remove initFingers command -> speedup in hard homing
 
 #######################################

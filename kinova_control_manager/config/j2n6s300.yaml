@@ -6,3 +6,7 @@ nearby_position_threshold: 0.08 # [m]
 nearby_rotation_threshold: 0.08 # [rad]
 end_effector_home_pose: [0.21344150602817535, -0.27430403232574463, 0.4928949475288391, 1.5145852127279422, 1.054241403633856, 0.0610631955827729] # [m m m rad rad rad]
 default_gripping_pose: [-0.0007221158593893051, -0.49818700551986694, 0.3467135226726532, 0.03274670188987061, -3.138256281675853, 0.007499130835188166] # [rad]
+
+husky_to_arm_base_transform: [0.175, 0.13 ,0.17] #[m m m]
+husky_base_frame_id: "base_link"
+kinova_base_frame_id: "j2n6s300_link_base"
