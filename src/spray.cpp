@@ -176,18 +176,20 @@ void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* a
 	}*/
 	while (isTerminal(state) == false){
     if(state == TURNING)
+    {
       //handled inside of themal callback
-    if(state == APPROACHING)
+    }
+    else if(state == APPROACHING)
     {
       //move towards target
       state = ALIGNING;
     }
-    if(state == ALIGNING)
+    else if(state == ALIGNING)
     {
       //move arm to desired position
       startSpraying();
     }
-		if (state == SPRAYING && timer.getTime() > sprayTime){
+		else if (state == SPRAYING && timer.getTime() > sprayTime){
      	state = FINAL;
 			pump->off();
 		}
