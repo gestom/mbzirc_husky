@@ -22,11 +22,18 @@
 
   <!--launch regular husky files-->
   <arg name="node_start_delay" default="15.0" />  
-  <include file="$(find mbzirc_husky)/launch/gmapping.launch" />
+  <!--<include file="$(find mbzirc_husky)/launch/gmapping.launch" />-->
 
   <!--thermal camera-->
   <include file="$(find fire_detect)/launch/single_node.launch" />
 
   <include file="$(find mbzirc_husky)/launch/pump.launch" />
+
+  <!--velo to laserscan-->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_node" args="cloud_in:=/velodyne_points" respawn="false">
+    <param name="range_min" value="1.5"/>
+    <param name="range_max" value="100"/>
+  </node>
+
 
 </launch>
