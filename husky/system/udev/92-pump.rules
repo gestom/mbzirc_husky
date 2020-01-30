@@ -1,0 +1,1 @@
+SUBSYSTEMS=="usb", ATTRS{manufacturer}=="MRS*", ATTRS{serial}=="20693836474E", SYMLINK+="robot/pump", MODE="0666"

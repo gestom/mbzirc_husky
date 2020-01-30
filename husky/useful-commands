@@ -1,0 +1,9 @@
+rosrun map_server map_saver
+
+
+pump activation:
+echo -e "\x62\x01\x92\xF5" > /dev/ttyACM0 #to toggle
+formerly:
+echo -ne '\x30' > /dev/ttyACM1 #switch off
+echo -ne '\x31' > /dev/ttyACM1 #switch on
+echo -ne '\x32' > /dev/ttyACM1 #toggle on/off
