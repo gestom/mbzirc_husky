@@ -1,12 +1,13 @@
 arm_type: "j2n6s300"
+end_effector: "nozzle" # [nozzle/gripper]
 status_timer_rate: 5 # [Hz]
 motion_check_timer_rate: 1 # [Hz]
 no_move_error_timeout: 3 # [s]
 nearby_position_threshold: 0.08 # [m]
 nearby_rotation_threshold: 0.08 # [rad]
-end_effector_home_pose: [0.21344150602817535, -0.27430403232574463, 0.4928949475288391, 1.5145852127279422, 1.054241403633856, 0.0610631955827729] # [m m m rad rad rad]
-default_gripping_pose: [-0.0007221158593893051, -0.49818700551986694, 0.3467135226726532, 0.03274670188987061, -3.138256281675853, 0.007499130835188166] # [rad]
-
-husky_to_arm_base_transform: [0.175, 0.13 ,0.17] #[m m m]
+end_effector_home_pose: [0.07267599990734311, -0.19457573496675962, 0.48981552612177237, 1.505458503967444, 1.0401927267977094, 0.07216669996230128] # [m m m rad rad rad]
+default_gripping_pose: [0.0, -0.45, 0.5, 0.0, -3.14159, 0.0] # [m m m rad rad rad]
+default_firefighting_pose: [0.45906802294120663, -0.0013019907726987967, 0.6128451137619106, 1.5640734913191676, 3.121927023259888, 1.5827672369569061] # [m m m rad rad rad]
+husky_to_arm_base_transform: [-0.175, -0.13 ,0.17, 0, 0, 0] #[m m m, rad, rad, rad]
 husky_base_frame_id: "base_link"
 kinova_base_frame_id: "j2n6s300_link_base"

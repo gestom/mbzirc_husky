@@ -26,7 +26,8 @@
     <remap from="~home_in" to="kinova/arm_manager/home_arm" />
     <remap from="~soft_home_in" to="kinova/arm_manager/soft_home_arm" />
     <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
-    <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" />
+    <!-- <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" /> -->
+    <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
     <remap from="~goto_in" to="kinova/arm_manager/goto" />
     <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
 

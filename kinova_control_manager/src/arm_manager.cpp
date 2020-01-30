@@ -1,6 +1,8 @@
 #include <mutex>
-
-#include <tf2_ros/transform_broadcaster.h>
+#include <cmath>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <ros/ros.h>
 #include <Eigen/Dense>
@@ -13,14 +15,17 @@
 #include <kinova_msgs/HomeArm.h>
 #include <kinova_msgs/JointAngles.h>
 #include <kinova_msgs/PoseVelocity.h>
+#include <kinova_msgs/ArmPoseActionGoal.h>
 
 #include <kinova_control_manager/ArmStatus.h>
 #include <kinova_control_manager/EndEffectorPose.h>
-#include <kinova_msgs/ArmPoseActionGoal.h>
+#include <kinova_control_manager/Vector3.h>
 
 #include <mrs_msgs/GripperDiagnostics.h>
+#include <visualization_msgs/Marker.h>
 
 #define DOF 6
+#define ORIGINAL_WRIST_OFFSET Eigen::Vector3d(0.0, 0.0, 0.16)  // [m]
 
 namespace kinova_control_manager
 {
@@ -30,8 +35,13 @@ typedef enum
   MOVING,
   IDLE,
   HOMING,
-  GRIPPING,
 } MotionStatus_t;
+
+typedef enum
+{
+  GRIPPER,
+  NOZZLE,
+} EndEffector_t;
 
 /* struct Pose3d //{ */
 struct Pose3d
@@ -80,6 +90,7 @@ private:
   std::string     arm_type;
   std::mutex      arm_state_mutex;
 
+
   // continuous status publishing
   ros::Timer status_timer;
   int        status_timer_rate;
@@ -92,15 +103,16 @@ private:
   // configuration params
   Pose3d             home_pose;
   Pose3d             default_gripping_pose;
+  Pose3d             default_firefighting_pose;
   Eigen::Quaterniond gripper_down;
   double             nearby_position_threshold;
   double             nearby_rotation_threshold;
   double             no_move_error_timeout;
+  EndEffector_t      end_effector_type;
 
   // arm status
-  MotionStatus_t      status;
-  double              joint_angles[DOF];
-  std::vector<double> husky_to_arm_base_transform;
+  MotionStatus_t status;
+  double         joint_angles[DOF];
 
   Pose3d    end_effector_pose;
   Pose3d    last_goal;
@@ -124,6 +136,7 @@ private:
   ros::ServiceServer service_server_prepare_gripping;
   ros::ServiceServer service_server_start_gripping;
   ros::ServiceServer service_server_align_arm;
+  ros::ServiceServer service_server_aim_at;
 
   // internally called services
   ros::ServiceClient service_client_homing;
@@ -138,6 +151,7 @@ private:
   // publishers
   ros::Publisher publisher_arm_status;
   ros::Publisher publisher_end_effector_pose;
+  ros::Publisher publisher_dbg_visual;
 
   // service callbacks
   bool callbackHomingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
@@ -147,6 +161,7 @@ private:
   bool callbackPrepareGrippingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackStartGripping(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackAlignArmService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool callbackAimAtService(kinova_control_manager::Vector3Request &req, kinova_control_manager::Vector3Response &res);
 
   // subscriber callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
@@ -158,11 +173,18 @@ private:
   bool ungrip();
 
   // transform
-  void        publishTF();
-  std::string husky_base_frame_id;
-  std::string kinova_base_frame_id;
+  void                publishTF();
+  std::string         husky_base_frame_id;
+  std::string         kinova_base_frame_id;
+  std::vector<double> husky_to_arm_base_transform;
 
-  tf2_ros::TransformBroadcaster tb;
+  tf::TransformBroadcaster tb;
+  tf::TransformListener    tl;
+
+  Pose3d husky_to_arm(Pose3d pose_in_husky_frame);
+  Pose3d arm_to_husky(Pose3d pose_in_arm_frame);
+
+  Eigen::Quaterniond lookAt(Eigen::Vector3d from, Eigen::Vector3d to);
 };
 //}
 
@@ -177,6 +199,7 @@ void ArmManager::onInit() {
   // helper containers
   std::vector<double> home_pose_raw;
   std::vector<double> gripping_pose_raw;
+  std::vector<double> firefighting_pose_raw;
 
   // load params
   nh_.getParam("arm_type", arm_type);
@@ -186,6 +209,7 @@ void ArmManager::onInit() {
   nh_.getParam("nearby_rotation_threshold", nearby_rotation_threshold);
   nh_.getParam("end_effector_home_pose", home_pose_raw);
   nh_.getParam("default_gripping_pose", gripping_pose_raw);
+  nh_.getParam("default_firefighting_pose", firefighting_pose_raw);
   nh_.getParam("husky_to_arm_base_transform", husky_to_arm_base_transform);
   nh_.getParam("husky_base_frame_id", husky_base_frame_id);
   nh_.getParam("kinova_base_frame_id", kinova_base_frame_id);
@@ -206,6 +230,9 @@ void ArmManager::onInit() {
   default_gripping_pose.pos = Eigen::Vector3d(gripping_pose_raw[0], gripping_pose_raw[1], gripping_pose_raw[2]);
   default_gripping_pose.rot = eulerToQuaternion(Eigen::Vector3d(gripping_pose_raw[3], gripping_pose_raw[4], gripping_pose_raw[5]));
 
+  default_firefighting_pose.pos = Eigen::Vector3d(firefighting_pose_raw[0], firefighting_pose_raw[1], firefighting_pose_raw[2]);
+  default_firefighting_pose.rot = eulerToQuaternion(Eigen::Vector3d(firefighting_pose_raw[3], firefighting_pose_raw[4], firefighting_pose_raw[5]));
+
   if (arm_type.size() < 4) {
     ROS_ERROR("[ArmManager]: ARM_TYPE expected to be at least 4 characters!");
     ros::shutdown();
@@ -223,7 +250,8 @@ void ArmManager::onInit() {
   service_server_goto             = nh_.advertiseService("goto_in", &ArmManager::callbackGoToService, this);
   service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &ArmManager::callbackGoToRelativeService, this);
   service_server_prepare_gripping = nh_.advertiseService("prepare_gripping_in", &ArmManager::callbackPrepareGrippingService, this);
-  service_server_align_arm        = nh_.advertiseService("align_arm_in", &ArmManager::callbackPrepareGrippingService, this);
+  service_server_align_arm        = nh_.advertiseService("align_arm_in", &ArmManager::callbackAlignArmService, this);
+  service_server_aim_at           = nh_.advertiseService("aim_at_in", &ArmManager::callbackAimAtService, this);
 
   // service clients
   service_client_homing = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
@@ -239,6 +267,7 @@ void ArmManager::onInit() {
   // publishers
   publisher_arm_status        = nh_.advertise<kinova_control_manager::ArmStatus>("arm_status_out", 1);
   publisher_end_effector_pose = nh_.advertise<kinova_msgs::ArmPoseActionGoal>("end_effector_pose_out", 1);
+  publisher_dbg_visual        = nh_.advertise<visualization_msgs::Marker>("target_marker", 1);
 
   // timers
   status_timer = nh_.createTimer(ros::Rate(status_timer_rate), &ArmManager::statusTimer, this);
@@ -328,6 +357,47 @@ bool ArmManager::callbackAlignArmService([[maybe_unused]] std_srvs::Trigger::Req
   ROS_WARN("[ArmManager]: Align arm not implemented yet!");
   res.success = false;
   return false;
+}
+//}
+
+/* callbackAimAtService//{ */
+bool ArmManager::callbackAimAtService(kinova_control_manager::Vector3Request &req, kinova_control_manager::Vector3Response &res) {
+
+  if (!getting_joint_angles || !getting_effector_pos) {
+    ROS_ERROR("[ArmManager]: Cannot aim at target, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  Eigen::Vector3d target_raw(req.pos[0], req.pos[1], req.pos[2]);
+  Pose3d          target_in_husky_frame;
+  target_in_husky_frame.pos = target_raw;
+  target_in_husky_frame.rot = Eigen::Quaterniond::Identity();
+
+  Pose3d target_in_arm_frame = husky_to_arm(target_in_husky_frame);
+
+
+  Pose3d firefighting_pose = default_firefighting_pose;
+  goTo(firefighting_pose);
+  while (nearbyPose(end_effector_pose, firefighting_pose)) {
+    ros::Duration(0.2).sleep();
+  }
+
+  //TODO write relative DKT
+  //use joint 1 for ground plane aim and joint 5 for altitude aim
+
+  /* Eigen::Quaterniond orientation = lookAt(default_firefighting_pose.pos, target_in_arm_frame.pos); */
+  /* firefighting_pose.rot          = orientation; */
+  /* goTo(firefighting_pose); */
+
+  // adjust for home pose
+
+  Eigen::Vector3d euler = quaternionToEuler(firefighting_pose.rot);
+  ROS_INFO_STREAM("[ArmManager]: Assuming position \[" << firefighting_pose.pos[0] << ", " << firefighting_pose.pos[1] << ", " << firefighting_pose.pos[2]
+                                                       << ", " << euler[0] << ", " << euler[1] << ", " << euler[2] << "]\n");
+  last_goal   = firefighting_pose;
+  res.success = true;
+  return true;
 }
 //}
 
@@ -512,6 +582,8 @@ void ArmManager::callbackEndEffectorPoseTopic(const geometry_msgs::PoseStampedCo
   std::scoped_lock lock(arm_state_mutex);
   getting_effector_pos = true;
 
+  // !!The message has rotation offset for some reason!!
+
   end_effector_pose.pos.x() = msg->pose.position.x;
   end_effector_pose.pos.y() = msg->pose.position.y;
   end_effector_pose.pos.z() = msg->pose.position.z;
@@ -521,7 +593,26 @@ void ArmManager::callbackEndEffectorPoseTopic(const geometry_msgs::PoseStampedCo
   end_effector_pose.rot.y() = msg->pose.orientation.y;
   end_effector_pose.rot.z() = msg->pose.orientation.z;
 
-  publishTF();
+  // offset compensation because no wrist is attached
+  end_effector_pose.pos -= end_effector_pose.rot * ORIGINAL_WRIST_OFFSET;
+
+  /* tf::StampedTransform trans; */
+  /* try { */
+  /*   tl.lookupTransform("/j2n6s300_link_base", "/j2n6s300_end_effector", ros::Time(0), trans); */
+  /* } */
+  /* catch (tf::TransformException ex) { */
+  /*   ROS_ERROR("%s", ex.what()); */
+  /*   return; */
+  /* } */
+  /* end_effector_pose.pos.x() = trans.getOrigin().getX(); */
+  /* end_effector_pose.pos.y() = trans.getOrigin().getY(); */
+  /* end_effector_pose.pos.z() = trans.getOrigin().getZ(); */
+
+  /* Eigen::Quaterniond ee_rot; */
+  /* tf::quaternionTFToEigen(trans.getRotation(), ee_rot); */
+  /* end_effector_pose.rot = ee_rot; */
+
+  /* end_effector_pose.pos -= end_effector_pose.rot * ORIGINAL_WRIST_OFFSET; */
 }
 //}
 
@@ -538,8 +629,13 @@ void ArmManager::goTo(Pose3d pose) {
 
   ROS_INFO("[ArmManager]: Moving end effector to position [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(), euler[0],
            euler[1], euler[2]);
+
+  // offset compensation because no wrist is attached
+  pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET;
+
   last_goal = pose;
   kinova_msgs::ArmPoseActionGoal msg;
+
   msg.goal.pose.pose.position.x = pose.pos.x();
   msg.goal.pose.pose.position.y = pose.pos.y();
   msg.goal.pose.pose.position.z = pose.pos.z();
@@ -561,25 +657,33 @@ void ArmManager::goTo(Pose3d pose) {
 /* goToRelative //{ */
 void ArmManager::goToRelative(Pose3d rel_pose) {
 
+  // compensate for original wrist offset
+  Pose3d pose = end_effector_pose;
+  pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET;
+
   // add rel_pose to the current end effector pose
-  Pose3d pose = end_effector_pose + rel_pose;
+  pose = pose + rel_pose;
+
 
   Eigen::Vector3d euler = quaternionToEuler(pose.rot);
 
   ROS_INFO("[ArmManager]: Moving end effector by relative [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(), euler[0],
            euler[1], euler[2]);
 
+
   last_goal = pose;
   kinova_msgs::ArmPoseActionGoal msg;
-
-  msg.goal.pose.pose.position.x = pose.pos.x();
-  msg.goal.pose.pose.position.y = pose.pos.y();
-  msg.goal.pose.pose.position.z = pose.pos.z();
 
   msg.goal.pose.pose.orientation.x = pose.rot.x();
   msg.goal.pose.pose.orientation.y = pose.rot.y();
   msg.goal.pose.pose.orientation.z = pose.rot.z();
   msg.goal.pose.pose.orientation.w = pose.rot.w();
+
+
+  msg.goal.pose.pose.position.x = pose.pos.x();
+  msg.goal.pose.pose.position.y = pose.pos.y();
+  msg.goal.pose.pose.position.z = pose.pos.z();
+
 
   std::stringstream ss;
   ss << arm_type << "_link_base";
@@ -633,6 +737,7 @@ void ArmManager::statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
     status_msg.last_goal[i + 3]         = last_euler[i];
   }
   publisher_arm_status.publish(status_msg);
+  publishTF();
 }
 //}
 
@@ -652,6 +757,20 @@ void ArmManager::publishTF() {
   trans.transform.rotation.y    = rot.y();
   trans.transform.rotation.z    = rot.z();
   tb.sendTransform(trans);
+
+  trans.header.stamp            = ros::Time::now();
+  trans.header.frame_id         = kinova_base_frame_id;
+  trans.child_frame_id          = "end_effector_compensated";
+  trans.transform.translation.x = end_effector_pose.pos.x();
+  trans.transform.translation.y = end_effector_pose.pos.y();
+  trans.transform.translation.z = end_effector_pose.pos.z();
+  tf::Quaternion tfq;
+  tf::quaternionEigenToTF(end_effector_pose.rot, tfq);
+  trans.transform.rotation.w = tfq.getW();
+  trans.transform.rotation.x = tfq.getX();
+  trans.transform.rotation.y = tfq.getY();
+  trans.transform.rotation.z = tfq.getZ();
+  tb.sendTransform(trans);
 }
 //}
 
@@ -664,8 +783,8 @@ std::string ArmManager::statusToString(MotionStatus_t ms) {
       return "MOVING";
     case MotionStatus_t::HOMING:
       return "HOMING";
-    case MotionStatus_t::GRIPPING:
-      return "GRIPPING";
+      /* case MotionStatus_t::GRIPPING: */
+      /*   return "GRIPPING"; */
   }
 }
 //}
@@ -717,6 +836,98 @@ Eigen::Vector3d ArmManager::quaternionToEuler(Eigen::Quaterniond q) {
 Eigen::Quaterniond ArmManager::eulerToQuaternion(Eigen::Vector3d euler) {
   return Eigen::AngleAxisd(euler[0], Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(euler[1], Eigen::Vector3d::UnitY()) *
          Eigen::AngleAxisd(euler[2], Eigen::Vector3d::UnitZ());
+}
+//}
+
+/* Coordinate transformations //{ */
+
+/* husky_to_arm //{ */
+Pose3d ArmManager::husky_to_arm(Pose3d pose_in_husky_frame) {
+  Pose3d transform;
+  transform.pos = Eigen::Vector3d(husky_to_arm_base_transform[0], husky_to_arm_base_transform[1], husky_to_arm_base_transform[2]);
+  transform.rot = eulerToQuaternion(Eigen::Vector3d(husky_to_arm_base_transform[3], husky_to_arm_base_transform[4], husky_to_arm_base_transform[5]));
+  return pose_in_husky_frame - transform;
+}
+//}
+
+/* arm_to_husky //{ */
+Pose3d ArmManager::arm_to_husky(Pose3d pose_in_arm_frame) {
+  Pose3d transform;
+  transform.pos = Eigen::Vector3d(husky_to_arm_base_transform[0], husky_to_arm_base_transform[1], husky_to_arm_base_transform[2]);
+  transform.rot = eulerToQuaternion(Eigen::Vector3d(husky_to_arm_base_transform[3], husky_to_arm_base_transform[4], husky_to_arm_base_transform[5]));
+  return pose_in_arm_frame + transform;
+}
+//}
+
+//}
+
+/* lookAt //{ */
+// TODO do not use this, use relative DKT!!!
+Eigen::Quaterniond ArmManager::lookAt(Eigen::Vector3d from, Eigen::Vector3d to) {
+
+  if (to[0] < 0) {
+    ROS_ERROR("[ArmManager]: Tried pointing at target behind the robot!");
+    return Eigen::Quaterniond::Identity();
+  }
+
+  double dst = (from - to).norm();
+
+  std::cout << "to: " << to << "\n";
+  std::cout << "from: " << from << "\n";
+  std::cout << "dst: " << dst << "\n";
+
+
+  double rot_x = atan2(to[1] - from[1], to[0] - from[0]);
+  std::cout << "Rot x: " << rot_x << "\n";
+  double rot_z = acos((to[0] - from[0]) / dst);
+  std::cout << "Rot z: " << rot_z << "\n";
+
+  Eigen::Vector3d local_x_axis = end_effector_pose.rot * Eigen::Vector3d::UnitX();
+  Eigen::Vector3d local_y_axis = end_effector_pose.rot * Eigen::Vector3d::UnitY();
+  Eigen::Vector3d local_z_axis = end_effector_pose.rot * Eigen::Vector3d::UnitZ();
+
+  Eigen::Quaterniond q = Eigen::AngleAxisd(rot_x, local_x_axis) * Eigen::AngleAxisd(0, local_y_axis) * Eigen::AngleAxisd(rot_z, local_z_axis);
+
+  Eigen::Vector3d target, offset;
+  offset = q * local_y_axis;
+  offset = offset * dst;
+  target = end_effector_pose.pos + offset;
+
+  visualization_msgs::Marker marker;
+
+  marker.header.frame_id = "j2n6s300_link_base";
+  marker.frame_locked    = true;
+  marker.header.stamp    = ros::Time::now();
+  marker.ns              = "marker_namespace";
+  marker.id              = 0;
+  marker.action          = visualization_msgs::Marker::ADD;
+  marker.type            = visualization_msgs::Marker::LINE_STRIP;
+  marker.color.r         = 1.0;
+  marker.color.g         = 0.0;
+  marker.color.b         = 0.0;
+  marker.color.a         = 1.0;
+  marker.scale.x         = 0.03;
+  marker.scale.y         = 0.03;
+  geometry_msgs::Point p1, p2;
+  p1.x = from.x();
+  p1.y = from.y();
+  p1.z = from.z();
+
+  p2.x = target.x();
+  p2.y = target.y();
+  p2.z = target.z();
+
+  marker.points.push_back(p1);
+  marker.points.push_back(p2);
+  publisher_dbg_visual.publish(marker);
+
+  return q;
+}  // namespace kinova_control_manager
+//}
+
+/* vectorAngle //{ */
+double vectorAngle(Eigen::Vector3d v1, Eigen::Vector3d v2) {
+  return acos(v1.dot(v2) / (v1.norm() * v2.norm()));
 }
 //}
 
