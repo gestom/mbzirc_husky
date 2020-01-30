@@ -27,8 +27,7 @@
 #include <kinova_control_manager/EndEffectorPose.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::pickupAction> Server;
-
-Server* server;
+Server*                                                           server;
 
 typedef enum
 {
