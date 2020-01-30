@@ -1,1 +1,0 @@
-ACTION=="add", SUBSYSTEM=="tty", ATTRS{idVendor}=="1f00", ATTRS{idProduct}=="2012", SYMLINK+="RFM69", GROUP="dialout"

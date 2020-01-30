@@ -1,2 +1,0 @@
-# use "udevadm monitor" to figure out the USB port numbers
-SUBSYSTEMS=="usb", KERNELS=="1-4.1:1.0", SYMLINK+="ttyUSBEstop"
