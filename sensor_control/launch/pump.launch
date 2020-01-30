@@ -1,7 +1,4 @@
 <?xml version="1.0"?>
 <launch>
 	<node name="spray" type="spray" pkg="mbzirc_husky" respawn="true" output="screen"/>
-
-	<node name="joystickWater" type="joystickWater.py" pkg="mbzirc_husky" respawn="true" output="screen" />
-
 </launch>
