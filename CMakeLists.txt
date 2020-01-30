@@ -33,13 +33,13 @@ add_action_files(
 	FILES spray.action
 	FILES pickup.action
 )
-add_message_files(DIRECTORY kinova_control_manager/msg FILES
-	ArmStatus.msg
-	)
-add_service_files(DIRECTORY kinova_control_manager/srv FILES
-	EndEffectorPose.srv
-	Vector3.srv
-	)
+# add_message_files(DIRECTORY kinova_control_manager/msg FILES
+# 	ArmStatus.msg
+	# )
+# add_service_files(DIRECTORY kinova_control_manager/srv FILES
+	# EndEffectorPose.srv
+	# Vector3.srv
+	# )
 
 generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
@@ -60,6 +60,14 @@ catkin_package(
 ###########
 ## Build ##
 ###########
+
+ExternalProject_Add(kinova_control_manager
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/kinova_control_manager"
+  CMAKE_ARGS "-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}"
+  INSTALL_COMMAND ""
+  BUILD_ALWAYS 1
+)
+
 
 include_directories(
     ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS} 
