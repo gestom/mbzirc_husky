@@ -1,8 +1,8 @@
 <launch>
-  <arg name="ARM_TYPE" default="$(env ARM_TYPE)" />
+  <arg name="ARM_TYPE" default="j2n6s300" />
   <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager" output="screen"/>
 
-  <node pkg="nodelet" type="nodelet" name="ArmManager" args="load kinova_control_manager/ArmManager standalone_nodelet" output="screen">
+  <node pkg="nodelet" type="nodelet" name="kinova_control_manager" args="load kinova_control_manager/kinova_control_manager standalone_nodelet" output="screen">
     <rosparam file="$(find kinova_control_manager)/config/$(arg ARM_TYPE).yaml" />
 
     <!-- output commands to arm driver -->
@@ -30,6 +30,7 @@
     <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
     <remap from="~goto_in" to="kinova/arm_manager/goto" />
     <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
+    <remap from="~goto_relative_fixed_in" to="kinova/arm_manager/goto_relative_fixed" />
 
   </node>
 </launch>

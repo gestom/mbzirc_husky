@@ -12,7 +12,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   tf
+  tf_conversions
   mrs_msgs
+  kinova_bringup
+  kinova_control
+  kinova_description
   # mrs_lib
   # moveit_ros_planning_interface
   # sensor_msgs
