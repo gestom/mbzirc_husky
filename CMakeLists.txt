@@ -17,7 +17,11 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     std_msgs 
     tf
+    mrs_lib
+    kinova_msgs
+    kinova_driver
     )
+
 find_package(PCL REQUIRED)
 
 #######################################
@@ -29,6 +33,13 @@ add_action_files(
 	FILES spray.action
 	FILES pickup.action
 )
+add_message_files(DIRECTORY kinova_control_manager/msg FILES
+	ArmStatus.msg
+	)
+add_service_files(DIRECTORY kinova_control_manager/srv FILES
+	EndEffectorPose.srv
+	Vector3.srv
+	)
 
 generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
@@ -39,16 +50,19 @@ generate_messages(
     DEPENDENCIES
     std_msgs
     actionlib_msgs
-)
+    geometry_msgs
+   )
 
-catkin_package()
+catkin_package(
+	CATKIN_DEPENDS 	message_runtime
+  )
 
 ###########
 ## Build ##
 ###########
 
 include_directories(
-    ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS} 
 )
 
 add_executable(pickup src/pickup.cpp src/CTimer.cpp)
@@ -56,7 +70,7 @@ add_executable(spray src/spray.cpp src/CPump.cpp src/CTimer.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
-target_link_libraries (pickup ${catkin_LIBRARIES})
+target_link_libraries (pickup  ${catkin_LIBRARIES})
 
 #############
 ## Install ##
