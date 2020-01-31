@@ -36,6 +36,10 @@ add_action_files(
 	FILES spray.action
 	FILES pickup.action
 )
+add_service_files(
+	FILES
+	brickDetect.srv
+	)
 
 generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
