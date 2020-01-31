@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(DIRECTORY msg/ FILES
   ArmStatus.msg
+  brickPosition.msg
 )
 
 add_service_files(DIRECTORY srv/ FILES

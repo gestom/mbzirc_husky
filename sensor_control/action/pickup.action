@@ -1,5 +1,10 @@
-int64 timeOut 
+#goal
+int64 cubes 
 ----
-int64 dummy 
+#result
+bool success
 ----
-int64 dummy 
+#feedback
+float64[] cube_position
+bool magnet_on
+string status

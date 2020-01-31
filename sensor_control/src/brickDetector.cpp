@@ -9,11 +9,12 @@
 #include <dynamic_reconfigure/server.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
+#include <mbzirc_husky_msgs/brickPosition.h>
 
 int numDetections = 0;
 int numDetectionAttempts = 0;
 SSegment segment;
-geometry_msgs::PoseStamped brickPose;
+mbzirc_husky_msgs::brickPosition brickPose;
 image_transport::Publisher imdebug;
 ros::Publisher command_pub;
 ros::Publisher posePub;
@@ -65,21 +66,23 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	depthImage->getClosest(groundPlaneDistance);
 	segment = segmentation->findSegment(depthImage,5000,10000000);
 	float pX,pY,pZ;
+	brickPose.detected = false;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
 		pX = (segment.x-307)/640.95*pZ-0.02;
 		pY = (segment.y-243.12)/640.95*pZ-0.05;
-		brickPose.pose.position.x = pX;
-		brickPose.pose.position.y = pY;
-		brickPose.pose.position.z = pZ;
+		brickPose.pose.pose.position.x = pX;
+		brickPose.pose.pose.position.y = pY;
+		brickPose.pose.pose.position.z = pZ;
 		tf2::Quaternion quat_tf;
-		quat_tf.setRPY(0,0,M_PI/2);
-		brickPose.pose.orientation = tf2::toMsg(quat_tf);
-		posePub.publish(brickPose);
+		quat_tf.setRPY(0,0,segment.angle);
+		brickPose.pose.pose.orientation = tf2::toMsg(quat_tf);
+		brickPose.detected = true;
+		brickPose.completelyVisible = (segment.warning == false);
 		numDetections++; 
 	}
+	posePub.publish(brickPose);
 	if (imagePub.getNumSubscribers() != 0){
-		printf("Stuff: %i %f %f %f\n",segment.valid,pX,pY,pZ);
 		sensor_msgs::Image outputImage;
 		outputImage.header.stamp     = ros::Time::now();
 		outputImage.height           = depthImage->height;
@@ -98,7 +101,6 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		imagePub.publish(outputImage);
 		free(buffer);
 	}
-	printf("Pos: %i %f %f %f\n",segment.valid,pX,pY,pZ);
 }
 
 bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::brickDetect::Response &res)
@@ -116,7 +118,7 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 		}
 		if (numDetections > 0){
 			ROS_INFO("Brick detected.");
-			res.brickPose = brickPose;
+			res.brickPose = brickPose.pose;
 			res.detected = true;
 			res.activated = true;
 		}else if (numDetectionAttempts > 0){
@@ -157,7 +159,7 @@ int main(int argc, char** argv)
 //	photoTf = new CTransformation(outerDimUser);
 //	commandTf = new CTransformation(outerDimMaster);
 	//image_transport::Subscriber subimGray = it.subscribe("/head_xtion/rgb/image_mono", 1, grayImageCallback);
-	posePub = n.advertise<geometry_msgs::PoseStamped>("/brickPosition", 1);
+	posePub = n.advertise<mbzirc_husky_msgs::brickPosition>("/brickPosition", 1);
 	//command_pub = n.advertise<std_msgs::String>("/socialCardReader/commands", 1);
 
 	while (ros::ok()){
