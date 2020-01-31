@@ -33,6 +33,7 @@ add_action_files(
   DIRECTORY action 
 	FILES spray.action
 	FILES pickup.action
+	FILES fireExplore.action
 )
 
 generate_dynamic_reconfigure_options(
@@ -62,12 +63,18 @@ include_directories(
 add_executable(brickDetector src/brickDetector.cpp src/CRawDepthImage.cpp src/CRawImage.cpp src/CSegmentation.cpp)
 add_executable(pickup src/pickup.cpp src/CTimer.cpp)
 add_executable(spray src/spray.cpp src/CPump.cpp src/CTimer.cpp)
+add_executable(fireExplore src/fireExplore.cpp)
+add_executable(fireStateMachine src/fireStateMachine.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickDetector ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(fireExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(fireStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
 target_link_libraries (pickup ${catkin_LIBRARIES})
 target_link_libraries (brickDetector ${catkin_LIBRARIES})
+target_link_libraries (fireStateMachine ${catkin_LIBRARIES})
+target_link_libraries (fireExplore ${catkin_LIBRARIES})
 
 #############
 ## Install ##
