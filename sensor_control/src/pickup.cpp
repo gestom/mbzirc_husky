@@ -41,6 +41,7 @@ std_srvs::Trigger  arm_align_srv;
 std_srvs::Trigger  arm_home_hard_srv;
 std_srvs::Trigger  arm_home_soft_srv;
 std_srvs::Trigger  arm_obstacle_srv;
+std_srvs::Trigger  brick_detect_srv;
 mbzirc_husky_msgs::EndEffectorPose arm_goto_srv;
 mbzirc_husky_msgs::EndEffectorPose arm_goto_relative_srv;
 
@@ -52,9 +53,6 @@ ros::ServiceClient arm_move_until_obstacle_client;
 ros::ServiceClient arm_goto_client; 
 ros::ServiceClient arm_goto_relative_client; 
 ros::ServiceClient arm_align_client; 
-
-
-
 
 float speedCoef = 1.0;
 /*void callback(mbzirc_husky::pickupConfig &config, uint32_t level) {
@@ -91,8 +89,11 @@ bool isTerminal(EPickupState state) {
 void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* as) {
 	mbzirc_husky::pickupResult result;
 	mbzirc_husky::pickupFeedback feedback;
-	state = HOME;
-	
+	state = ALIGNING_ROBOT;
+	while (isTerminal(state))
+	{
+			
+	}
 	if(state == HOME) {
 		if(arm_home_hard_client.call(arm_home_hard_srv)){
 			ROS_INFO("Arm going home");
@@ -147,6 +148,10 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	state = STOPPING;
 }
 
+void depthImageCallback(const mbzirc_husky::brickDetectConstPtr& msg)
+{
+	
+}
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "pickup");
@@ -164,6 +169,7 @@ int main(int argc, char** argv) {
   // robot_pose = n.subscribe("/robot_pose", 1000, poseCallback);
   
   //Services for arm
+  brick_detect_client  = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBrick");
   arm_prepare_client   = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
   arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
   arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/soft_home_arm");
