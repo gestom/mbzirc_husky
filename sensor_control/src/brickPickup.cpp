@@ -2,7 +2,7 @@
 #include <tf/tf.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
-#include <mbzirc_husky/brickPickup.h>
+#include <mbzirc_husky/brickPickupAction.h>
 #include <actionlib/server/simple_action_server.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>

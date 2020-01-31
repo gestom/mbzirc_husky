@@ -37,7 +37,7 @@ int main (int argc, char **argv) {
         {
             //permanently explore until a goal is found
             mbzirc_husky::brickExploreGoal exploreGoal;
-            exploreGoal.explore = 1;//find brick stack
+            exploreGoal.goal = 1;//find brick stack
             actionlib::SimpleClientGoalState exploreState = exploreAC.sendGoalAndWait(exploreGoal, ros::Duration(0,0), ros::Duration(0,0));
 
             if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
