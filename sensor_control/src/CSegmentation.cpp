@@ -86,7 +86,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 			segmentArray[numSegments-1].warning = 0; 
 			segmentArray[numSegments-1].x = i%width; 
 			segmentArray[numSegments-1].y = i/width; 
-			segmentArray[numSegments-1].z = image->data[i]; 
+			segmentArray[numSegments-1].z = image->data[i];
 			//a umistime souradnice pixelu na vrchol zasobniku
 			stack[queueEnd++] = i;
 			//dokud neni zasobnik prazdny
@@ -116,7 +116,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				int maxX,maxY,minX,minY;
 				maxX=maxY= -1;
 				minX=minY = width*height;
-				cxx=cxy=cyy=sx=sy=0;
+				cxx=cxy=cyy=sx=sy=sz=0;
 				for (int s = 0;s<contourPoints;s++){
 					pos = contour[s];
 					buffer[pos] = 1000000+numSegments;	
@@ -222,9 +222,10 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 			}
 		}
 	}
-	printf("BA: %f %f %f\n",segmentArray[0].x,segmentArray[0].y,segmentArray[0].z);
-	//Seradi segmenty podle velikosti
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
+	for (int i = 0;i<numSegments;i++) printf("Segment %i size %i: %f %f %f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].x,segmentArray[i].y,segmentArray[i].z);
+
+	//Seradi segmenty podle velikosti
 	free(buffer);
 	free(stack);
 	free(contour);
