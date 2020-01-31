@@ -1,0 +1,11 @@
+rosrun gazebo_ros spawn_model -file /home/george/mbzirc_ws/src/mbzirc_husky/sensor_control/models/bluebrick/bluebrick.urdf -urdf -z 2.5 -x -2 -y -2 -model table4
+
+        <collision>
+                    <geometry>
+                                    <!--<box size="0.6 0.1 0.2" />-->
+                                                    <cylinder length="0.6" radius="0.2"/>
+                                                                </geometry>
+
+                                                                            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+                                                                                    </collision>
+

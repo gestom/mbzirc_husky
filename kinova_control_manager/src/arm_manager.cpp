@@ -88,9 +88,11 @@ private:
   bool            getting_joint_torques    = false;
   bool            getting_effector_pos     = false;
   bool            getting_gripper_feedback = false;
+  bool            getting_brick_pose       = false;
   bool            brick_attached           = false;
   std::string     arm_type;
   std::mutex      arm_state_mutex;
+  std::mutex      brick_pose_mutex;
 
 
   // continuous status publishing
@@ -120,6 +122,7 @@ private:
 
   Pose3d    end_effector_pose;
   Pose3d    last_goal;
+  Pose3d    brick_pose;
   double    last_joint_angles[DOF];
   ros::Time time_of_last_motion;
 
@@ -154,6 +157,7 @@ private:
   ros::Subscriber subscriber_joint_angles;
   ros::Subscriber subscriber_end_effector_pose;
   ros::Subscriber subscriber_gripper_magnet;
+  ros::Subscriber subscriber_brick_pose;
 
   // publishers
   ros::Publisher publisher_arm_status;
@@ -175,6 +179,7 @@ private:
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
   void callbackEndEffectorPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg);
   void callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr &msg);
+  void callbackBrickPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg);
 
   // gripper control
   bool grip();
@@ -277,6 +282,8 @@ void kinova_control_manager::onInit() {
       nh_.subscribe("end_effector_pose_in", 1, &kinova_control_manager::callbackEndEffectorPoseTopic, this, ros::TransportHints().tcpNoDelay());
   subscriber_gripper_magnet =
       nh_.subscribe("gripper_diagnostics_in", 1, &kinova_control_manager::callbackGripperDiagnosticsTopic, this, ros::TransportHints().tcpNoDelay());
+  subscriber_brick_pose = nh_.subscribe("brick_pose_in", 1, &kinova_control_manager::callbackBrickPoseTopic, this, ros::TransportHints().tcpNoDelay());
+
 
   // publishers
   publisher_arm_status        = nh_.advertise<mbzirc_husky_msgs::ArmStatus>("arm_status_out", 1);
@@ -396,9 +403,41 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     ROS_INFO("[kinova_arm_manager]: Got brick pose: [%.2f, %.2f, %.2f]", brick_srv.response.brickPose.pose.position.x,
              brick_srv.response.brickPose.pose.position.y, brick_srv.response.brickPose.pose.position.z);
 
-    Eigen::Vector3d align(brick_srv.response.brickPose.pose.position.x, -brick_srv.response.brickPose.pose.position.y, 0.0);
+    Eigen::Vector3d align(-brick_srv.response.brickPose.pose.position.x, brick_srv.response.brickPose.pose.position.y, 0.0);
 
     ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f]", align[0], align[1]);
+
+    Pose3d new_pose;
+    new_pose.pos.x() = align[0];
+    new_pose.pos.y() = align[1];
+    new_pose.pos.z() = 0.0;
+    new_pose.rot     = Eigen::Quaterniond::Identity();
+    goToRelativeFixed(new_pose);
+    ros::Duration(2.0).sleep();
+
+    if (!getting_brick_pose) {
+      ROS_FATAL("Not getting anything in the brick pose topic!");
+      res.success = false;
+      return false;
+    }
+
+    // TODO something better than loop
+    for (int i = 0; i < 20; i++) {
+      while (!getting_brick_pose) {
+        ros::Duration(0.01).sleep();
+	ROS_INFO("[kinova_arm_manager]: Waiting for new brick pose");
+      }
+      std::scoped_lock lock(brick_pose_mutex);
+      align = Eigen::Vector3d(-brick_pose.pos[0], brick_pose.pos[1], 0.0);
+      ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f]", align[0], align[1]);
+      new_pose.pos.x() = align[0];
+      new_pose.pos.y() = align[1];
+      new_pose.pos.z() = -0.01;
+      new_pose.rot     = Eigen::Quaterniond::Identity();
+      goToRelativeFixed(new_pose);
+      ros::Duration(0.5).sleep();
+      getting_brick_pose = false;
+    }
   }
 
   res.success = true;
@@ -736,6 +775,20 @@ void kinova_control_manager::goTo(Pose3d pose) {
   msg.header.frame_id           = ss.str().c_str();
 
   publisher_end_effector_pose.publish(msg);
+}
+//}
+
+/* callbackBrickPoseTopic //{ */
+void kinova_control_manager::callbackBrickPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg) {
+  std::scoped_lock lock(brick_pose_mutex);
+  getting_brick_pose = true;
+  brick_pose.pos.x() = msg->pose.position.x;
+  brick_pose.pos.y() = msg->pose.position.y;
+  brick_pose.pos.z() = msg->pose.position.z;
+  brick_pose.rot.w() = msg->pose.orientation.w;
+  brick_pose.rot.x() = msg->pose.orientation.x;
+  brick_pose.rot.y() = msg->pose.orientation.y;
+  brick_pose.rot.z() = msg->pose.orientation.z;
 }
 //}
 
