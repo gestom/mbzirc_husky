@@ -282,7 +282,7 @@ void kinova_control_manager::onInit() {
       nh_.subscribe("end_effector_pose_in", 1, &kinova_control_manager::callbackEndEffectorPoseTopic, this, ros::TransportHints().tcpNoDelay());
   subscriber_gripper_magnet =
       nh_.subscribe("gripper_diagnostics_in", 1, &kinova_control_manager::callbackGripperDiagnosticsTopic, this, ros::TransportHints().tcpNoDelay());
-  subscriber_brick_pose = nh_.subscribe("brick_pose_in", 1, &kinova_control_manager::callbackGripperDiagnosticsTopic, this, ros::TransportHints().tcpNoDelay());
+  subscriber_brick_pose = nh_.subscribe("brick_pose_in", 1, &kinova_control_manager::callbackBrickPoseTopic, this, ros::TransportHints().tcpNoDelay());
 
 
   // publishers
@@ -424,12 +424,18 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     // TODO something better than loop
     for (int i = 0; i < 20; i++) {
       std::scoped_lock lock(brick_pose_mutex);
-      new_pose.pos.x() = -brick_pose.pos[0];
-      new_pose.pos.y() = brick_pose.pos[1];
+      while (!getting_brick_pose) {
+        ros::Duration(0.01).sleep();
+      }
+      align = Eigen::Vector3d(-brick_pose.pos[0], brick_pose.pos[1], 0.0);
+      ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f]", align[0], align[1]);
+      new_pose.pos.x() = align[0];
+      new_pose.pos.y() = align[1];
       new_pose.pos.z() = -0.01;
       new_pose.rot     = Eigen::Quaterniond::Identity();
       goToRelativeFixed(new_pose);
-      ros::Duration(0.3).sleep();
+      ros::Duration(0.5).sleep();
+      getting_brick_pose = false;
     }
   }
 
