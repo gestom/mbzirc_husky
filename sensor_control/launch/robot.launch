@@ -44,10 +44,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </node>
 
     <!-- Differential controller parameters and basic localization -->
-    <include file="$(find husky_control)/launch/control.launch" />
+    <include file="$(find husky_control)/sensor_control/launch/control.launch" />
 
     <!--Teleop -->
-    <include file="$(find husky_control)/launch/teleop.launch" />
+    <include file="$(find husky_control)/sensor_control/launch/teleop.launch" />
 
     <include file="$(find joy_latch)/launch/joy_latch.launch"/>
 

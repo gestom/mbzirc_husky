@@ -1,0 +1,19 @@
+                                                                                                                                                                                     
+A template for a new robot called <husky> has been added to the <fire> environment. 
+---------------------------------------------------------- 
+To complete the equipment of your robot, edit: 
+/home/george/mbzirc_ws/src/mbzirc_husky/sensor_control/simulation/fire/src/fire/builder/robots/husky.py 
+
+You can also modify its Blender mesh: 
+/home/george/mbzirc_ws/src/mbzirc_husky/sensor_control/simulation/fire/data/fire/robots/husky.blend 
+
+For advanced usage, you may also edit its internal definition here: 
+/home/george/mbzirc_ws/src/mbzirc_husky/sensor_control/simulation/fire/src/fire/robots/husky.py 
+
+---------------------------------------------------------- 
+To use the robot in your 
+simulation script, add the following lines: from fire.builder.robots import Husky
+# add a new husky robot in the simulation
+husky = Husky()
+#husky.translate(...) husky.add_default_interface('socket')
+---------------------------------------------------------- Happy simulation!
