@@ -39,11 +39,11 @@ int main (int argc, char **argv) {
         sprayGoal.duration = sprayTime;
         actionlib::SimpleClientGoalState sprayState = sprayAC.sendGoalAndWait(sprayGoal, totalMaxDuration, recoveryTime);
         
-        if(exploreState == actionlib::SimpleClientGoalState::SUCCEEDED)
+        if(sprayState == actionlib::SimpleClientGoalState::SUCCEEDED)
         {
             ROS_INFO("Fire extinguished");
         }
-        else if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
+        else if(sprayState != actionlib::SimpleClientGoalState::SUCCEEDED)
         {
             ROS_INFO("Spray failed, going back to explore");
             //TODO, recovery behavious. Perhaps try again from alternative angle, and/or mark area as difficult but can return eventually
