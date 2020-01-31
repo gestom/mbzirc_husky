@@ -34,6 +34,7 @@ typedef struct{
 	int combo;
 	int warning;
 	int valid;
+	float angle;
 	float roundness;
 	float circularity;
 }SSegment;

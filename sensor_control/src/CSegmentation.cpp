@@ -226,7 +226,37 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		}
 	}
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
-	for (int i = 0;i<numSegments;i++) printf("Segment %i size %i: %f %f %f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].x,segmentArray[i].y,segmentArray[i].z);
+	for (int i = 0;i<numSegments;i++)
+	{
+		float dist[4];
+		float dX[4];
+		float dY[4];
+		float pX,pY;
+		float angle;
+		for (int ii = 0;ii<4;ii++){
+			dX[ii] = segmentArray[i].cornerX[ii]-segmentArray[i].cornerX[(ii+1)%4];
+			dY[ii] = segmentArray[i].cornerY[ii]-segmentArray[i].cornerY[(ii+1)%4];
+			dist[ii] = sqrt(dX[ii]*dX[ii]+dY[ii]*dY[ii]);
+		}
+		if (dist[0] > dist[1])
+		{
+			 pX = (segmentArray[i].cornerX[0]+segmentArray[i].cornerX[3])/2-(segmentArray[i].cornerX[1]+segmentArray[i].cornerX[2])/2;
+			 pY = (segmentArray[i].cornerY[0]+segmentArray[i].cornerY[3])/2-(segmentArray[i].cornerY[1]+segmentArray[i].cornerY[2])/2;
+			angle = atan2(pY,pX);
+		}else{
+			 pX = (segmentArray[i].cornerX[0]+segmentArray[i].cornerX[1])/2-(segmentArray[i].cornerX[3]+segmentArray[i].cornerX[2])/2;
+			 pY = (segmentArray[i].cornerY[0]+segmentArray[i].cornerY[1])/2-(segmentArray[i].cornerY[3]+segmentArray[i].cornerY[2])/2;
+			angle = atan2(pY,pX);
+		}
+		if (angle > +M_PI/2) angle = angle - M_PI;
+		if (angle < -M_PI/2) angle = angle + M_PI;
+		segmentArray[i].angle = angle;
+	}
+	for (int i = 0;i<numSegments;i++){
+	       	printf("Segment %i size %i: %f %f %f %f",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].y,segmentArray[i].z,segmentArray[i].angle);
+		//for (int ii = 0;ii<4;ii++) printf("%i %i ",segmentArray[i].cornerX[ii],segmentArray[i].cornerY[ii]);
+		printf("\n");
+	}
 
 	//Seradi segmenty podle velikosti
 	free(buffer);
