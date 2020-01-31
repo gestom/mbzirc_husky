@@ -73,13 +73,12 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		brickPose.pose.position.y = pY;
 		brickPose.pose.position.z = pZ;
 		tf2::Quaternion quat_tf;
-		quat_tf.setRPY(0,0,M_PI/2);
+		quat_tf.setRPY(0,0,segment.angle);
 		brickPose.pose.orientation = tf2::toMsg(quat_tf);
 		posePub.publish(brickPose);
 		numDetections++; 
 	}
 	if (imagePub.getNumSubscribers() != 0){
-		printf("Stuff: %i %f %f %f\n",segment.valid,pX,pY,pZ);
 		sensor_msgs::Image outputImage;
 		outputImage.header.stamp     = ros::Time::now();
 		outputImage.height           = depthImage->height;
@@ -98,7 +97,6 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		imagePub.publish(outputImage);
 		free(buffer);
 	}
-	printf("Pos: %i %f %f %f\n",segment.valid,pX,pY,pZ);
 }
 
 bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::brickDetect::Response &res)

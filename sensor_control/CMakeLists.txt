@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs 
     image_transport
     tf
-    mrs_lib
+    #    mrs_lib
     mbzirc_husky_msgs
   )
 
@@ -60,13 +60,13 @@ include_directories(
 )
 
 add_executable(brickDetector src/brickDetector.cpp src/CRawDepthImage.cpp src/CRawImage.cpp src/CSegmentation.cpp)
-add_executable(pickup src/pickup.cpp src/CTimer.cpp)
+#//add_executable(pickup src/pickup.cpp src/CTimer.cpp)
 add_executable(spray src/spray.cpp src/CPump.cpp src/CTimer.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+#//add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickDetector ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
-target_link_libraries (pickup ${catkin_LIBRARIES})
+#//target_link_libraries (pickup ${catkin_LIBRARIES})
 target_link_libraries (brickDetector ${catkin_LIBRARIES})
 
 #############
