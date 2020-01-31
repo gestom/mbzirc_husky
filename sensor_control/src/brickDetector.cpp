@@ -54,6 +54,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	segment.valid = 0;
 	numDetectionAttempts++;
+	printf("Incoming\n");
 	if (depthImage->bpp != msg->step/msg->width || depthImage->width != msg->width || depthImage->height != msg->height)
 	{
 		delete depthImage;
@@ -66,8 +67,8 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	float pX,pY,pZ;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
-		pX = (segment.x-307)/640.95*pZ;
-		pY = (segment.y-243.12)/640.95*pZ;
+		pX = (segment.x-307)/640.95*pZ-0.02;
+		pY = (segment.y-243.12)/640.95*pZ-0.05;
 		brickPose.pose.position.x = pX;
 		brickPose.pose.position.y = pY;
 		brickPose.pose.position.z = pZ;
@@ -77,24 +78,27 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		posePub.publish(brickPose);
 		numDetections++; 
 	}
-	printf("Pos: %i %f %f %f\n",segment.valid,pX,pY,pZ);
-	sensor_msgs::Image outputImage;
-	outputImage.header.stamp     = ros::Time::now();
-	outputImage.height           = depthImage->height;
-	outputImage.width            = depthImage->width;
-	outputImage.encoding         = "rgb8";
-	outputImage.is_bigendian     = false;
-	outputImage.step             = depthImage->width*3;
-	unsigned char *buffer = (unsigned char*)calloc(depthImage->size*3,sizeof(unsigned char));
-	depthImage->generateRGB(buffer);
-	for(int i=0; i<depthImage->size;i++)
-	{
-		outputImage.data.push_back(buffer[3*i+0]);
-		outputImage.data.push_back(buffer[3*i+1]);
-		outputImage.data.push_back(buffer[3*i+2]);
+	if (imagePub.getNumSubscribers() != 0){
+		printf("Stuff: %i %f %f %f\n",segment.valid,pX,pY,pZ);
+		sensor_msgs::Image outputImage;
+		outputImage.header.stamp     = ros::Time::now();
+		outputImage.height           = depthImage->height;
+		outputImage.width            = depthImage->width;
+		outputImage.encoding         = "rgb8";
+		outputImage.is_bigendian     = false;
+		outputImage.step             = depthImage->width*3;
+		unsigned char *buffer = (unsigned char*)calloc(depthImage->size*3,sizeof(unsigned char));
+		depthImage->generateRGB(buffer);
+		for(int i=0; i<depthImage->size;i++)
+		{
+			outputImage.data.push_back(buffer[3*i+0]);
+			outputImage.data.push_back(buffer[3*i+1]);
+			outputImage.data.push_back(buffer[3*i+2]);
+		}
+		imagePub.publish(outputImage);
+		free(buffer);
 	}
-	imagePub.publish(outputImage);
-	free(buffer);
+	printf("Pos: %i %f %f %f\n",segment.valid,pX,pY,pZ);
 }
 
 bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::brickDetect::Response &res)

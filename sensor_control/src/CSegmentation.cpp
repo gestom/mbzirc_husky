@@ -5,8 +5,8 @@
 
 int compareSegments(const void* m1,const void* m2)
 {
-	if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return -1;
-	if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return 1;
+	if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return +1;
+	if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return -1;
 	return 0;
 }
 
@@ -180,7 +180,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 						pos = contour[s];
 						cx = pos%width; 
 						cy = pos/width;
-						cz = image->data[pos];
+						//cz = image->data[pos];
 						dist = 0;
 						if (cn > 0)
 						{
@@ -196,7 +196,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 						{
 							cX[cn] = cx;
 							cY[cn] = cy;
-							cZ[cn] = cz;
+							//cZ[cn] = cz;
 							maxDist = dist;
 						}
 					}
