@@ -74,6 +74,10 @@ float speedCoef = 1.0;
 bool isTerminal(EPickupState state) {
   if (state == ALIGNING_ROBOT)
     return false;
+  if (state == HOME)
+    return false;
+  if (state == PREPARING_ARM)
+    return false;
   if (state == ALIGNING_ARM)
     return false;
   if (state == GRASP)
@@ -87,20 +91,20 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	mbzirc_husky::pickupFeedback feedback;
 	state = HOME;
 	
-	if(state = HOME) {
-		if(arm_home_hard_client.call(arm_home_hard_srv)){
+	if(state == HOME) {
+		if(arm_home_hard_client.call(arm_prep_srv)){
 			ROS_INFO("Arm going home");
-			state=ALIGNING_ARM;	
+			state = PREPARING_ARM;	
 		} else {
 			ROS_ERROR("Homing arm failed");	
-			state=FAIL;
+			state = FAIL;
 		}
 	}	
 
-	while (isTerminal(state) == false) {
+	/*while (isTerminal(state) == false) {
 		//      if (state == FINAL) state = SUCCESS; else state = FAIL;
 		usleep(15000);
-	}
+	}*/
 	if (state == PREPARING_ARM) {
 		if (arm_prepare_client.call(arm_prep_srv)) {
 			ROS_INFO("Calling align arm service");
@@ -110,7 +114,7 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 			state = FAIL;
 		}
 	}
-	if(state = GRASP){
+	if(state == GRASP){
 		arm_goto_relative_srv.request.pose = {0,0,-0.1,0,0,0};
 		if (arm_goto_relative_client.call(arm_goto_relative_srv)){
 			ROS_INFO("Moving towards box");
@@ -147,12 +151,12 @@ int main(int argc, char** argv) {
   // robot_pose = n.subscribe("/robot_pose", 1000, poseCallback);
   
   //Services for arm
-  ros::ServiceClient arm_prepare_client   = n.serviceClient<std_srvs::Trigger>("kinova/arm_manager/prepare_gripping");
-  ros::ServiceClient arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("kinova/arm_manager/home_arm");
-  ros::ServiceClient arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("kinova/arm_manager/soft_home_arm");
-  ros::ServiceClient arm_move_until_obstacle_client = n.serviceClient<std_srvs::Trigger>("kinova/arm_manager/move_down_until_obstacle");
-  ros::ServiceClient arm_goto_client = n.serviceClient<kinova_control_manager::EndEffectorPose>("kinova/arm_manager/goto");
-  ros::ServiceClient arm_goto_relative_client = n.serviceClient<kinova_control_manager::EndEffectorPose>("kinova/arm_manager/goto_relative");
+  ros::ServiceClient arm_prepare_client   = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
+  ros::ServiceClient arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+  ros::ServiceClient arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/soft_home_arm");
+  ros::ServiceClient arm_move_until_obstacle_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/move_down_until_obstacle");
+  ros::ServiceClient arm_goto_client = n.serviceClient<kinova_control_manager::EndEffectorPose>("/kinova/arm_manager/goto");
+  ros::ServiceClient arm_goto_relative_client = n.serviceClient<kinova_control_manager::EndEffectorPose>("/kinova/arm_manager/goto_relative");
 
   while (ros::ok()) {
     if (server->isPreemptRequested() && state != IDLE)
