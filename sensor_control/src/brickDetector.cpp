@@ -126,6 +126,8 @@ bool detect(mbzirc_husky::brickDetect::Request  &req, mbzirc_husky::brickDetect:
 		}
 	}else
 	{
+		res.detected = false;
+		res.activated = false;
 	       	subimDepth.shutdown();
 	}
 	return true;
