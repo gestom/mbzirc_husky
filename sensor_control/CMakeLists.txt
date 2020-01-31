@@ -19,7 +19,12 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs 
     image_transport
     tf
+    mrs_lib
+    kinova_msgs
+    kinova_driver
+    kinova_control_manager
     )
+
 find_package(PCL REQUIRED)
 
 #######################################
@@ -41,16 +46,19 @@ generate_messages(
     DEPENDENCIES
     std_msgs
     actionlib_msgs
-)
+    geometry_msgs
+   )
 
-catkin_package()
+catkin_package(
+	CATKIN_DEPENDS message_runtime kinova_control_manager
+  )
 
 ###########
 ## Build ##
 ###########
 
 include_directories(
-    ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS} 
 )
 
 add_executable(brickDetector src/brickDetector.cpp src/CRawDepthImage.cpp src/CRawImage.cpp src/CSegmentation.cpp)
@@ -60,8 +68,6 @@ add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_T
 add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickDetector ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
-target_link_libraries (pickup ${catkin_LIBRARIES})
-target_link_libraries (brickDetector ${catkin_LIBRARIES})
 
 #############
 ## Install ##
