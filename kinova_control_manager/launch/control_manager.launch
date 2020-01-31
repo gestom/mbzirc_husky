@@ -9,9 +9,13 @@
     <remap from="~home_out" to="$(arg ARM_TYPE)_driver/in/home_arm" />
     <remap from="~end_effector_pose_out" to="$(arg ARM_TYPE)_driver/pose_action/tool_pose/goal" />
 
-      <!-- output to the mrs gripper -->
+    <!-- output to the mrs gripper -->
     <remap from="~grip_out" to="kinova/gripper/grip" />
     <remap from="~ungrip_out" to="kinova/gripper/ungrip" />
+
+    <!-- brick detection -->
+    <remap from="~brick_detect" to="detectBricks" />
+    <remap from="~brick_pose_in" to="brickPosition" />
     
     <!-- status input from arm driver and gripper -->
     <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
@@ -26,7 +30,7 @@
     <remap from="~home_in" to="kinova/arm_manager/home_arm" />
     <remap from="~soft_home_in" to="kinova/arm_manager/soft_home_arm" />
     <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
-    <!-- <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" /> -->
+    <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" />
     <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
     <remap from="~goto_in" to="kinova/arm_manager/goto" />
     <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
