@@ -111,7 +111,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				if (nncount != 4) contour[contourPoints++] = position;
 			}
 			if (queueEnd > minSize && queueEnd < maxSize){
-				long long int cx,cy,sx,sy,sz;
+				long long int cx,cy,cz,sx,sy,sz;
 				long long int cxx,cxy,cyy; 
 				int maxX,maxY,minX,minY;
 				maxX=maxY= -1;
@@ -169,6 +169,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				int corners = 0;
 				int cX[4];
 				int cY[4];
+				int cZ[4];
 				float dist;
 				float maxDist = 0;
 
@@ -179,6 +180,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 						pos = contour[s];
 						cx = pos%width; 
 						cy = pos/width;
+						cz = image->data[pos];
 						dist = 0;
 						if (cn > 0)
 						{
@@ -194,6 +196,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 						{
 							cX[cn] = cx;
 							cY[cn] = cy;
+							cZ[cn] = cz;
 							maxDist = dist;
 						}
 					}
@@ -214,8 +217,8 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				segmentArray[numSegments-1].combo = 1; 
 				segmentArray[numSegments-1].valid = 1; 
 				for (int ii = 0;ii<4;ii++){
-					segmentArray[numSegments-1].cornerX[ii] = cX[ii]+fsx;//-minX;
-					segmentArray[numSegments-1].cornerY[ii] = cY[ii]+fsy;//-minY;
+					segmentArray[numSegments-1].cornerX[ii] = cX[ii];
+					segmentArray[numSegments-1].cornerY[ii] = cY[ii];
 				}
 			}else{
 				numSegments--;
