@@ -454,7 +454,7 @@ bool kinova_control_manager::callbackGoToService(EndEffectorPoseRequest &req, En
     ROS_ERROR("[kinova_control_manager]: Cannot execute \"goTo\", not initialized!");
     res.success = false;
     res.message = "Cannot execute \"goTo\", not initialized!";
-    return true;
+    return false;
   }
 
   if (!getting_joint_angles || !getting_effector_pos) {
@@ -467,7 +467,7 @@ bool kinova_control_manager::callbackGoToService(EndEffectorPoseRequest &req, En
     ROS_ERROR("[kinova_control_manager]: Cannot execute \"goTo\", arm is not IDLE!");
     res.success = false;
     res.message = "Cannot execute \"goTo\", arm is not IDLE!";
-    return true;
+    return false;
   }
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
@@ -489,7 +489,7 @@ bool kinova_control_manager::callbackGoToRelativeService(EndEffectorPoseRequest 
     ROS_ERROR("[kinova_control_manager]: Cannot execute \"goToRelative\", not initialized!");
     res.success = false;
     res.message = "Cannot execute \"goToRelative\", not initialized!";
-    return true;
+    return false;
   }
 
   if (!getting_joint_angles || !getting_effector_pos) {
@@ -502,7 +502,7 @@ bool kinova_control_manager::callbackGoToRelativeService(EndEffectorPoseRequest 
     ROS_ERROR("[kinova_control_manager]: Cannot execute \"goToRelative\", arm is not IDLE!");
     res.success = false;
     res.message = "Cannot execute \"goToRelative\", arm is not IDLE!";
-    return true;
+    return false;
   }
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
@@ -513,6 +513,80 @@ bool kinova_control_manager::callbackGoToRelativeService(EndEffectorPoseRequest 
   goToRelative(pose);
   res.success = true;
   return true;
+}
+//}
+
+/* callbackGoToRelativeFixedService //{ */
+bool kinova_control_manager::callbackGoToRelativeFixedService(Vector3Request &req, Vector3Response &res) {
+
+  std::scoped_lock lock(arm_state_mutex);
+  if (!is_initialized) {
+    ROS_ERROR("[kinova_control_manager]: Cannot execute \"goToRelativeFixed\", not initialized!");
+    res.success = false;
+    res.message = "Cannot execute \"goToRelativeFixed\", not initialized!";
+    return false;
+  }
+
+  if (!getting_joint_angles || !getting_effector_pos) {
+    ROS_ERROR("[kinova_control_manager]: Cannot execute \"goToRelativeFixed\", internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != MotionStatus_t::IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot execute \"goToRelativeFixed\", arm is not IDLE!");
+    res.success = false;
+    res.message = "Cannot execute \"goToRelativeFixed\", arm is not IDLE!";
+    return false;
+  }
+
+  status              = MotionStatus_t::MOVING;
+  time_of_last_motion = ros::Time::now();
+
+  Pose3d pose;
+  pose.pos     = Eigen::Vector3d(req.pos[0], req.pos[1], req.pos[2]);
+  pose.rot.w() = default_gripping_pose.rot.w();
+  pose.rot.x() = default_gripping_pose.rot.x();
+  pose.rot.y() = default_gripping_pose.rot.y();
+  pose.rot.z() = default_gripping_pose.rot.z();
+  goToRelative(pose);
+  res.success = true;
+  return true;
+
+  /*   // compensate for original wrist offset */
+  /*   Pose3d pose = end_effector_pose; */
+  /*   pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET; */
+
+  /*   // add rel_pose to the current end effector posea */
+  /*   Eigen::Vector3d rel_pos(req.pos[0], req.pos[1], req.pos[2]); */
+  /*   pose.pos += rel_pos; */
+
+  /*   Eigen::Vector3d euler = quaternionToEuler(pose.rot); */
+
+  /*   ROS_INFO("[kinova_control_manager]: Moving end effector by relative [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(),
+   * pose.pos.z(), */
+  /*            euler[0], euler[1], euler[2]); */
+
+  /*   last_goal = pose; */
+  /*   kinova_msgs::ArmPoseActionGoal msg; */
+
+  /*   msg.goal.pose.pose.orientation.x = default_gripping_pose.rot.x(); */
+  /*   msg.goal.pose.pose.orientation.y = default_gripping_pose.rot.y(); */
+  /*   msg.goal.pose.pose.orientation.z = default_gripping_pose.rot.z(); */
+  /*   msg.goal.pose.pose.orientation.w = default_gripping_pose.rot.w(); */
+
+
+  /*   msg.goal.pose.pose.position.x = pose.pos.x(); */
+  /*   msg.goal.pose.pose.position.y = pose.pos.y(); */
+  /*   msg.goal.pose.pose.position.z = pose.pos.z(); */
+
+
+  /*   std::stringstream ss; */
+  /*   ss << arm_type << "_link_base"; */
+  /*   msg.goal.pose.header.frame_id = ss.str().c_str(); */
+  /*   msg.header.frame_id           = ss.str().c_str(); */
+
+  /*   publisher_end_effector_pose.publish(msg); */
 }
 //}
 
@@ -686,46 +760,6 @@ void kinova_control_manager::goToRelative(Pose3d rel_pose) {
   msg.goal.pose.pose.orientation.y = pose.rot.y();
   msg.goal.pose.pose.orientation.z = pose.rot.z();
   msg.goal.pose.pose.orientation.w = pose.rot.w();
-
-
-  msg.goal.pose.pose.position.x = pose.pos.x();
-  msg.goal.pose.pose.position.y = pose.pos.y();
-  msg.goal.pose.pose.position.z = pose.pos.z();
-
-
-  std::stringstream ss;
-  ss << arm_type << "_link_base";
-  msg.goal.pose.header.frame_id = ss.str().c_str();
-  msg.header.frame_id           = ss.str().c_str();
-
-  publisher_end_effector_pose.publish(msg);
-}
-//}
-
-/* goToRelative //{ */
-bool kinova_control_manager::callbackGoToRelativeFixedService(Vector3Request &req, Vector3Response &res) {
-
-  // compensate for original wrist offset
-  Pose3d pose = end_effector_pose;
-  pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET;
-
-  // add rel_pose to the current end effector posea
-  Eigen::Vector3d rel_pos(req.pos[0], req.pos[1], req.pos[2]);
-  pose.pos += rel_pos;
-
-  Eigen::Vector3d euler = quaternionToEuler(pose.rot);
-
-  ROS_INFO("[kinova_control_manager]: Moving end effector by relative [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(),
-           euler[0], euler[1], euler[2]);
-
-
-  last_goal = pose;
-  kinova_msgs::ArmPoseActionGoal msg;
-
-  msg.goal.pose.pose.orientation.x = default_gripping_pose.rot.x();
-  msg.goal.pose.pose.orientation.y = default_gripping_pose.rot.y();
-  msg.goal.pose.pose.orientation.z = default_gripping_pose.rot.z();
-  msg.goal.pose.pose.orientation.w = default_gripping_pose.rot.w();
 
 
   msg.goal.pose.pose.position.x = pose.pos.x();
