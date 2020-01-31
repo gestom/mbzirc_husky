@@ -91,6 +91,8 @@ bool isTerminal(EPickupState state) {
 void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* as) {
 	mbzirc_husky::pickupResult result;
 	mbzirc_husky::pickupFeedback feedback;
+	int num_of_cubes = goal->cubes; 
+	
 	state = HOME;
 	
 	if(state == HOME) {
@@ -124,19 +126,7 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 			ROS_ERROR("Aligning arm failed");
 			state = FAIL;
 		}
-
 	}
-	/*
-	if(state == GRASP){
-		arm_goto_relative_srv.request.pose = {0,0,-0.1,0,0,0};
-		if (arm_goto_relative_client.call(arm_goto_relative_srv)){
-			ROS_INFO("Moving towards box");
-			state = SUCCESS;	
-		} else {
-			ROS_ERROR("Failed to move closer to box");
-			state = FAIL;
-		}		
-	}*/		
 
 	if (state == SUCCESS)
 		server->setSucceeded(result);
