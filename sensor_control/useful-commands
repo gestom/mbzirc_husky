@@ -1,0 +1,15 @@
+rosrun map_server map_saver
+
+
+for pump/magnet, determine device (/dev/ttyACM* by unplugging, replugging, and running dmesg)
+
+pump activation:
+echo -e "\x62\x01\x92\xF5" > /dev/ttyACMX #to toggle
+formerly:
+echo -ne '\x30' > /dev/ttyACMX #switch off
+echo -ne '\x31' > /dev/ttyACMX #switch on
+echo -ne '\x32' > /dev/ttyACMX #toggle on/off
+
+magnet on/off:
+echo -e "\x62\x01\x40\xA3" > /dev/ttyACMX #to on
+echo -e "\x62\x01\x41\xA4" > /dev/ttyACMX #to off

@@ -1,0 +1,11 @@
+<launch>
+
+  <!--velo to laserscan-->
+  <!--<node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_node" args="cloud_in:=/velodyne_points" respawn="false">
+    <param name="range_min" value="1.5"/>
+    <param name="range_max" value="100"/>
+  </node>-->
+
+
+    <!--<node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" respawn="true"/>-->
+</launch>
