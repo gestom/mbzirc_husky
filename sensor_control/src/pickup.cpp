@@ -37,6 +37,7 @@ geometry_msgs::Twist base_cmd;
 
 //Arm services 
 std_srvs::Trigger  arm_prep_srv;
+std_srvs::Trigger  arm_align_srv;
 std_srvs::Trigger  arm_home_hard_srv;
 std_srvs::Trigger  arm_home_soft_srv;
 std_srvs::Trigger  arm_obstacle_srv;
@@ -50,6 +51,7 @@ ros::ServiceClient arm_home_soft_client;
 ros::ServiceClient arm_move_until_obstacle_client; 
 ros::ServiceClient arm_goto_client; 
 ros::ServiceClient arm_goto_relative_client; 
+ros::ServiceClient arm_align_client; 
 
 
 
@@ -92,7 +94,7 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	state = HOME;
 	
 	if(state == HOME) {
-		if(arm_home_hard_client.call(arm_prep_srv)){
+		if(arm_home_hard_client.call(arm_home_hard_srv)){
 			ROS_INFO("Arm going home");
 			state = PREPARING_ARM;	
 		} else {
@@ -107,13 +109,24 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	}*/
 	if (state == PREPARING_ARM) {
 		if (arm_prepare_client.call(arm_prep_srv)) {
-			ROS_INFO("Calling align arm service");
-			state = GRASP;
+			ROS_INFO("Calling preparing arm pickup position service");
+			state = ALIGNING_ARM;
 		} else {
-			ROS_ERROR("Align failed");
+			ROS_ERROR("Preparing arm failed");
 			state = FAIL;
 		}
 	}
+	if(state == ALIGNING_ARM){
+		if (arm_align_client.call(arm_align_srv)) {
+			ROS_INFO("Calling Aligning arm accoring to camera service");
+			state = SUCCESS;
+		} else {
+			ROS_ERROR("Aligning arm failed");
+			state = FAIL;
+		}
+
+	}
+	/*
 	if(state == GRASP){
 		arm_goto_relative_srv.request.pose = {0,0,-0.1,0,0,0};
 		if (arm_goto_relative_client.call(arm_goto_relative_srv)){
@@ -123,7 +136,7 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 			ROS_ERROR("Failed to move closer to box");
 			state = FAIL;
 		}		
-	}		
+	}*/		
 
 	if (state == SUCCESS)
 		server->setSucceeded(result);
@@ -151,12 +164,13 @@ int main(int argc, char** argv) {
   // robot_pose = n.subscribe("/robot_pose", 1000, poseCallback);
   
   //Services for arm
-  ros::ServiceClient arm_prepare_client   = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
-  ros::ServiceClient arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
-  ros::ServiceClient arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/soft_home_arm");
-  ros::ServiceClient arm_move_until_obstacle_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/move_down_until_obstacle");
-  ros::ServiceClient arm_goto_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto");
-  ros::ServiceClient arm_goto_relative_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto_relative");
+  arm_prepare_client   = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
+  arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+  arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/soft_home_arm");
+  arm_move_until_obstacle_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/move_down_until_obstacle");
+  arm_goto_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto");
+  arm_goto_relative_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto_relative");
+  arm_align_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
 
   while (ros::ok()) {
     if (server->isPreemptRequested() && state != IDLE)
