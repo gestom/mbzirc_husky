@@ -3,14 +3,11 @@
 #include "CRawImage.h"
 #include "CRawDepthImage.h"
 #include "CSegmentation.h"
-//#include "CTransformation.h"
 #include <image_transport/image_transport.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <dynamic_reconfigure/server.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-//#include <social_card_reader/social_cardConfig.h>
-
 
 image_transport::Publisher imdebug;
 ros::Publisher command_pub;
