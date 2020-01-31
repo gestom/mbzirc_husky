@@ -74,7 +74,7 @@ int CRawDepthImage::getClosest(int number)
 			maxValue = histogram[i];
 			maxIndex = i;
 		}
-	       	printf("Histogram %i %i\n",i,histogram[i]);
+	       	//printf("Histogram %i %i\n",i,histogram[i]);
 	}
 	int sumGround = 0;
 	int numGround = 0;
@@ -101,10 +101,6 @@ int CRawDepthImage::getClosest(int number)
 		}
 	}
 	
-	for (int i=0;i<50;i++){
-	       	printf("Histogram %i %i\n",i,histogram[i]);
-	}
-
 	/*segment out a brick*/
 	for (int i=0;i<size;i++)
 	{
