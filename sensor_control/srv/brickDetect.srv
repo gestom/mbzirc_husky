@@ -1,0 +1,6 @@
+bool activate
+int32 groundPlaneDistance 
+---
+bool activated
+bool detected 
+geometry_msgs/PoseStamped brickPose

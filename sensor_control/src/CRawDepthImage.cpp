@@ -54,44 +54,50 @@ CRawDepthImage::CRawDepthImage(short *datai,int wi,int he,int bppi)
 	numSaved = 0;
 }
 
-int CRawDepthImage::getClosest(int number)
+int CRawDepthImage::getClosest(int groundPlaneDistance)
 {
 	int granularity = 100;
 	int histogram[50];
 	int dat;
-
-	/*estimate the ground plane*/
-	for (int i=0;i<50;i++) histogram[i] = 0;
-	for (int i=0;i<size;i++){
-		dat = data[i];
-		if (dat > 0 && dat<50*100) histogram[data[i]/100]++;
-	}
+	int ground = 0;
 	int maxValue = 0;
 	int maxIndex = -1;
-
-	for (int i=0;i<50;i++){
-		if (maxValue < histogram[i]){
-			maxValue = histogram[i];
-			maxIndex = i;
+	if (groundPlaneDistance == 0){
+		/*estimate the ground plane*/
+		for (int i=0;i<50;i++) histogram[i] = 0;
+		for (int i=0;i<size;i++){
+			dat = data[i];
+			if (dat > 0 && dat<50*100) histogram[data[i]/100]++;
 		}
-	       	//printf("Histogram %i %i\n",i,histogram[i]);
-	}
-	int sumGround = 0;
-	int numGround = 0;
-	for (int i=0;i<size;i++)
-	{
-		if (data[i] < (maxIndex+1)*granularity && data[i] >  (maxIndex -1)*granularity)
+		maxValue = 0;
+		maxIndex = -1;
+
+		for (int i=0;i<50;i++){
+			if (maxValue < histogram[i]){
+				maxValue = histogram[i];
+				maxIndex = i;
+			}
+			//printf("Histogram %i %i\n",i,histogram[i]);
+		}
+		int sumGround = 0;
+		int numGround = 0;
+		for (int i=0;i<size;i++)
 		{
-			sumGround += data[i];
-			numGround++;		
-		} 
+			if (data[i] < (maxIndex+1)*granularity && data[i] >  (maxIndex -1)*granularity)
+			{
+				sumGround += data[i];
+				numGround++;		
+			} 
+		}
+		ground = sumGround/numGround;
+	}else{
+		ground = groundPlaneDistance;
 	}
 
 	/*recalculate histogram*/
 	int brickSize = 200;
 	int brickTolerance = 50;
-	int ground = sumGround/numGround;
-       	printf("Ground %i %i %i\n",maxIndex,maxValue,sumGround/numGround);
+       	printf("Ground %i %i %i\n",maxIndex,maxValue,ground);
 
 	for (int i=0;i<50;i++) histogram[i] = 0;
 	for (int i=0;i<size;i++){

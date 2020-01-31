@@ -8,11 +8,18 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <dynamic_reconfigure/server.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <mbzirc_husky/brickDetect.h>
 
+int numDetections = 0;
+int numDetectionAttempts = 0;
+SSegment segment;
+geometry_msgs::PoseStamped brickPose;
 image_transport::Publisher imdebug;
 ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
+image_transport::Subscriber subimDepth;
+image_transport::ImageTransport *it;
 
 CSegmentation *segmentation;
 CRawImage *grayImage;
@@ -20,6 +27,7 @@ CRawDepthImage *depthImage;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
+int groundPlaneDistance = 0;
 
 //parameter reconfiguration
 /*void reconfigureCallback(social_card_reader::social_cardConfig &config, uint32_t level) 
@@ -40,10 +48,12 @@ void grayImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		grayImage = new CRawImage(msg->width,msg->height,msg->step/msg->width);
 	}
 	memcpy(grayImage->data,(void*)&msg->data[0],msg->step*msg->height);
-	}
+}
 
 void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
+	segment.valid = 0;
+	numDetectionAttempts++;
 	if (depthImage->bpp != msg->step/msg->width || depthImage->width != msg->width || depthImage->height != msg->height)
 	{
 		delete depthImage;
@@ -51,21 +61,21 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		depthImage = new CRawDepthImage(msg->width,msg->height,msg->step/msg->width);
 	}
 	memcpy(depthImage->data,(void*)&msg->data[0],msg->step*msg->height);
-	depthImage->getClosest(100);
-	SSegment segment = segmentation->findSegment(depthImage,5000,10000000);
+	depthImage->getClosest(groundPlaneDistance);
+	segment = segmentation->findSegment(depthImage,5000,10000000);
 	float pX,pY,pZ;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;	
 		pX = (segment.x-307)/640.95*pZ;
 		pY = (segment.y-243.12)/640.95*pZ;
-		geometry_msgs::PoseStamped pose;
-		pose.pose.position.x = pX;
-		pose.pose.position.y = pY;
-		pose.pose.position.z = pZ;
+		brickPose.pose.position.x = pX;
+		brickPose.pose.position.y = pY;
+		brickPose.pose.position.z = pZ;
 		tf2::Quaternion quat_tf;
 		quat_tf.setRPY(0,0,M_PI/2);
-		pose.pose.orientation = tf2::toMsg(quat_tf);
-		posePub.publish(pose);
+		brickPose.pose.orientation = tf2::toMsg(quat_tf);
+		posePub.publish(brickPose);
+		numDetections++; 
 	}
 	printf("Pos: %i %f %f %f\n",segment.valid,pX,pY,pZ);
 	sensor_msgs::Image outputImage;
@@ -87,16 +97,51 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	free(buffer);
 }
 
+bool detect(mbzirc_husky::brickDetect::Request  &req, mbzirc_husky::brickDetect::Response &res)
+{
+	if (req.activate){
+	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
+		groundPlaneDistance = req.groundPlaneDistance;
+		numDetections = 0;
+		numDetectionAttempts = 0;
+		int attempts = 0;
+		while (numDetectionAttempts == 0 && attempts < 20){
+			ros::spinOnce();
+			usleep(100000);
+			attempts++;
+		}
+		if (numDetections > 0){
+			ROS_INFO("Brick detected.");
+			res.brickPose = brickPose;
+			res.detected = true;
+			res.activated = true;
+		}else if (numDetectionAttempts > 0){
+			ROS_INFO("Brick not detected.");
+			res.detected = false;
+			res.activated = true;
+		}else{
+			ROS_INFO("Depth image not incoming. Is realsense on?");	
+			res.detected = false;
+			res.activated = false;
+		}
+	}else
+	{
+	       	subimDepth.shutdown();
+	}
+	return true;
+}
+
+
 int main(int argc, char** argv)
 {
 	segmentation = new CSegmentation();
 	ros::init(argc, argv, "brickDetector");
 	ros::NodeHandle n;
-	image_transport::ImageTransport it(n);
+	it = new image_transport::ImageTransport(n);
 	grayImage = new CRawImage(defaultImageWidth,defaultImageHeight,4);
 	depthImage = new CRawDepthImage(defaultImageWidth,defaultImageHeight,4);
-	imagePub = it.advertise("/image_with_features", 1);
-
+	imagePub = it->advertise("/image_with_features", 1);
+	ros::ServiceServer service = n.advertiseService("detectBricks", detect);
 	//initialize dynamic reconfiguration feedback
 //	dynamic_reconfigure::Server<social_card_reader::social_cardConfig> server;
 //	dynamic_reconfigure::Server<social_card_reader::social_cardConfig>::CallbackType dynSer;
@@ -106,7 +151,6 @@ int main(int argc, char** argv)
 //	photoTf = new CTransformation(outerDimUser);
 //	commandTf = new CTransformation(outerDimMaster);
 	//image_transport::Subscriber subimGray = it.subscribe("/head_xtion/rgb/image_mono", 1, grayImageCallback);
-	image_transport::Subscriber subimDepth = it.subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
 	posePub = n.advertise<geometry_msgs::PoseStamped>("/brickPosition", 1);
 	//command_pub = n.advertise<std_msgs::String>("/socialCardReader/commands", 1);
 

@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include <std_msgs/String.h>
-#include <sensor_msgs/LaserScan.h>
+//#include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <mbzirc_husky/pickupAction.h>
@@ -11,19 +11,19 @@
 #include <mbzirc_husky/pickupConfig.h>
 #include <std_srvs/Trigger.h>
 
-#include <pcl_ros/point_cloud.h>
+/*#include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_conversions/pcl_conversions.h>*/
 
 // Arm packages
-#include <kinova_driver/kinova_comm.h>
+/*#include <kinova_driver/kinova_comm.h>
 #include <kinova_driver/kinova_arm.h>
 
 #include <kinova_msgs/HomeArm.h>
 #include <kinova_msgs/JointAngles.h>
 #include <kinova_msgs/PoseVelocity.h>
 #include <kinova_msgs/ArmPoseActionGoal.h>
-
+*/
 #include <kinova_control_manager/EndEffectorPose.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::pickupAction> Server;
