@@ -20,10 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
     image_transport
     tf
     mrs_lib
-    kinova_msgs
-    kinova_driver
-    kinova_control_manager
-    )
+    mbzirc_husky_msgs
+  )
 
 find_package(PCL REQUIRED)
 
@@ -32,14 +30,10 @@ find_package(PCL REQUIRED)
 #######################################
 
 add_action_files(
-    DIRECTORY action 
+  DIRECTORY action 
 	FILES spray.action
 	FILES pickup.action
 )
-add_service_files(
-	FILES
-	brickDetect.srv
-	)
 
 generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
@@ -54,7 +48,7 @@ generate_messages(
    )
 
 catkin_package(
-	CATKIN_DEPENDS message_runtime kinova_control_manager
+	CATKIN_DEPENDS message_runtime mbzirc_husky_msgs
   )
 
 ###########

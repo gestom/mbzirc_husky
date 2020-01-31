@@ -4,19 +4,19 @@ project(kinova_control_manager)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fno-diagnostics-color")
 
 find_package(catkin REQUIRED COMPONENTS
-  message_generation
   roscpp
   nodelet
-  kinova_msgs
-  kinova_driver
   std_msgs
   geometry_msgs
   tf
   tf_conversions
-  mrs_msgs
+  kinova_msgs
+  kinova_driver
   kinova_bringup
   kinova_control
   kinova_description
+  mrs_msgs
+  mbzirc_husky_msgs
   # mrs_lib
   # moveit_ros_planning_interface
   # sensor_msgs
@@ -30,23 +30,9 @@ find_package(Eigen3 REQUIRED)
 set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
 set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 
-add_message_files(DIRECTORY msg FILES
-  ArmStatus.msg
-)
-
-add_service_files(DIRECTORY srv FILES
-  EndEffectorPose.srv
-  Vector3.srv
-)
-
-generate_messages(DEPENDENCIES
-  std_msgs
-  geometry_msgs
-)
-
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp std_msgs message_runtime
+  CATKIN_DEPENDS roscpp
   LIBRARIES kinova_control_manager
 )
 

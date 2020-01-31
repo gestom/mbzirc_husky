@@ -10,8 +10,8 @@
 #include <mbzirc_husky/pickupConfig.h>
 #include <std_srvs/Trigger.h>
 
-#include <kinova_control_manager/EndEffectorPose.h>
-#include <kinova_control_manager/ArmStatus.h>
+#include <mbzirc_husky_msgs/EndEffectorPose.h>
+#include <mbzirc_husky_msgs/ArmStatus.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::pickupAction> Server;
 Server* server;
@@ -40,8 +40,8 @@ std_srvs::Trigger  arm_prep_srv;
 std_srvs::Trigger  arm_home_hard_srv;
 std_srvs::Trigger  arm_home_soft_srv;
 std_srvs::Trigger  arm_obstacle_srv;
-kinova_control_manager::EndEffectorPose arm_goto_srv;
-kinova_control_manager::EndEffectorPose arm_goto_relative_srv;
+mbzirc_husky_msgs::EndEffectorPose arm_goto_srv;
+mbzirc_husky_msgs::EndEffectorPose arm_goto_relative_srv;
 
 //Arm clients
 ros::ServiceClient arm_prepare_client; 
@@ -155,8 +155,8 @@ int main(int argc, char** argv) {
   ros::ServiceClient arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
   ros::ServiceClient arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/soft_home_arm");
   ros::ServiceClient arm_move_until_obstacle_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/move_down_until_obstacle");
-  ros::ServiceClient arm_goto_client = n.serviceClient<kinova_control_manager::EndEffectorPose>("/kinova/arm_manager/goto");
-  ros::ServiceClient arm_goto_relative_client = n.serviceClient<kinova_control_manager::EndEffectorPose>("/kinova/arm_manager/goto_relative");
+  ros::ServiceClient arm_goto_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto");
+  ros::ServiceClient arm_goto_relative_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto_relative");
 
   while (ros::ok()) {
     if (server->isPreemptRequested() && state != IDLE)

@@ -17,12 +17,14 @@
 #include <kinova_msgs/PoseVelocity.h>
 #include <kinova_msgs/ArmPoseActionGoal.h>
 
-#include <kinova_control_manager/ArmStatus.h>
-#include <kinova_control_manager/EndEffectorPose.h>
-#include <kinova_control_manager/Vector3.h>
+#include <mbzirc_husky_msgs/ArmStatus.h>
+#include <mbzirc_husky_msgs/EndEffectorPose.h>
+#include <mbzirc_husky_msgs/Vector3.h>
+#include <mbzirc_husky_msgs/brickDetect.h>
 
 #include <mrs_msgs/GripperDiagnostics.h>
 #include <visualization_msgs/Marker.h>
+
 
 #define DOF 6
 #define ORIGINAL_WRIST_OFFSET Eigen::Vector3d(0.0, 0.0, 0.16)  // [m]
@@ -109,6 +111,7 @@ private:
   double             nearby_position_threshold;
   double             nearby_rotation_threshold;
   double             no_move_error_timeout;
+  double             arm_base_to_ground;
   EndEffector_t      end_effector_type;
 
   // arm status
@@ -145,6 +148,7 @@ private:
   ros::ServiceClient service_client_homing;
   ros::ServiceClient service_client_grip;
   ros::ServiceClient service_client_ungrip;
+  ros::ServiceClient service_client_brick_detector;
 
   // subscribers
   ros::Subscriber subscriber_joint_angles;
@@ -159,13 +163,13 @@ private:
   // service callbacks
   bool callbackHomingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackSoftHomingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackGoToService(EndEffectorPoseRequest &req, EndEffectorPoseResponse &res);
-  bool callbackGoToRelativeService(EndEffectorPoseRequest &req, EndEffectorPoseResponse &res);
-  bool callbackGoToRelativeFixedService(Vector3Request &req, Vector3Response &res);
+  bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
+  bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
+  bool callbackGoToRelativeFixedService(mbzirc_husky_msgs::Vector3Request &req, mbzirc_husky_msgs::Vector3Response &res);
   bool callbackPrepareGrippingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackStartGripping(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackAlignArmService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackAimAtService(Vector3Request &req, Vector3Response &res);
+  bool callbackAimAtService(mbzirc_husky_msgs::Vector3Request &req, mbzirc_husky_msgs::Vector3Response &res);
 
   // subscriber callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
@@ -217,6 +221,7 @@ void kinova_control_manager::onInit() {
   nh_.getParam("husky_to_arm_base_transform", husky_to_arm_base_transform);
   nh_.getParam("husky_base_frame_id", husky_base_frame_id);
   nh_.getParam("kinova_base_frame_id", kinova_base_frame_id);
+  nh_.getParam("arm_base_to_ground", arm_base_to_ground);
 
   if (home_pose_raw.size() != 6) {
     ROS_ERROR("[kinova_control_manager]: Parameter \"end_effector_home\" expected to have 6 elements [X,Y,Z,roll,pitch,yaw], got %ld!", home_pose_raw.size());
@@ -260,10 +265,11 @@ void kinova_control_manager::onInit() {
   service_server_goto_relative_fixed = nh_.advertiseService("goto_relative_fixed_in", &kinova_control_manager::callbackGoToRelativeFixedService, this);
 
   // service clients
-  service_client_joint_angles = nh_.serviceClient<kinova_msgs::HomeArm>("joint_angles_out");
-  service_client_homing       = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
-  service_client_grip         = nh_.serviceClient<std_srvs::Trigger>("grip_out");
-  service_client_ungrip       = nh_.serviceClient<std_srvs::Trigger>("ungrip_out");
+  service_client_joint_angles   = nh_.serviceClient<kinova_msgs::HomeArm>("joint_angles_out");
+  service_client_homing         = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
+  service_client_grip           = nh_.serviceClient<std_srvs::Trigger>("grip_out");
+  service_client_ungrip         = nh_.serviceClient<std_srvs::Trigger>("ungrip_out");
+  service_client_brick_detector = nh_.serviceClient<mbzirc_husky_msgs::brickDetect>("brick_detect");
 
   // subscribers
   subscriber_joint_angles = nh_.subscribe("joint_angles_in", 1, &kinova_control_manager::callbackJointAnglesTopic, this, ros::TransportHints().tcpNoDelay());
@@ -273,7 +279,7 @@ void kinova_control_manager::onInit() {
       nh_.subscribe("gripper_diagnostics_in", 1, &kinova_control_manager::callbackGripperDiagnosticsTopic, this, ros::TransportHints().tcpNoDelay());
 
   // publishers
-  publisher_arm_status        = nh_.advertise<ArmStatus>("arm_status_out", 1);
+  publisher_arm_status        = nh_.advertise<mbzirc_husky_msgs::ArmStatus>("arm_status_out", 1);
   publisher_end_effector_pose = nh_.advertise<kinova_msgs::ArmPoseActionGoal>("end_effector_pose_out", 1);
   publisher_dbg_visual        = nh_.advertise<visualization_msgs::Marker>("target_marker", 1);
 
@@ -361,15 +367,47 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
 
 /* callbackAlignArmService //{ */
 bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
-  // TODO
-  ROS_WARN("[kinova_control_manager]: Align arm not implemented yet!");
-  res.success = false;
-  return false;
+
+  if (!getting_joint_angles || !getting_effector_pos) {
+    ROS_ERROR("[kinova_control_manager]: Cannot align arm, internal feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  mbzirc_husky_msgs::brickDetect brick_srv;
+  brick_srv.request.activate            = true;
+  brick_srv.request.groundPlaneDistance = end_effector_pose.pos[2] + arm_base_to_ground;
+  service_client_brick_detector.call(brick_srv.request, brick_srv.response);
+
+  ROS_WARN("[kinova_arm_manager]: Waiting for brick detection...");
+  ros::Time t_start = ros::Time::now();
+  while (!brick_srv.response.activated) {
+    ros::Duration(0.1).sleep();
+    if ((ros::Time::now().sec - t_start.sec) > 4.0) {
+      std::stringstream ss;
+      ss << "Failed to launch brick detection!";
+      ROS_FATAL("[kinova_arm_manager]: %s", ss.str().c_str());
+      res.success = false;
+      res.message = ss.str().c_str();
+      return false;
+    }
+  }
+  if (brick_srv.response.detected) {
+    ROS_INFO("[kinova_arm_manager]: Got brick pose: [%.2f, %.2f, %.2f]", brick_srv.response.brickPose.pose.position.x,
+             brick_srv.response.brickPose.pose.position.y, brick_srv.response.brickPose.pose.position.z);
+
+    Eigen::Vector3d align(brick_srv.response.brickPose.pose.position.x, -brick_srv.response.brickPose.pose.position.y, 0.0);
+
+    ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f]", align[0], align[1]);
+  }
+
+  res.success = true;
+  return true;
 }
 //}
 
 /* callbackAimAtService//{ */
-bool kinova_control_manager::callbackAimAtService(Vector3Request &req, Vector3Response &res) {
+bool kinova_control_manager::callbackAimAtService(mbzirc_husky_msgs::Vector3Request &req, mbzirc_husky_msgs::Vector3Response &res) {
 
   if (!getting_joint_angles || !getting_effector_pos) {
     ROS_ERROR("[kinova_control_manager]: Cannot aim at target, internal arm feedback missing!");
@@ -448,7 +486,7 @@ bool kinova_control_manager::callbackStartGripping([[maybe_unused]] std_srvs::Tr
 //}
 
 /* callbackGoToService //{ */
-bool kinova_control_manager::callbackGoToService(EndEffectorPoseRequest &req, EndEffectorPoseResponse &res) {
+bool kinova_control_manager::callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
   std::scoped_lock lock(arm_state_mutex);
   if (!is_initialized) {
@@ -483,7 +521,7 @@ bool kinova_control_manager::callbackGoToService(EndEffectorPoseRequest &req, En
 //}
 
 /* callbackGoToRelativeService //{ */
-bool kinova_control_manager::callbackGoToRelativeService(EndEffectorPoseRequest &req, EndEffectorPoseResponse &res) {
+bool kinova_control_manager::callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
   std::scoped_lock lock(arm_state_mutex);
   if (!is_initialized) {
@@ -518,7 +556,7 @@ bool kinova_control_manager::callbackGoToRelativeService(EndEffectorPoseRequest 
 //}
 
 /* callbackGoToRelativeFixedService //{ */
-bool kinova_control_manager::callbackGoToRelativeFixedService(Vector3Request &req, Vector3Response &res) {
+bool kinova_control_manager::callbackGoToRelativeFixedService(mbzirc_husky_msgs::Vector3Request &req, mbzirc_husky_msgs::Vector3Response &res) {
 
   std::scoped_lock lock(arm_state_mutex);
   if (!is_initialized) {
@@ -545,11 +583,10 @@ bool kinova_control_manager::callbackGoToRelativeFixedService(Vector3Request &re
   time_of_last_motion = ros::Time::now();
 
   Pose3d pose = end_effector_pose;
-  pose.pos     = Eigen::Vector3d(req.pos[0], req.pos[1], req.pos[2]);
+  pose.pos    = Eigen::Vector3d(req.pos[0], req.pos[1], req.pos[2]);
   goToRelativeFixed(pose);
   res.success = true;
   return true;
-
 }
 //}
 
@@ -676,11 +713,11 @@ void kinova_control_manager::goTo(Pose3d pose) {
            euler[0], euler[1], euler[2]);
 
 
-  last_goal = pose; // store last_goal before compensation (this is the actual position of the wrist)
-  
+  last_goal = pose;  // store last_goal before compensation (this is the actual position of the wrist)
+
   // offset compensation because no wrist is attached
   pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET;
-  
+
 
   kinova_msgs::ArmPoseActionGoal msg;
 
@@ -719,8 +756,8 @@ void kinova_control_manager::goToRelative(Pose3d rel_pose) {
            euler[0], euler[1], euler[2]);
 
 
-  last_goal = pose; 
-  last_goal.pos -= pose.rot * ORIGINAL_WRIST_OFFSET; // remove the compensation (this is the actual position of the end effector)
+  last_goal = pose;
+  last_goal.pos -= pose.rot * ORIGINAL_WRIST_OFFSET;  // remove the compensation (this is the actual position of the end effector)
   kinova_msgs::ArmPoseActionGoal msg;
 
   msg.goal.pose.pose.orientation.x = pose.rot.x();
@@ -746,41 +783,42 @@ void kinova_control_manager::goToRelative(Pose3d rel_pose) {
 /* goToRelativeFixed //{ */
 void kinova_control_manager::goToRelativeFixed(Pose3d rel_pose) {
 
-   // compensate for original wrist offset 
-   Pose3d pose = end_effector_pose; 
-   pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET; 
+  // compensate for original wrist offset
+  Pose3d pose = end_effector_pose;
+  pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET;
 
-   // add rel_pose to the current end effector pose 
-   pose.pos += rel_pose.pos; 
+  // add rel_pose to the current end effector pose
+  pose.pos += rel_pose.pos;
 
-   ROS_INFO("[kinova_control_manager]: Moving end effector by relative [%.3f, %.3f, %.3f], end effector orientation fixed to GRIPPING", rel_pose.pos[0], rel_pose.pos[1], rel_pose.pos[2]); 
+  ROS_INFO("[kinova_control_manager]: Moving end effector by relative [%.3f, %.3f, %.3f], end effector orientation fixed to GRIPPING", rel_pose.pos[0],
+           rel_pose.pos[1], rel_pose.pos[2]);
 
-   last_goal = pose; 
-   last_goal.pos -= pose.rot * ORIGINAL_WRIST_OFFSET; // remove the compensation (this is the actual position of the end effector)
-   kinova_msgs::ArmPoseActionGoal msg; 
+  last_goal = pose;
+  last_goal.pos -= pose.rot * ORIGINAL_WRIST_OFFSET;  // remove the compensation (this is the actual position of the end effector)
+  kinova_msgs::ArmPoseActionGoal msg;
 
-   msg.goal.pose.pose.orientation.x = default_gripping_pose.rot.x(); 
-   msg.goal.pose.pose.orientation.y = default_gripping_pose.rot.y(); 
-   msg.goal.pose.pose.orientation.z = default_gripping_pose.rot.z(); 
-   msg.goal.pose.pose.orientation.w = default_gripping_pose.rot.w(); 
-
-
-   msg.goal.pose.pose.position.x = pose.pos.x(); 
-   msg.goal.pose.pose.position.y = pose.pos.y(); 
-   msg.goal.pose.pose.position.z = pose.pos.z(); 
+  msg.goal.pose.pose.orientation.x = default_gripping_pose.rot.x();
+  msg.goal.pose.pose.orientation.y = default_gripping_pose.rot.y();
+  msg.goal.pose.pose.orientation.z = default_gripping_pose.rot.z();
+  msg.goal.pose.pose.orientation.w = default_gripping_pose.rot.w();
 
 
-   std::stringstream ss; 
-   ss << arm_type << "_link_base"; 
-   msg.goal.pose.header.frame_id = ss.str().c_str(); 
-   msg.header.frame_id           = ss.str().c_str(); 
+  msg.goal.pose.pose.position.x = pose.pos.x();
+  msg.goal.pose.pose.position.y = pose.pos.y();
+  msg.goal.pose.pose.position.z = pose.pos.z();
 
-   publisher_end_effector_pose.publish(msg); 
+
+  std::stringstream ss;
+  ss << arm_type << "_link_base";
+  msg.goal.pose.header.frame_id = ss.str().c_str();
+  msg.header.frame_id           = ss.str().c_str();
+
+  publisher_end_effector_pose.publish(msg);
 }
 //}
 
 /* goToRelativeAngles //{ */
-/* void kinova_control_manager::goToRelativeAngles(EndEffectorPoseRequest &req, EndEffectorPoseResponse &res) { */
+/* void kinova_control_manager::goToRelativeAngles(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) { */
 /*   service_client_joint_angles.call() */
 /* } */
 //}
@@ -808,7 +846,7 @@ void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent 
   if (!is_initialized) {
     return;
   }
-  ArmStatus status_msg;
+  mbzirc_husky_msgs::ArmStatus status_msg;
   status_msg.arm_type     = arm_type;
   status_msg.header.stamp = ros::Time::now();
   std::stringstream ss;

@@ -8,7 +8,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <dynamic_reconfigure/server.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <mbzirc_husky/brickDetect.h>
+#include <mbzirc_husky_msgs/brickDetect.h>
 
 int numDetections = 0;
 int numDetectionAttempts = 0;
@@ -97,7 +97,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	free(buffer);
 }
 
-bool detect(mbzirc_husky::brickDetect::Request  &req, mbzirc_husky::brickDetect::Response &res)
+bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::brickDetect::Response &res)
 {
 	if (req.activate){
 	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);

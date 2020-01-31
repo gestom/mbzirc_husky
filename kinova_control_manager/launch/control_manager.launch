@@ -12,6 +12,8 @@
       <!-- output to the mrs gripper -->
     <remap from="~grip_out" to="kinova/gripper/grip" />
     <remap from="~ungrip_out" to="kinova/gripper/ungrip" />
+
+    <remap from="~brick_detect" to="husky/detectBricks" />
     
     <!-- status input from arm driver and gripper -->
     <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
