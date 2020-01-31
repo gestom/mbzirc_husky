@@ -5,8 +5,8 @@
 
 int compareSegments(const void* m1,const void* m2)
 {
-	if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return -1;
-	if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return 1;
+	if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return -1;
+	if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return 1;
 	return 0;
 }
 
@@ -222,7 +222,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 			}
 		}
 	}
-	printf("BA: %f %f %f\n",segmentArray[0].x,segmentArray[0].y,segmentArray[0].z);
+	for (int i = 0;i<numSegments;i++) printf("Segment %i size %i: %f %f %f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].x,segmentArray[i].y,segmentArray[i].z);
 	//Seradi segmenty podle velikosti
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	free(buffer);
