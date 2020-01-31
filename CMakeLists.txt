@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(mbzirc_husky)
+set(CMAKE_CXX_FLAGS "-ggdb -std=c++0x ${CMAKE_C_FLAGS}")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -16,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     rospy 
     sensor_msgs
     std_msgs 
+    image_transport
     tf
     )
 find_package(PCL REQUIRED)
@@ -51,12 +53,15 @@ include_directories(
     ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
 )
 
+add_executable(brickDetector src/brickDetector.cpp src/CRawDepthImage.cpp src/CRawImage.cpp src/CSegmentation.cpp)
 add_executable(pickup src/pickup.cpp src/CTimer.cpp)
 add_executable(spray src/spray.cpp src/CPump.cpp src/CTimer.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(brickDetector ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
 target_link_libraries (pickup ${catkin_LIBRARIES})
+target_link_libraries (brickDetector ${catkin_LIBRARIES})
 
 #############
 ## Install ##
