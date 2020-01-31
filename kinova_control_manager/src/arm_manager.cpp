@@ -99,6 +99,7 @@ private:
   // goto execution
   void goTo(Pose3d pose);
   void goToRelative(Pose3d pose);
+  void goToRelativeFixed(Pose3d rel_pose);
 
   // configuration params
   Pose3d             home_pose;
@@ -543,50 +544,12 @@ bool kinova_control_manager::callbackGoToRelativeFixedService(Vector3Request &re
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
 
-  Pose3d pose;
+  Pose3d pose = end_effector_pose;
   pose.pos     = Eigen::Vector3d(req.pos[0], req.pos[1], req.pos[2]);
-  pose.rot.w() = default_gripping_pose.rot.w();
-  pose.rot.x() = default_gripping_pose.rot.x();
-  pose.rot.y() = default_gripping_pose.rot.y();
-  pose.rot.z() = default_gripping_pose.rot.z();
-  goToRelative(pose);
+  goToRelativeFixed(pose);
   res.success = true;
   return true;
 
-  /*   // compensate for original wrist offset */
-  /*   Pose3d pose = end_effector_pose; */
-  /*   pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET; */
-
-  /*   // add rel_pose to the current end effector posea */
-  /*   Eigen::Vector3d rel_pos(req.pos[0], req.pos[1], req.pos[2]); */
-  /*   pose.pos += rel_pos; */
-
-  /*   Eigen::Vector3d euler = quaternionToEuler(pose.rot); */
-
-  /*   ROS_INFO("[kinova_control_manager]: Moving end effector by relative [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(),
-   * pose.pos.z(), */
-  /*            euler[0], euler[1], euler[2]); */
-
-  /*   last_goal = pose; */
-  /*   kinova_msgs::ArmPoseActionGoal msg; */
-
-  /*   msg.goal.pose.pose.orientation.x = default_gripping_pose.rot.x(); */
-  /*   msg.goal.pose.pose.orientation.y = default_gripping_pose.rot.y(); */
-  /*   msg.goal.pose.pose.orientation.z = default_gripping_pose.rot.z(); */
-  /*   msg.goal.pose.pose.orientation.w = default_gripping_pose.rot.w(); */
-
-
-  /*   msg.goal.pose.pose.position.x = pose.pos.x(); */
-  /*   msg.goal.pose.pose.position.y = pose.pos.y(); */
-  /*   msg.goal.pose.pose.position.z = pose.pos.z(); */
-
-
-  /*   std::stringstream ss; */
-  /*   ss << arm_type << "_link_base"; */
-  /*   msg.goal.pose.header.frame_id = ss.str().c_str(); */
-  /*   msg.header.frame_id           = ss.str().c_str(); */
-
-  /*   publisher_end_effector_pose.publish(msg); */
 }
 //}
 
@@ -712,10 +675,13 @@ void kinova_control_manager::goTo(Pose3d pose) {
   ROS_INFO("[kinova_control_manager]: Moving end effector to position [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(),
            euler[0], euler[1], euler[2]);
 
+
+  last_goal = pose; // store last_goal before compensation (this is the actual position of the wrist)
+  
   // offset compensation because no wrist is attached
   pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET;
+  
 
-  last_goal = pose;
   kinova_msgs::ArmPoseActionGoal msg;
 
   msg.goal.pose.pose.position.x = pose.pos.x();
@@ -753,7 +719,8 @@ void kinova_control_manager::goToRelative(Pose3d rel_pose) {
            euler[0], euler[1], euler[2]);
 
 
-  last_goal = pose;
+  last_goal = pose; 
+  last_goal.pos -= pose.rot * ORIGINAL_WRIST_OFFSET; // remove the compensation (this is the actual position of the end effector)
   kinova_msgs::ArmPoseActionGoal msg;
 
   msg.goal.pose.pose.orientation.x = pose.rot.x();
@@ -773,6 +740,42 @@ void kinova_control_manager::goToRelative(Pose3d rel_pose) {
   msg.header.frame_id           = ss.str().c_str();
 
   publisher_end_effector_pose.publish(msg);
+}
+//}
+
+/* goToRelativeFixed //{ */
+void kinova_control_manager::goToRelativeFixed(Pose3d rel_pose) {
+
+   // compensate for original wrist offset 
+   Pose3d pose = end_effector_pose; 
+   pose.pos += pose.rot * ORIGINAL_WRIST_OFFSET; 
+
+   // add rel_pose to the current end effector pose 
+   pose.pos += rel_pose.pos; 
+
+   ROS_INFO("[kinova_control_manager]: Moving end effector by relative [%.3f, %.3f, %.3f], end effector orientation fixed to GRIPPING", rel_pose.pos[0], rel_pose.pos[1], rel_pose.pos[2]); 
+
+   last_goal = pose; 
+   last_goal.pos -= pose.rot * ORIGINAL_WRIST_OFFSET; // remove the compensation (this is the actual position of the end effector)
+   kinova_msgs::ArmPoseActionGoal msg; 
+
+   msg.goal.pose.pose.orientation.x = default_gripping_pose.rot.x(); 
+   msg.goal.pose.pose.orientation.y = default_gripping_pose.rot.y(); 
+   msg.goal.pose.pose.orientation.z = default_gripping_pose.rot.z(); 
+   msg.goal.pose.pose.orientation.w = default_gripping_pose.rot.w(); 
+
+
+   msg.goal.pose.pose.position.x = pose.pos.x(); 
+   msg.goal.pose.pose.position.y = pose.pos.y(); 
+   msg.goal.pose.pose.position.z = pose.pos.z(); 
+
+
+   std::stringstream ss; 
+   ss << arm_type << "_link_base"; 
+   msg.goal.pose.header.frame_id = ss.str().c_str(); 
+   msg.header.frame_id           = ss.str().c_str(); 
+
+   publisher_end_effector_pose.publish(msg); 
 }
 //}
 
