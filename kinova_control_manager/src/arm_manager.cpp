@@ -423,10 +423,11 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 
     // TODO something better than loop
     for (int i = 0; i < 20; i++) {
-      std::scoped_lock lock(brick_pose_mutex);
       while (!getting_brick_pose) {
         ros::Duration(0.01).sleep();
+	ROS_INFO("[kinova_arm_manager]: Waiting for new brick pose");
       }
+      std::scoped_lock lock(brick_pose_mutex);
       align = Eigen::Vector3d(-brick_pose.pos[0], brick_pose.pos[1], 0.0);
       ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f]", align[0], align[1]);
       new_pose.pos.x() = align[0];
@@ -782,8 +783,8 @@ void kinova_control_manager::callbackBrickPoseTopic(const geometry_msgs::PoseSta
   std::scoped_lock lock(brick_pose_mutex);
   getting_brick_pose = true;
   brick_pose.pos.x() = msg->pose.position.x;
-  brick_pose.pos.y() = msg->pose.position.x;
-  brick_pose.pos.z() = msg->pose.position.x;
+  brick_pose.pos.y() = msg->pose.position.y;
+  brick_pose.pos.z() = msg->pose.position.z;
   brick_pose.rot.w() = msg->pose.orientation.w;
   brick_pose.rot.x() = msg->pose.orientation.x;
   brick_pose.rot.y() = msg->pose.orientation.y;
