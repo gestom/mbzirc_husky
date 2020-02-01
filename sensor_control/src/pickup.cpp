@@ -9,6 +9,10 @@
 #include <dynamic_reconfigure/Config.h>
 #include <mbzirc_husky/pickupConfig.h>
 #include <std_srvs/Trigger.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+
 
 #include <mbzirc_husky_msgs/EndEffectorPose.h>
 #include <mbzirc_husky_msgs/ArmStatus.h>
@@ -54,6 +58,8 @@ ros::ServiceClient arm_goto_relative_client;
 ros::ServiceClient arm_align_client; 
 
 
+//Brick layer setup
+char layers[5][7];
 
 
 float speedCoef = 1.0;
@@ -72,6 +78,19 @@ float speedCoef = 1.0;
 
 }*/
 
+//Load Brick setup from file
+void loadBricks(){
+	std::string s;
+	std::ifstream loadFile;
+	loadFile.open("./src/mbzirc_husky/sensor_control/bricks/bricks.txt");
+	int i=0;
+	while(!loadFile.eof()){
+		std::getline(loadFile,s);
+		strcpy(layers[i],s.c_str());
+		i++;
+	}
+	loadFile.close();	
+}
 
 bool isTerminal(EPickupState state) {
   if (state == ALIGNING_ROBOT)
@@ -162,6 +181,7 @@ int main(int argc, char** argv) {
   arm_goto_relative_client = n.serviceClient<mbzirc_husky_msgs::EndEffectorPose>("/kinova/arm_manager/goto_relative");
   arm_align_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
 
+  loadBricks();
   while (ros::ok()) {
     if (server->isPreemptRequested() && state != IDLE)
       state = PREEMPTED;
