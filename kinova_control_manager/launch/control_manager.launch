@@ -8,6 +8,7 @@
     <!-- output commands to arm driver -->
     <remap from="~home_out" to="$(arg ARM_TYPE)_driver/in/home_arm" />
     <remap from="~end_effector_pose_out" to="$(arg ARM_TYPE)_driver/pose_action/tool_pose/goal" />
+    <remap from="~cartesian_velocity_out" to="$(arg ARM_TYPE)_driver/in/cartesian_velocity" />
 
     <!-- output to the mrs gripper -->
     <remap from="~grip_out" to="kinova/gripper/grip" />
