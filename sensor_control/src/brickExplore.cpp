@@ -12,7 +12,10 @@ Server *server;
 
 typedef enum{
 	IDLE = 0,
-	EXPLORING,
+	EXPLORINGBRICKS,
+    MOVINGTOBRICKS,
+    EXPLORINGSTACKSITE,
+    MOVINGTOSTACKSITE,
     FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -24,7 +27,10 @@ ros::NodeHandle* pn;
 
 bool isTerminal(ESprayState state)
 {
-	if(state == EXPLORING) return false;
+	if(state == EXPLORINGBRICKS) return false;
+	if(state == MOVINGTOBRICKS) return false;
+	if(state == EXPLORINGSTACKSITE) return false;
+	if(state == MOVINGTOSTACKSITE) return false;
     if(state == FINAL) return true;
 	return true;
 }
@@ -33,13 +39,14 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 {
 	mbzirc_husky::brickExploreResult result;
 
-    state = EXPLORING;
+    state = EXPLORINGBRICKS;
 
     while (isTerminal(state) == false){
-        if(state == EXPLORING)
+        if(state == EXPLORINGBRICKS)
         {
+            //begin lidar search for bricks
             usleep(4000000);
-            state = FINAL;
+            state = ;
         }
         usleep(100);
     }
