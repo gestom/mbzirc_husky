@@ -276,7 +276,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				for (int l = -3;l<=3;l++){
 					int YY = segmentArray[i].cornerY[cn]+k;
 					int XX = segmentArray[i].cornerX[cn]+l;
-					if ( XX > 0 && XX < height && YY>0 && YY< width ) image->data[YY*width+XX] = -segmentArray[i].type;
+					if ( XX > 0 && XX < width && YY>0 && YY< height ) image->data[YY*width+XX] = -segmentArray[i].type;
 				}
 			}
 		}
