@@ -3,7 +3,7 @@
   <param name="/use_sim_time" value="true" />
 
   <!--gazebo-->
-  <node name="gazebo" pkg="gazebo_ros" type="gzserver" respawn="false" output="screen" args="--verbose -e ode $(find mbzirc_husky)/simulation/gazebo/worlds/mbzirc_fire.world" />
+  <node name="gazebo" pkg="gazebo_ros" type="gzserver" respawn="false" output="screen" args="--verbose -e ode $(find mbzirc_husky)/simulation/gazebo/worlds/bricks.world" />
   <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen"/>
 
   <!--create-husky-->
@@ -25,9 +25,6 @@
   <!--<include file="$(find mbzirc_husky)/launch/gmapping.launch" />-->
 
   <!--thermal camera-->
-  <include file="$(find fire_detect)/launch/single_node.launch" />
-
-  <include file="$(find mbzirc_husky)/launch/pump.launch" />
 
   <!--velo to laserscan-->
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_node" args="cloud_in:=/velodyne_points" respawn="false">

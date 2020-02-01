@@ -97,7 +97,6 @@ int CRawDepthImage::getClosest(int groundPlaneDistance)
 	/*recalculate histogram*/
 	int brickSize = 200;
 	int brickTolerance = 50;
-       	printf("Ground %i %i %i\n",maxIndex,maxValue,ground);
 
 	for (int i=0;i<50;i++) histogram[i] = 0;
 	for (int i=0;i<size;i++){
@@ -111,7 +110,9 @@ int CRawDepthImage::getClosest(int groundPlaneDistance)
 	for (int i=0;i<size;i++)
 	{
 		dat = ground-data[i];
-		if (dat - brickSize > brickTolerance || dat-brickSize < -brickTolerance)  data[i] = 0;
+		if (dat - 2*brickSize < brickTolerance && dat-2*brickSize > -brickTolerance) continue;
+		if (dat - 1*brickSize < brickTolerance && dat-1*brickSize > -brickTolerance) continue;
+	       	data[i] = 0;
 	}
 }
 
@@ -163,10 +164,9 @@ void CRawDepthImage::generateRGB(unsigned char* saveData)
 {
 	for (int i = 0;i<size;i++){
 		saveData[3*i+0]=saveData[3*i+1]=saveData[3*i+2] = data[i]/10;	
-		if (data[i] < 0){
-			saveData[3*i+0]=255;	
-			saveData[3*i+1]=0;	
-			saveData[3*i+1]=0;	
+		if (data[i] < 0 && data[i] > -4){
+			saveData[3*i+0]= saveData[3*i+1]=saveData[3*i+1]=0;
+			saveData[3*i-data[i]-1] = 255; 
 		}
 	}
 }

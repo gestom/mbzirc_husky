@@ -22,7 +22,6 @@ typedef struct{
 	float v0,v1;
 	float m0,m1;
 	int minX,minY,maxX,maxY;
-	float ch,cs,cv;
 	int cornerX[4];
 	int cornerY[4];
 	int contourX[MAX_CONTOUR_POINTS];
@@ -31,12 +30,12 @@ typedef struct{
 	int id;
 	int size;
 	int type;
-	int combo;
 	int warning;
 	int valid;
 	float angle;
-	float roundness;
-	float circularity;
+	float ratio1;
+	float ratio2;
+	float sideRatio;
 }SSegment;
 
 class CSegmentation
@@ -44,13 +43,14 @@ class CSegmentation
 	public:
 		CSegmentation();
 		~CSegmentation();
-		SSegment findSegment(CRawDepthImage* image,int minSegmentSize,int maxSegmentSize);
+		SSegment findSegment(CRawDepthImage* image,int minSegmentSize,int maxSegmentSize,int wantedType = 0);
 		SSegment getSegment(int type,int number);
 
 		SSegment segmentArray[MAX_SEGMENTS];
 		bool debug;
 		bool drawSegments;
 		int numSegments,threshold;
+		float sizeRatioTolerance;
 };
 
 #endif
