@@ -1,7 +1,7 @@
 name: simulation
 root: ./
 
-startup_window: goto 
+startup_window: prepare_gripping
 pre_window: export ARM_TYPE=j2n6s300
 windows:
   - roscore:
@@ -11,11 +11,17 @@ windows:
   - kinova_bringup:
       layout: even-vertical
       panes:
-        - sleep 1; roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=$ARM_TYPE
+        - sleep 3; roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=$ARM_TYPE
   - arm_manager:
       layout: even-vertical
       panes:
-        - sleep 2; roslaunch kinova_control_manager control_manager.launch
+        - sleep 5; 
+          roslaunch kinova_control_manager control_manager.launch
+  - vision:
+      layout: even-vertical
+      panes:
+        - sleep 8; roslaunch realsense2_camera rs_aligned_depth.launch
+        - sleep 9; rosrun mbzirc_husky brickDetector
   - home_arm:
       layout: even-vertical
       panes:
@@ -25,6 +31,10 @@ windows:
       layout: even-vertical
       panes:
         - 'history -s rosservice call /kinova/arm_manager/prepare_gripping'
+  - align_arm:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/align_arm'
   - goto:
       layout: even-vertical
       panes:
@@ -39,3 +49,7 @@ windows:
       layout: even-vertical
       panes:
         - 'history -s rosservice call /kinova/arm_manager/set_velocity \"pose: \[0.0, 0.0, 0.1\]\"'
+  - rviz:
+      layout: even-vertical
+      panes:
+        - sleep 5; rviz

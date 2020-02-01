@@ -43,6 +43,7 @@ add_action_files(
 generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
   	cfg/pickup.cfg
+	cfg/brick_pile.cfg
 )
 
 generate_messages(
