@@ -1,5 +1,5 @@
 bool activate
-bool wantedType 
+int32 wantedType 
 int32 groundPlaneDistance 
 ---
 bool activated
