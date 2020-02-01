@@ -1,3 +1,4 @@
 maps/*
 rosbags/*
 *.swp
+*.pyc
