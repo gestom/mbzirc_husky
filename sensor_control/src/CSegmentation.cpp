@@ -15,6 +15,7 @@ CSegmentation::CSegmentation()
 {
 	debug = true;
 	drawSegments = true;
+	sizeRatioTolerance=0.2;
 }
 
 CSegmentation::~CSegmentation()
@@ -29,7 +30,7 @@ SSegment CSegmentation::getSegment(int type,int number)
 	return result;
 }
 
-SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize)
+SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType)
 {
 	segmentArray[0].valid = -1;
 	int width = image->width;
@@ -98,8 +99,9 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				for (int j =0;j<4;j++){
 					pos = position+expand[j];
 					//a pokud maji hledanou barvu,
-					if (buffer[pos] != 0) nncount++;
-					if (buffer[pos] < 0){
+					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 50) nncount++;
+					//if (buffer[pos] != 0) nncount++;
+					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 50){
 						//pridame jejich pozici do souradnic aktualniho segmentu
 						stack[queueEnd++] = pos;
 						//a otagujem je 
@@ -154,7 +156,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				segmentArray[numSegments-1].m1 = eigvl1;
                                 //std::cout << queueEnd<< " cxx " << cxx<<" cxy "<<cxy<<" cyy " << cyy<<" fcxx " <<fcxx<<" fcyy "<< fcyy<< " fcxy "<<fcxy<< " det "<<det<<" type "<<segmentArray[numSegments].type<<std::endl;
 				segmentArray[numSegments-1].size = queueEnd; 
-				printf("%i %f %f %f\n",numSegments-1,fsx,fsy,fsz);
+				//printf("%i %f %f %f\n",numSegments-1,fsx,fsy,fsz);
 				segmentArray[numSegments-1].x = fsx;
 				segmentArray[numSegments-1].y = fsy;
 				segmentArray[numSegments-1].z = fsz;
@@ -162,8 +164,8 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				segmentArray[numSegments-1].minY = minY; 
 				segmentArray[numSegments-1].maxX = maxX; 
 				segmentArray[numSegments-1].maxY = maxY; 
-				segmentArray[numSegments-1].roundness = M_PI*4*eigvl1*eigvl0/queueEnd;
-				segmentArray[numSegments-1].circularity = eigvl1/eigvl0;
+				//segmentArray[numSegments-1].roundness = M_PI*4*eigvl1*eigvl0/queueEnd;
+				//segmentArray[numSegments-1].circularity = eigvl1/eigvl0;
 
 				/*calculate and publish corner candidates*/
 				int corners = 0;
@@ -200,11 +202,6 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 							maxDist = dist;
 						}
 					}
-					for (int k = -3;k<=3;k++){
-						for (int l = -3;l<=3;l++){
-							image->data[(cY[cn]+k)*width+cX[cn]+l] = -1;
-						}
-					}
 				}
 				/*ordering points*/
 				cx = cX[1];
@@ -214,7 +211,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				cX[2] = cx;
 				cY[2] = cy;
 				segmentArray[numSegments-1].contourPoints = min(contourPoints,MAX_CONTOUR_POINTS);
-				segmentArray[numSegments-1].combo = 1; 
+				//segmentArray[numSegments-1].combo = 1; 
 				segmentArray[numSegments-1].valid = 1; 
 				for (int ii = 0;ii<4;ii++){
 					segmentArray[numSegments-1].cornerX[ii] = cX[ii];
@@ -225,7 +222,6 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 			}
 		}
 	}
-	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	for (int i = 0;i<numSegments;i++)
 	{
 		float dist[4];
@@ -242,21 +238,51 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		{
 			 pX = (segmentArray[i].cornerX[0]+segmentArray[i].cornerX[3])/2-(segmentArray[i].cornerX[1]+segmentArray[i].cornerX[2])/2;
 			 pY = (segmentArray[i].cornerY[0]+segmentArray[i].cornerY[3])/2-(segmentArray[i].cornerY[1]+segmentArray[i].cornerY[2])/2;
-			angle = atan2(pY,pX);
+			 angle = atan2(pY,pX);
+			 if (fabs(dist[1]) > 0.01) segmentArray[i].sideRatio = dist[0]/dist[1];
 		}else{
 			 pX = (segmentArray[i].cornerX[0]+segmentArray[i].cornerX[1])/2-(segmentArray[i].cornerX[3]+segmentArray[i].cornerX[2])/2;
 			 pY = (segmentArray[i].cornerY[0]+segmentArray[i].cornerY[1])/2-(segmentArray[i].cornerY[3]+segmentArray[i].cornerY[2])/2;
-			angle = atan2(pY,pX);
+			 angle = atan2(pY,pX);
+			 if (fabs(dist[0]) > 0.01){
+				 segmentArray[i].sideRatio = dist[1]/dist[0];
+			 }
 		}
+		segmentArray[i].type = 1;  
+		if (segmentArray[i].sideRatio > 2.3)  segmentArray[i].type = 2; 
+		if (segmentArray[i].sideRatio > 4.5)  segmentArray[i].type = 3; 
 		if (angle > +M_PI/2) angle = angle - M_PI;
 		if (angle < -M_PI/2) angle = angle + M_PI;
 		segmentArray[i].angle = angle;
+		segmentArray[i].ratio1 = fabs(dist[0]*dist[1]-segmentArray[i].size)/segmentArray[i].size;
+		segmentArray[i].ratio2 = fabs(dist[2]*dist[3]-segmentArray[i].size)/segmentArray[i].size;
+		if (segmentArray[i].ratio1 >sizeRatioTolerance || segmentArray[i].ratio2 >sizeRatioTolerance) segmentArray[i].valid = 0;
 	}
 	for (int i = 0;i<numSegments;i++){
-	       	printf("Segment %i size %i: %f %f %f %f",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].y,segmentArray[i].z,segmentArray[i].angle);
-		//for (int ii = 0;ii<4;ii++) printf("%i %i ",segmentArray[i].cornerX[ii],segmentArray[i].cornerY[ii]);
-		printf("\n");
+	       	segmentArray[i].size = segmentArray[i].size*segmentArray[i].valid;
+	       	if (wantedType != 0) segmentArray[i].size = segmentArray[i].size*(segmentArray[i].type == wantedType);
 	}
+	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
+	for (int i = 0;i<numSegments;i++)
+	{
+		if (segmentArray[i].size == 0){ 
+			numSegments = i; 
+			break;
+		}
+	}
+	for (int i = 0;i<numSegments;i++){
+		for (int cn = 0;cn<4;cn++){
+			for (int k = -3;k<=3;k++){
+				for (int l = -3;l<=3;l++){
+					int YY = segmentArray[i].cornerY[cn]+k;
+					int XX = segmentArray[i].cornerX[cn]+l;
+					if ( XX > 0 && XX < height && YY>0 && YY< width ) image->data[YY*width+XX] = -segmentArray[i].type;
+				}
+			}
+		}
+	}
+
+	for (int i = 0;i<numSegments;i++) printf("Segment %i size %i %i : %f %f %f %f\n",i,segmentArray[i].size,segmentArray[i].type,segmentArray[i].x,segmentArray[i].y,segmentArray[i].z,segmentArray[i].angle);
 
 	//Seradi segmenty podle velikosti
 	free(buffer);

@@ -29,6 +29,7 @@ CRawDepthImage *depthImage;
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
 int groundPlaneDistance = 0;
+int wantedType = 0;
 
 //parameter reconfiguration
 /*void reconfigureCallback(social_card_reader::social_cardConfig &config, uint32_t level) 
@@ -55,7 +56,6 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	segment.valid = 0;
 	numDetectionAttempts++;
-	printf("Incoming\n");
 	if (depthImage->bpp != msg->step/msg->width || depthImage->width != msg->width || depthImage->height != msg->height)
 	{
 		delete depthImage;
@@ -64,7 +64,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	memcpy(depthImage->data,(void*)&msg->data[0],msg->step*msg->height);
 	depthImage->getClosest(groundPlaneDistance);
-	segment = segmentation->findSegment(depthImage,5000,10000000);
+	segment = segmentation->findSegment(depthImage,5000,10000000,wantedType);
 	float pX,pY,pZ;
 	brickPose.detected = false;
 	if (segment.valid == 1){
@@ -74,6 +74,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		brickPose.pose.pose.position.x = pX;
 		brickPose.pose.pose.position.y = pY;
 		brickPose.pose.pose.position.z = pZ;
+		brickPose.type = segment.type;
 		tf2::Quaternion quat_tf;
 		quat_tf.setRPY(0,0,segment.angle);
 		brickPose.pose.pose.orientation = tf2::toMsg(quat_tf);
@@ -110,6 +111,7 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 		groundPlaneDistance = req.groundPlaneDistance;
 		numDetections = 0;
 		numDetectionAttempts = 0;
+		wantedType = req.wantedType;
 		int attempts = 0;
 		while (numDetectionAttempts == 0 && attempts < 20){
 			ros::spinOnce();
@@ -166,5 +168,6 @@ int main(int argc, char** argv)
 		ros::spinOnce();
 		usleep(30000);
 	}
+	ros::shutdown();
 }
 
