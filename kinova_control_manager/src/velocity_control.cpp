@@ -427,7 +427,8 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
   brick_orientation_msg.z()              = brick_srv.response.brickPose.pose.orientation.z;
   Eigen::Vector3d brick_euler            = quaternionToEuler(brick_orientation_msg);
   Eigen::Vector3d default_gripping_euler = quaternionToEuler(default_gripping_pose.rot);
-  default_gripping_euler[2]              = brick_euler[2] + 0.11;
+  std::cout << "brick euler: " << brick_euler[2];
+  //default_gripping_euler[2]              = std::min(brick_euler[2], brick_euler[2] - (M_PI/2));
   Pose3d new_pose;
   new_pose.pos.x() = end_effector_pose.pos.x() + align[0];
   new_pose.pos.y() = end_effector_pose.pos.y() + align[1];
