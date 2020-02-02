@@ -10,6 +10,8 @@
 #include <mbzirc_husky/pickupConfig.h>
 #include <std_srvs/Trigger.h>
 
+#include <mbzirc_husky_msgs/brickPosition.h>
+#include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/EndEffectorPose.h>
 #include <mbzirc_husky_msgs/ArmStatus.h>
 
@@ -41,11 +43,12 @@ std_srvs::Trigger  arm_align_srv;
 std_srvs::Trigger  arm_home_hard_srv;
 std_srvs::Trigger  arm_home_soft_srv;
 std_srvs::Trigger  arm_obstacle_srv;
-std_srvs::Trigger  brick_detect_srv;
 mbzirc_husky_msgs::EndEffectorPose arm_goto_srv;
 mbzirc_husky_msgs::EndEffectorPose arm_goto_relative_srv;
+mbzirc_husky_msgs::brickDetect brick_detect_srv;
 
 //Arm clients
+ros::ServiceClient brick_detect_client; 
 ros::ServiceClient arm_prepare_client; 
 ros::ServiceClient arm_home_hard_client;
 ros::ServiceClient arm_home_soft_client;
@@ -90,10 +93,17 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	mbzirc_husky::pickupResult result;
 	mbzirc_husky::pickupFeedback feedback;
 	state = ALIGNING_ROBOT;
+	brick_detect_srv.request.activate = true;
+	brick_detect_srv.request.groundPlaneDistance = 0;
+	brick_detect_client.call(brick_detect_srv);
 	while (isTerminal(state))
 	{
 			
 	}
+	int num_of_cubes = goal->cubes; 
+	
+	state = HOME;
+	
 	if(state == HOME) {
 		if(arm_home_hard_client.call(arm_home_hard_srv)){
 			ROS_INFO("Arm going home");
@@ -125,19 +135,7 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 			ROS_ERROR("Aligning arm failed");
 			state = FAIL;
 		}
-
 	}
-	/*
-	if(state == GRASP){
-		arm_goto_relative_srv.request.pose = {0,0,-0.1,0,0,0};
-		if (arm_goto_relative_client.call(arm_goto_relative_srv)){
-			ROS_INFO("Moving towards box");
-			state = SUCCESS;	
-		} else {
-			ROS_ERROR("Failed to move closer to box");
-			state = FAIL;
-		}		
-	}*/		
 
 	if (state == SUCCESS)
 		server->setSucceeded(result);
@@ -148,7 +146,7 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	state = STOPPING;
 }
 
-void depthImageCallback(const mbzirc_husky::brickDetectConstPtr& msg)
+void brickPositionCallback(const mbzirc_husky_msgs::brickPositionConstPtr& msg)
 {
 	
 }
