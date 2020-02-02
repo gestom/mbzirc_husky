@@ -11,8 +11,8 @@
     <remap from="~cartesian_velocity_out" to="$(arg ARM_TYPE)_driver/in/cartesian_velocity" />
 
     <!-- output to the mrs gripper -->
-    <remap from="~grip_out" to="kinova/gripper/grip" />
-    <remap from="~ungrip_out" to="kinova/gripper/ungrip" />
+    <remap from="~grip_out" to="husky/gripper/grip" />
+    <remap from="~ungrip_out" to="husky/gripper/ungrip" />
 
     <!-- brick detection -->
     <remap from="~brick_detect" to="detectBricks" />
