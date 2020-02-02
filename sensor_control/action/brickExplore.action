@@ -1,0 +1,8 @@
+#1 = find/go to bricks, 2 = find/go to place to stack
+int64 goal
+#what brick to find 0 = smallest, 3 = biggest (red/green/blue/orange)
+int64 findbrick
+----
+int64 result 
+----
+int64 dummy

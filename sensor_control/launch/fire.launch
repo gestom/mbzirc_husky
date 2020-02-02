@@ -1,0 +1,12 @@
+<launch>
+
+    <!--Launch husky-->
+
+    <!--fire tasks-->
+    <node name="fireStateMachine" type="fireStateMachine" pkg="mbzirc_husky" respawn="true" output="screen"/>
+    
+    <node name="spray" type="spray" pkg="mbzirc_husky" respawn="true" output="screen"/>
+    
+    <node name="fireExplore" type="fireExplore" pkg="mbzirc_husky" respawn="true" output="screen"/>
+
+</launch>

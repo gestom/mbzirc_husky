@@ -33,7 +33,7 @@ typedef enum{
 }ESprayState;
 
 //int misdetections = 0;
-ros::NodeHandle n;
+ros::NodeHandle* pn;
 ESprayState state = IDLE;
 ros::Publisher cmd_vel;
 geometry_msgs::Twist base_cmd;
@@ -68,7 +68,7 @@ int sprayTime = 1000; //in miliseconds
 void thermalCallback(const std_msgs::String::ConstPtr& msg);
 void startTurning()
 {
-  thermalSubscriber = n.subscribe("/thermal/raw_temp_array", 1, thermalCallback);
+  thermalSubscriber = pn->subscribe("/thermal/raw_temp_array", 1, thermalCallback);
   state = TURNING;
   nThermalFrames = 0;
 }
@@ -212,7 +212,8 @@ int main(int argc, char** argv)
 {
 	pump = new CPump("/dev/robot/pump");
 	ros::init(argc, argv, "spray");
-	//ros::NodeHandle n;
+	ros::NodeHandle n;
+    pn = &n;
 	// Dynamic reconfiguration server
 	/*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
