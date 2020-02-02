@@ -7,13 +7,11 @@ end_effector_home_pose: [0.07267599990734311, -0.19457573496675962, 0.4898155261
 default_gripping_pose: [0.0, -0.45, 0.5, 0.0, -3.141593, 0.0] # [m m m rad rad rad]
 default_firefighting_pose: [0.45906802294120663, -0.0013019907726987967, 0.6128451137619106, 1.5640734913191676, 3.121927023259888, 1.5827672369569061] # [m m m rad rad rad]
 husky_to_arm_base_transform: [-0.175, -0.13 ,0.17, 0, 0, 0] # [m m m rad rad rad]
-original_wrist_offset: [0.0, 0.0, 0.16] # [m m m]
+original_wrist_offset: [0.0, 0.0, 0.16, 0.0, 0.0, -0.23] # [m m m]
 arm_base_to_ground: 0.395 # [m]
-linear_vel_modifier: 1.5 # [m/s]
-min_linear_vel: 0.07 # [m/s]
-max_linear_vel: 1.0 # [m/s]
-angular_vel_modifier: 2.0 # [rad/s]
-min_angular_vel: 0.05 # [m/s]
-max_angular_vel: 0.4 # [m/s]
+linear_vel_modifier: 1.2 # [m/s]
+move_down_speed_faster: 0.2 # [m/s]
+move_down_speed_slower: 0.05 # [m/s]
 husky_base_frame_id: "base_link"
 kinova_base_frame_id: "j2n6s300_link_base"
+

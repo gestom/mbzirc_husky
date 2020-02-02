@@ -33,9 +33,11 @@
     <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
     <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" />
     <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
+    <remap from="~pickup_in" to="kinova/arm_manager/pickup_brick" />
     <remap from="~goto_in" to="kinova/arm_manager/goto" />
     <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
     <remap from="~goto_relative_fixed_in" to="kinova/arm_manager/goto_relative_fixed" />
-
+    
+    
   </node>
 </launch>
