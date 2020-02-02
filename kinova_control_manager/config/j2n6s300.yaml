@@ -9,9 +9,9 @@ default_firefighting_pose: [0.45906802294120663, -0.0013019907726987967, 0.61284
 husky_to_arm_base_transform: [-0.175, -0.13 ,0.17, 0, 0, 0] # [m m m rad rad rad]
 original_wrist_offset: [0.0, 0.0, 0.16, 0.0, 0.0, -0.23] # [m m m]
 arm_base_to_ground: 0.395 # [m]
-linear_vel_modifier: 1.2 # [m/s]
+linear_vel_modifier: 2.0
 move_down_speed_faster: 0.2 # [m/s]
-move_down_speed_slower: 0.05 # [m/s]
+move_down_speed_slower: 0.03 # [m/s]
 husky_base_frame_id: "base_link"
 kinova_base_frame_id: "j2n6s300_link_base"
 
