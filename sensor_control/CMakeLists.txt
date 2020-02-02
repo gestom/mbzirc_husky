@@ -44,6 +44,7 @@ generate_dynamic_reconfigure_options(
   	cfg/spray.cfg
   	cfg/pickup.cfg
 	cfg/brick_pile.cfg
+    cfg/bounds.cfg
 )
 
 generate_messages(

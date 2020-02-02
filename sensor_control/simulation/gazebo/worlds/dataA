@@ -1,0 +1,539 @@
+
+	  <model name='brick_red_0'>
+		<pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_1'>
+		<pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_2'>
+		<pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_3'>
+		<pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_4'>
+		<pose frame=''>0.4 0.0 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.4 0.0 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_5'>
+		<pose frame=''>0.4 0.0 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.4 0.0 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_6'>
+		<pose frame=''>0.4 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.4 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_7'>
+		<pose frame=''>0.4 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.4 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_8'>
+		<pose frame=''>0.4 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.4 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_9'>
+		<pose frame=''>0.4 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.4 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_10'>
+		<pose frame=''>0.8 0.0 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.8 0.0 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_11'>
+		<pose frame=''>0.8 0.0 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.8 0.0 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_12'>
+		<pose frame=''>0.8 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.8 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_13'>
+		<pose frame=''>0.8 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.8 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_14'>
+		<pose frame=''>0.8 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.8 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_15'>
+		<pose frame=''>0.8 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.8 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_16'>
+		<pose frame=''>1.2 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>1.2 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_17'>
+		<pose frame=''>1.2 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>1.2 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_18'>
+		<pose frame=''>1.2 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>1.2 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_red_19'>
+		<pose frame=''>1.2 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>1.2 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_20'>
+		<pose frame=''>0.0 0.0 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.0 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_21'>
+		<pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_22'>
+		<pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_23'>
+		<pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_24'>
+		<pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_25'>
+		<pose frame=''>0.7 0.0 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.7 0.0 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_26'>
+		<pose frame=''>0.7 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.7 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_27'>
+		<pose frame=''>0.7 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.7 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_28'>
+		<pose frame=''>0.7 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.7 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_green_29'>
+		<pose frame=''>0.7 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.7 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_blue_30'>
+		<pose frame=''>0.0 0.0 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.0 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_blue_31'>
+		<pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_blue_32'>
+		<pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_blue_33'>
+		<pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_blue_34'>
+		<pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_35'>
+		<pose frame=''>0.0 0.0 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.0 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_36'>
+		<pose frame=''>0.0 0.0 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.0 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_37'>
+		<pose frame=''>0.0 0.0 0.42 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.0 0.42 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_38'>
+		<pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_39'>
+		<pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_40'>
+		<pose frame=''>0.0 0.3 0.42 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.42 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_41'>
+		<pose frame=''>0.0 0.3 0.63 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.3 0.63 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_42'>
+		<pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.0 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_43'>
+		<pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.21 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
+
+
+	  <model name='brick_orange_44'>
+		<pose frame=''>0.0 0.6 0.42 0 0 0</pose>
+		<scale>1 1 1</scale>
+		<link name='link'>
+		  <pose frame=''>0.0 0.6 0.42 0 0 0</pose>
+		  <velocity>-1e-06 0.014832 -0.013411 -0.14881 -4e-06 -2e-06</velocity>
+		  <acceleration>0.004687 3.006 -4.7995 1.29349 0.043577 -0.007035</acceleration>
+		  <wrench>0.001786 1.14529 -1.82861 0 -0 0</wrench>
+		</link>
+	  </model>
