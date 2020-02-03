@@ -11,7 +11,8 @@ original_wrist_offset: [0.0, 0.0, 0.16, 0.0, 0.0, -0.23] # [m m m]
 arm_base_to_ground: 0.395 # [m]
 linear_vel_modifier: 2.0
 move_down_speed_faster: 0.2 # [m/s]
-move_down_speed_slower: 0.03 # [m/s]
+move_down_speed_slower: 0.1 # [m/s]
+move_down_speed_mega_slow: 0.022 # [m/s]
 husky_base_frame_id: "base_link"
 kinova_base_frame_id: "j2n6s300_link_base"
 

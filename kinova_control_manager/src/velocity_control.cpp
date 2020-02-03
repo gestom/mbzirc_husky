@@ -140,6 +140,7 @@ private:
   double linear_vel_modifier;
   double move_down_speed_faster;
   double move_down_speed_slower;
+  double move_down_speed_mega_slow;
 
   // arm status
   MotionStatus_t status;
@@ -245,6 +246,7 @@ void kinova_control_manager::onInit() {
   nh_.getParam("linear_vel_modifier", linear_vel_modifier);
   nh_.getParam("move_down_speed_faster", move_down_speed_faster);
   nh_.getParam("move_down_speed_slower", move_down_speed_slower);
+  nh_.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
   //}
 
   /* parse params //{ */
@@ -436,9 +438,9 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 
   double          roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
-  std::cout << "brick euler: " << brick_euler[2] << ", brick yaw: " << yaw;
+  ROS_INFO("brick euler: %.3f, brick yaw: %.3f", brick_euler[2],  yaw);
   /* default_gripping_euler[2]              = std::min(brick_euler[2], brick_euler[2] - (M_PI/2)); */
-  default_gripping_euler[2] = yaw;
+  //default_gripping_euler[2] = brick_euler[2] - 0.11;
 
   Pose3d new_pose;
   new_pose.pos.x() = end_effector_pose.pos.x() + align[0];
@@ -469,14 +471,9 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
-  while (end_effector_pose.pos.z() > 0.4) {
-    if (brick_reliable) {
-      msg.twist_linear_x = -brick_pose.pos.x() * linear_vel_modifier;
-      msg.twist_linear_y = brick_pose.pos.y() * linear_vel_modifier;
-    } else {
-      msg.twist_linear_x = 0.0;
-      msg.twist_linear_y = 0.0;
-    }
+  while (brick_reliable) {
+    msg.twist_linear_x = -brick_pose.pos.x() * linear_vel_modifier;
+    msg.twist_linear_y = brick_pose.pos.y() * linear_vel_modifier;
     msg.twist_linear_z = -move_down_speed_faster;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
@@ -485,15 +482,31 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
 
   grip();
   double magnet_to_ground = 50;
-  while (!brick_attached || magnet_to_ground < 0.25) {
-    magnet_to_ground = arm_base_to_ground + end_effector_pose.pos.z();
-    std::cout << "Magent to ground: " << magnet_to_ground << "\n";
+  while (!brick_attached && magnet_to_ground > 0.25) {
+    magnet_to_ground = arm_base_to_ground + end_effector_pose.pos.z() - 0.037;
+    //std::cout << "Magent to ground: " << magnet_to_ground << "\n";
     msg.twist_linear_x = 0.0;
     msg.twist_linear_y = 0.0;
     msg.twist_linear_z = -move_down_speed_slower;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
+  } 
+  ROS_WARN("[kinova_control_manager]:MEGA slow now");
+  
+  while (!brick_attached) {
+    //magnet_to_ground = arm_base_to_ground + end_effector_pose.pos.z() - 0.037;
+    //std::cout << "Magent to ground: " << magnet_to_ground << "\n";
+    msg.twist_linear_x = 0.0;
+    msg.twist_linear_y = 0.0;
+    msg.twist_linear_z = -move_down_speed_mega_slow;
+    publisher_cartesian_velocity.publish(msg);
+    ros::Duration(0.009).sleep();
   }
+  msg.twist_linear_x = 0.0;
+  msg.twist_linear_y = 0.0;
+  msg.twist_linear_z = 0.0;
+  publisher_cartesian_velocity.publish(msg);
+
   res.success = true;
   return true;
 }

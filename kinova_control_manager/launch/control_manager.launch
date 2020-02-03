@@ -22,7 +22,7 @@
     <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
     <remap from="~joint_torques_in" to="$(arg ARM_TYPE)_driver/out/joint_torques" />
     <remap from="~end_effector_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
-    <remap from="~gripper_diagnostics_in" to="kinova/gripper/gripper_diagnostics" />
+    <remap from="~gripper_diagnostics_in" to="husky/gripper/gripper_diagnostics" />
 
     <!-- manager status -->
     <remap from="~arm_status_out" to="kinova/arm_manager/status" />
