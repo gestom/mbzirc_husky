@@ -116,7 +116,7 @@
     </model>
     <gui fullscreen='0'>
       <camera name='camera'>
-        <pose frame=''>22.2715 3.18756 7.16245 0 0.591152 -2.23855</pose>
+        <pose frame=''>25.4697 25.5041 23.9563 0 0.663152 -2.40655</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
@@ -135,10 +135,10 @@
     </audio>
     <wind/>
     <state world_name='default'>
-      <sim_time>3022 184000000</sim_time>
-      <real_time>1087 133947342</real_time>
-      <wall_time>1580719517 68599207</wall_time>
-      <iterations>191353</iterations>
+      <sim_time>3050 56000000</sim_time>
+      <real_time>47 457482105</real_time>
+      <wall_time>1580741216 817132879</wall_time>
+      <iterations>6968</iterations>
       <model name='artificial_wall'>
         <pose frame=''>4.15045 17.5798 0 0 -0 0</pose>
         <scale>1 1 1</scale>
@@ -660,496 +660,496 @@
         </link>
       </model>
       <model name='husky'>
-        <pose frame=''>-3.9605 13.3412 0.132085 -0.000159 0.000101 2.87637</pose>
+        <pose frame=''>-3.57894 13.2761 0.132159 0.000196 -0.000195 2.74682</pose>
         <scale>1 1 1</scale>
         <link name='front_left_wheel_link'>
-          <pose frame=''>-4.28236 13.1329 0.164889 -0.000564 -0.59639 2.87683</pose>
-          <velocity>0.00832 0.003919 -0.056916 0.089047 -0.012151 -0.019717</velocity>
-          <acceleration>-0.260326 1.34432 -18.0896 1.83509 1.48888 -2.2541</acceleration>
-          <wrench>-0.686479 3.54498 -47.7024 0 -0 0</wrench>
+          <pose frame=''>-3.92499 13.1111 0.1651 -4.4e-05 -0.591617 2.74681</pose>
+          <velocity>0.01084 -0.002924 0.00097 0.01373 0.056001 -0.011803</velocity>
+          <acceleration>0.265026 -0.917976 -1.43901 -1.23273 -1.02549 1.54</acceleration>
+          <wrench>0.698873 -2.4207 -3.79467 0 -0 0</wrench>
         </link>
         <link name='front_right_wheel_link'>
-          <pose frame=''>-4.13276 13.6836 0.165053 3.14073 0.993771 -0.265672</pose>
-          <velocity>0.014381 0.001352 0.00664 -0.021911 0.024392 -0.000435</velocity>
-          <acceleration>0.202917 0.223738 10.8107 -0.586442 -1.1386 0.201254</acceleration>
-          <wrench>0.535091 0.589998 28.5078 0 -0 0</wrench>
+          <pose frame=''>-3.70551 13.6379 0.165113 3.14107 0.991436 -0.394918</pose>
+          <velocity>0.012367 -0.003044 0.00191 0.015344 0.060316 -0.00678</velocity>
+          <acceleration>-1.20716 -0.202541 -1.72787 1.73876 0.972593 2.0862</acceleration>
+          <wrench>-3.18328 -0.534102 -4.55639 0 -0 0</wrench>
         </link>
         <link name='husky::base_link'>
-          <pose frame=''>-3.9605 13.3412 0.132085 -0.000159 0.000101 2.87637</pose>
-          <velocity>0.011336 0.004682 -0.025869 0.107693 -0.017664 -0.010689</velocity>
-          <acceleration>0.097856 -0.455962 -2.77153 -2.61814 1.4494 0.466621</acceleration>
-          <wrench>4.58689 -21.3727 -129.912 0 -0 0</wrench>
+          <pose frame=''>-3.57894 13.2761 0.132159 0.000196 -0.000195 2.74682</pose>
+          <velocity>0.012518 -0.0024 -0.009488 0.003169 0.045259 -0.003095</velocity>
+          <acceleration>-0.026696 0.032061 -4.10862 -2.91758 -1.06272 -0.622117</acceleration>
+          <wrench>-1.25134 1.50283 -192.587 0 -0 0</wrench>
         </link>
         <link name='husky::rear_right_wheel_link'>
-          <pose frame=''>-3.63868 13.5494 0.165114 3.14056 1.06351 -0.266022</pose>
-          <velocity>0.008852 -0.00497 -0.000317 0.030139 0.03269 0.004858</velocity>
-          <acceleration>-0.594241 -1.05908 -2.77564 -3.01611 0.485278 -0.254321</acceleration>
-          <wrench>-1.56701 -2.79279 -7.31936 0 -0 0</wrench>
+          <pose frame=''>-3.23291 13.441 0.165006 3.14031 1.06567 -0.395688</pose>
+          <velocity>0.017935 4e-05 -0.03511 0.02551 0.037922 -0.016239</velocity>
+          <acceleration>0.961074 1.33921 -9.51546 -1.4095 -0.848207 -1.19337</acceleration>
+          <wrench>2.53435 3.53149 -25.0923 0 -0 0</wrench>
         </link>
         <link name='rear_left_wheel_link'>
-          <pose frame=''>-3.78829 12.9987 0.16497 -0.00038 -0.822082 2.8766</pose>
-          <velocity>0.008292 -0.003054 -0.064214 0.099524 -0.017093 -0.007898</velocity>
-          <acceleration>-1.6984 0.554907 -19.6396 -1.44494 1.53901 2.63526</acceleration>
-          <wrench>-4.47867 1.46329 -51.7896 0 -0 0</wrench>
+          <pose frame=''>-3.45234 12.9142 0.165094 -0.000239 -0.82804 2.74713</pose>
+          <velocity>0.012271 0.000983 0.000206 -0.017009 0.054709 -0.012695</velocity>
+          <acceleration>0.916901 1.04557 -1.6875 -1.36462 0.886761 -1.78689</acceleration>
+          <wrench>2.41787 2.75716 -4.44993 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_blue_brick'>
-        <pose frame=''>20.5722 -2.24389 -5.3e-05 -0.000475 -0 0.000842</pose>
+        <pose frame=''>20.5722 -2.24389 -5.3e-05 -0.000475 -0 0.001008</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.5722 -2.24384 0.099947 -0.000475 -0 0.000842</pose>
-          <velocity>-1.1e-05 0.014832 -0.013411 -0.148808 -0.000103 -2e-06</velocity>
-          <acceleration>0.002755 3.00602 -4.79946 1.29353 0.005152 -0.007018</acceleration>
-          <wrench>0.00105 1.14529 -1.82859 0 -0 0</wrench>
+          <pose frame=''>20.5722 -2.24384 0.099947 -0.000475 -0 0.001008</pose>
+          <velocity>-1.4e-05 0.014832 -0.013411 -0.148807 -0.000128 -2e-06</velocity>
+          <acceleration>0.002277 3.00603 -4.79945 1.29348 -0.004362 -0.007013</acceleration>
+          <wrench>0.000867 1.1453 -1.82859 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_blue_brick_0'>
-        <pose frame=''>19.1239 -2.2571 -5.3e-05 0.000475 -0 0.000822</pose>
+        <pose frame=''>19.1239 -2.2571 -5.3e-05 0.000475 -0 0.000988</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>19.1239 -2.25715 0.099947 0.000475 -0 0.000822</pose>
-          <velocity>1.1e-05 -0.014832 -0.013411 0.148808 0.0001 -2e-06</velocity>
-          <acceleration>-0.002811 -3.00602 -4.79946 -1.29354 -0.006272 -0.007018</acceleration>
-          <wrench>-0.001071 -1.14529 -1.8286 0 -0 0</wrench>
+          <pose frame=''>19.1239 -2.25715 0.099947 0.000475 -0 0.000988</pose>
+          <velocity>1.4e-05 -0.014832 -0.013411 0.148807 0.000125 -2e-06</velocity>
+          <acceleration>-0.002334 -3.00603 -4.79945 -1.29349 0.003216 -0.007014</acceleration>
+          <wrench>-0.000889 -1.1453 -1.82859 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_blue_brick_1'>
-        <pose frame=''>17.6106 -2.27652 -5.3e-05 -0.000475 -0 0.000807</pose>
+        <pose frame=''>17.6106 -2.27652 -5.3e-05 -0.000475 -0 0.000973</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>17.6106 -2.27647 0.099947 -0.000475 -0 0.000807</pose>
-          <velocity>-1.1e-05 0.014832 -0.013411 -0.148808 -9.8e-05 -2e-06</velocity>
-          <acceleration>0.002857 3.00602 -4.79946 1.29354 0.007174 -0.007019</acceleration>
-          <wrench>0.001088 1.14529 -1.8286 0 -0 0</wrench>
+          <pose frame=''>17.6106 -2.27647 0.099947 -0.000475 -0 0.000973</pose>
+          <velocity>-1.3e-05 0.014832 -0.013411 -0.148807 -0.000123 -2e-06</velocity>
+          <acceleration>0.002377 3.00603 -4.79946 1.29349 -0.002356 -0.007014</acceleration>
+          <wrench>0.000906 1.1453 -1.82859 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_blue_brick_2'>
-        <pose frame=''>16.0556 -2.32741 0 -0.00012 0 0.000782</pose>
+        <pose frame=''>16.0556 -2.32743 -5.3e-05 0.000475 -0 0.000621</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>16.0556 -2.3274 0.1 -0.00012 0 0.000782</pose>
-          <velocity>2.2e-05 -0.002808 0.005787 0.028317 0.000218 2.6e-05</velocity>
-          <acceleration>0.008186 -4.41007 4.79947 0.299868 0.110837 0.006993</acceleration>
-          <wrench>0.003119 -1.68024 1.8286 0 -0 0</wrench>
+          <pose frame=''>16.0556 -2.32748 0.099947 0.000475 -0 0.000621</pose>
+          <velocity>1e-05 -0.014833 -0.013411 0.148813 0.000112 2e-06</velocity>
+          <acceleration>0.006958 -3.00596 -4.79955 -1.2929 0.088747 0.007055</acceleration>
+          <wrench>0.002651 -1.14527 -1.82863 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_blue_brick_3'>
-        <pose frame=''>14.4814 -2.33537 -5.3e-05 -0.000475 0 0.000767</pose>
+        <pose frame=''>14.4814 -2.33537 -5.3e-05 -0.000475 -0 0.000605</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>14.4814 -2.33532 0.099947 -0.000475 0 0.000767</pose>
-          <velocity>-1e-05 0.014832 -0.013411 -0.148808 -9.2e-05 -2e-06</velocity>
-          <acceleration>0.00297 3.00602 -4.79947 1.29355 0.009424 -0.00702</acceleration>
-          <wrench>0.001131 1.14529 -1.8286 0 -0 0</wrench>
+          <pose frame=''>14.4814 -2.33532 0.099947 -0.000475 -0 0.000605</pose>
+          <velocity>-1e-05 0.014833 -0.013411 -0.148813 -0.000109 2e-06</velocity>
+          <acceleration>-0.006913 3.00597 -4.79955 1.29292 -0.087839 0.007055</acceleration>
+          <wrench>-0.002634 1.14527 -1.82863 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_blue_brick_4'>
-        <pose frame=''>12.9941 -2.32331 -5.3e-05 0.000475 -0 0.000723</pose>
+        <pose frame=''>12.9941 -2.32331 -5.3e-05 0.000475 0 0.000889</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>12.9941 -2.32336 0.099947 0.000475 -0 0.000723</pose>
-          <velocity>1e-05 -0.014832 -0.013411 0.148808 8.6e-05 -2e-06</velocity>
-          <acceleration>-0.003096 -3.00602 -4.79947 -1.29355 -0.011925 -0.007021</acceleration>
-          <wrench>-0.001179 -1.14529 -1.8286 0 -0 0</wrench>
+          <pose frame=''>12.9941 -2.32336 0.099947 0.000475 0 0.000889</pose>
+          <velocity>1.2e-05 -0.014832 -0.013411 0.148807 0.00011 -2e-06</velocity>
+          <acceleration>-0.002619 -3.00603 -4.79946 -1.29352 -0.002457 -0.007016</acceleration>
+          <wrench>-0.000998 -1.1453 -1.82859 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick'>
-        <pose frame=''>20.8729 -1.63721 0 0.000121 -0 0</pose>
+        <pose frame=''>20.8728 -1.63719 0 0.000121 -0 -3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.8729 -1.63722 0.1 0.000121 -0 0</pose>
-          <velocity>5e-05 0.002978 0.005721 -0.029907 0.000495 -2e-05</velocity>
-          <acceleration>0.01782 4.49854 4.79388 -1.1275 0.163581 0.000789</acceleration>
-          <wrench>0.008643 2.18179 2.32503 0 -0 0</wrench>
+          <pose frame=''>20.8728 -1.6372 0.1 0.000121 -0 -3e-06</pose>
+          <velocity>5e-05 0.002978 0.005721 -0.029907 0.000496 -2e-05</velocity>
+          <acceleration>0.017833 4.49854 4.79388 -1.1275 0.163822 0.00079</acceleration>
+          <wrench>0.008649 2.18179 2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_0'>
-        <pose frame=''>19.5459 -1.58948 -5.3e-05 0.000482 -1e-06 0</pose>
+        <pose frame=''>19.5458 -1.58948 -5.3e-05 0.000482 -1e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>19.5459 -1.58953 0.099947 0.000482 -1e-06 0</pose>
+          <pose frame=''>19.5458 -1.58953 0.099947 0.000482 -1e-06 0</pose>
           <velocity>-2.2e-05 -0.015016 -0.013454 0.150532 -0.000159 -2.3e-05</velocity>
-          <acceleration>-0.01782 -3.00962 -4.79388 -1.25948 -0.163588 -0.010701</acceleration>
+          <acceleration>-0.017821 -3.00962 -4.79388 -1.25948 -0.163597 -0.010701</acceleration>
           <wrench>-0.008643 -1.45966 -2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_1'>
-        <pose frame=''>15.0961 -1.52593 0 -0.000121 -0 0</pose>
+        <pose frame=''>15.096 -1.52595 0 -0.000121 -0 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>15.0961 -1.52592 0.1 -0.000121 -0 0</pose>
+          <pose frame=''>15.096 -1.52594 0.1 -0.000121 -0 3e-06</pose>
           <velocity>5e-05 -0.002978 0.005721 0.029907 0.000496 2e-05</velocity>
-          <acceleration>0.017822 -4.49854 4.79388 1.1275 0.163612 -0.000789</acceleration>
-          <wrench>0.008643 -2.18179 2.32503 0 -0 0</wrench>
+          <acceleration>0.017833 -4.49854 4.79388 1.1275 0.163822 -0.00079</acceleration>
+          <wrench>0.008649 -2.18179 2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_10'>
-        <pose frame=''>13.8078 -0.859238 -5.3e-05 0.000482 -1e-06 0</pose>
+        <pose frame=''>13.8077 -0.859238 -5.3e-05 0.000482 -1e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>13.8078 -0.859286 0.099947 0.000482 -1e-06 0</pose>
+          <pose frame=''>13.8077 -0.859286 0.099947 0.000482 -1e-06 0</pose>
           <velocity>-2.2e-05 -0.015016 -0.013454 0.150532 -0.000159 -2.3e-05</velocity>
-          <acceleration>-0.01782 -3.00962 -4.79388 -1.25948 -0.163588 -0.010701</acceleration>
+          <acceleration>-0.017821 -3.00962 -4.79388 -1.25948 -0.163597 -0.010701</acceleration>
           <wrench>-0.008643 -1.45966 -2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_2'>
-        <pose frame=''>18.33 -1.60986 0 0.000121 -0 0</pose>
+        <pose frame=''>18.3299 -1.60984 0 0.000121 -0 -3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>18.33 -1.60987 0.1 0.000121 -0 0</pose>
-          <velocity>5e-05 0.002978 0.005721 -0.029907 0.000495 -2e-05</velocity>
-          <acceleration>0.01782 4.49854 4.79388 -1.1275 0.163581 0.000789</acceleration>
-          <wrench>0.008643 2.18179 2.32503 0 -0 0</wrench>
+          <pose frame=''>18.3299 -1.60985 0.1 0.000121 -0 -3e-06</pose>
+          <velocity>5e-05 0.002978 0.005721 -0.029907 0.000496 -2e-05</velocity>
+          <acceleration>0.017833 4.49854 4.79388 -1.1275 0.163822 0.00079</acceleration>
+          <wrench>0.008649 2.18179 2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_3'>
-        <pose frame=''>13.389 -1.59703 -5.3e-05 -0.000482 -1e-06 0</pose>
+        <pose frame=''>13.3889 -1.59703 -5.3e-05 -0.000482 -1e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>13.389 -1.59698 0.099947 -0.000482 -1e-06 0</pose>
+          <pose frame=''>13.3889 -1.59698 0.099947 -0.000482 -1e-06 0</pose>
           <velocity>-2.2e-05 0.015016 -0.013454 -0.150532 -0.000159 2.3e-05</velocity>
-          <acceleration>-0.017821 3.00962 -4.79388 1.25948 -0.163606 0.010701</acceleration>
+          <acceleration>-0.017821 3.00962 -4.79388 1.25948 -0.163597 0.010701</acceleration>
           <wrench>-0.008643 1.45966 -2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_4'>
-        <pose frame=''>16.9181 -1.53718 -5.3e-05 -0.000482 -1e-06 0</pose>
+        <pose frame=''>16.918 -1.53718 -5.3e-05 -0.000482 -1e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>16.9181 -1.53713 0.099947 -0.000482 -1e-06 0</pose>
+          <pose frame=''>16.918 -1.53713 0.099947 -0.000482 -1e-06 0</pose>
           <velocity>-2.2e-05 0.015016 -0.013454 -0.150532 -0.000159 2.3e-05</velocity>
-          <acceleration>-0.017821 3.00962 -4.79388 1.25948 -0.163606 0.010701</acceleration>
+          <acceleration>-0.017821 3.00962 -4.79388 1.25948 -0.163597 0.010701</acceleration>
           <wrench>-0.008643 1.45966 -2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_5'>
-        <pose frame=''>20.8014 -0.961535 -5.3e-05 0.000482 -1e-06 0</pose>
+        <pose frame=''>20.8013 -0.961535 -5.3e-05 0.000482 -1e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.8014 -0.961583 0.099947 0.000482 -1e-06 0</pose>
+          <pose frame=''>20.8013 -0.961583 0.099947 0.000482 -1e-06 0</pose>
           <velocity>-2.2e-05 -0.015016 -0.013454 0.150532 -0.000159 -2.3e-05</velocity>
-          <acceleration>-0.01782 -3.00962 -4.79388 -1.25948 -0.163588 -0.010701</acceleration>
+          <acceleration>-0.017821 -3.00962 -4.79388 -1.25948 -0.163597 -0.010701</acceleration>
           <wrench>-0.008643 -1.45966 -2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_6'>
-        <pose frame=''>19.5032 -1.00635 0 0.000121 -0 0</pose>
+        <pose frame=''>19.5031 -1.00633 0 0.000121 -0 -3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>19.5032 -1.00636 0.1 0.000121 -0 0</pose>
-          <velocity>5e-05 0.002978 0.005721 -0.029907 0.000495 -2e-05</velocity>
-          <acceleration>0.01782 4.49854 4.79388 -1.1275 0.163581 0.000789</acceleration>
-          <wrench>0.008643 2.18179 2.32503 0 -0 0</wrench>
+          <pose frame=''>19.5031 -1.00634 0.1 0.000121 -0 -3e-06</pose>
+          <velocity>5e-05 0.002978 0.005721 -0.029907 0.000496 -2e-05</velocity>
+          <acceleration>0.017833 4.49854 4.79388 -1.1275 0.163822 0.00079</acceleration>
+          <wrench>0.008649 2.18179 2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_7'>
-        <pose frame=''>18.2661 -0.940514 -5.3e-05 0.000482 -1e-06 0</pose>
+        <pose frame=''>18.266 -0.940514 -5.3e-05 0.000482 -1e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>18.2661 -0.940562 0.099947 0.000482 -1e-06 0</pose>
+          <pose frame=''>18.266 -0.940562 0.099947 0.000482 -1e-06 0</pose>
           <velocity>-2.2e-05 -0.015016 -0.013454 0.150532 -0.000159 -2.3e-05</velocity>
-          <acceleration>-0.01782 -3.00962 -4.79388 -1.25948 -0.163588 -0.010701</acceleration>
+          <acceleration>-0.017821 -3.00962 -4.79388 -1.25948 -0.163597 -0.010701</acceleration>
           <wrench>-0.008643 -1.45966 -2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_8'>
-        <pose frame=''>16.9425 -0.887326 0 -0.000121 -0 0</pose>
+        <pose frame=''>16.9424 -0.887346 0 -0.000121 -0 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>16.9425 -0.887314 0.1 -0.000121 -0 0</pose>
+          <pose frame=''>16.9424 -0.887334 0.1 -0.000121 -0 3e-06</pose>
           <velocity>5e-05 -0.002978 0.005721 0.029907 0.000496 2e-05</velocity>
-          <acceleration>0.017822 -4.49854 4.79388 1.1275 0.163612 -0.000789</acceleration>
-          <wrench>0.008643 -2.18179 2.32503 0 -0 0</wrench>
+          <acceleration>0.017833 -4.49854 4.79388 1.1275 0.163822 -0.00079</acceleration>
+          <wrench>0.008649 -2.18179 2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_green_brick_9'>
-        <pose frame=''>15.1824 -0.908737 0 -0.000121 -0 0</pose>
+        <pose frame=''>15.1823 -0.908757 0 -0.000121 -0 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>15.1824 -0.908725 0.1 -0.000121 -0 0</pose>
+          <pose frame=''>15.1823 -0.908745 0.1 -0.000121 -0 3e-06</pose>
           <velocity>5e-05 -0.002978 0.005721 0.029907 0.000496 2e-05</velocity>
-          <acceleration>0.017822 -4.49854 4.79388 1.1275 0.163612 -0.000789</acceleration>
-          <wrench>0.008643 -2.18179 2.32503 0 -0 0</wrench>
+          <acceleration>0.017833 -4.49854 4.79388 1.1275 0.163822 -0.00079</acceleration>
+          <wrench>0.008649 -2.18179 2.32503 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_orange_brick'>
-        <pose frame=''>14.1294 -2.82737 -5.3e-05 -0.000474 -0 0.000985</pose>
+        <pose frame=''>14.1294 -2.82737 -5.3e-05 -0.000474 -0 0.001134</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>14.1294 -2.82732 0.099947 -0.000474 -0 0.000985</pose>
-          <velocity>-1.1e-05 0.014792 -0.013415 -0.148432 -0.000105 -3e-06</velocity>
-          <acceleration>0.000989 3.00378 -4.80356 1.32143 -0.018953 -0.006595</acceleration>
-          <wrench>0.001186 3.60453 -5.76428 0 -0 0</wrench>
+          <pose frame=''>14.1294 -2.82732 0.099947 -0.000474 -0 0.001134</pose>
+          <velocity>-1.3e-05 0.014792 -0.013415 -0.148432 -0.000128 -3e-06</velocity>
+          <acceleration>0.000549 3.00378 -4.80356 1.32126 -0.027725 -0.006594</acceleration>
+          <wrench>0.000658 3.60454 -5.76427 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_orange_brick_0'>
-        <pose frame=''>16.2189 -2.79877 -5.3e-05 -0.000474 -0 -0.000802</pose>
+        <pose frame=''>16.2189 -2.79877 -5.3e-05 -0.000474 -0 -0.000656</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>16.2189 -2.79872 0.099947 -0.000474 -0 -0.000802</pose>
-          <velocity>8e-06 0.014792 -0.013415 -0.148433 7.9e-05 3e-06</velocity>
-          <acceleration>-0.001527 3.00377 -4.80357 1.32156 0.008215 0.006597</acceleration>
-          <wrench>-0.001833 3.60453 -5.76429 0 -0 0</wrench>
+          <pose frame=''>16.2189 -2.79872 0.099947 -0.000474 -0 -0.000656</pose>
+          <velocity>1.3e-05 0.014793 -0.013415 -0.148437 0.000137 -3e-06</velocity>
+          <acceleration>0.005823 3.00373 -4.80363 1.31991 0.077461 -0.006614</acceleration>
+          <wrench>0.006988 3.60448 -5.76435 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_orange_brick_1'>
-        <pose frame=''>18.2603 -2.76818 -5.3e-05 -0.000474 -0 0.000916</pose>
+        <pose frame=''>18.2603 -2.76818 -5.3e-05 -0.000474 -0 0.001065</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>18.2603 -2.76813 0.099947 -0.000474 -0 0.000916</pose>
-          <velocity>-1e-05 0.014792 -0.013415 -0.148433 -9.5e-05 -3e-06</velocity>
-          <acceleration>0.001192 3.00378 -4.80357 1.32149 -0.01489 -0.006596</acceleration>
-          <wrench>0.001431 3.60453 -5.76428 0 -0 0</wrench>
+          <pose frame=''>18.2603 -2.76813 0.099947 -0.000474 -0 0.001065</pose>
+          <velocity>-1.2e-05 0.014792 -0.013415 -0.148432 -0.000117 -3e-06</velocity>
+          <acceleration>0.000752 3.00378 -4.80356 1.32135 -0.023664 -0.006595</acceleration>
+          <wrench>0.000903 3.60454 -5.76427 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_orange_brick_2'>
-        <pose frame=''>20.3372 -2.76465 0 -0.00012 -0 0.000906</pose>
+        <pose frame=''>20.3372 -2.76467 -5.3e-05 0.000474 -0 0.00076</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.3372 -2.76464 0.1 -0.00012 -0 0.000906</pose>
-          <velocity>1.5e-05 -0.002777 0.005799 0.028053 0.000143 2.3e-05</velocity>
-          <acceleration>0.006156 -4.39232 4.80357 0.141224 0.098164 0.006581</acceleration>
-          <wrench>0.007388 -5.27079 5.76428 0 -0 0</wrench>
+          <pose frame=''>20.3372 -2.76472 0.099947 0.000474 -0 0.00076</pose>
+          <velocity>1.5e-05 -0.014793 -0.013415 0.148437 0.000152 3e-06</velocity>
+          <acceleration>0.006132 -3.00373 -4.80363 -1.31961 0.083614 0.006615</acceleration>
+          <wrench>0.007358 -3.60448 -5.76436 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick'>
-        <pose frame=''>20.9275 -0.404221 0 0.000114 -6e-06 -0</pose>
+        <pose frame=''>20.9271 -0.404197 0 0.000114 -6e-06 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.9275 -0.404232 0.1 0.000114 -6e-06 -0</pose>
+          <pose frame=''>20.9271 -0.404209 0.1 0.000114 -6e-06 3e-06</pose>
           <velocity>4.1e-05 0.003207 0.005508 -0.032281 0.000419 -3e-06</velocity>
-          <acceleration>-0.000903 4.63532 4.7619 -2.45561 -0.075768 0.044132</acceleration>
-          <wrench>-0.000632 3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000913 4.63532 4.7619 -2.45561 -0.075913 0.044133</acceleration>
+          <wrench>-0.000639 3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_0'>
-        <pose frame=''>13.5608 -0.287668 -5.4e-05 0.0005 -3e-06 0</pose>
+        <pose frame=''>13.5604 -0.287668 -5.4e-05 0.0005 -3e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>13.5608 -0.287718 0.099946 0.0005 -3e-06 0</pose>
+          <pose frame=''>13.5604 -0.287718 0.099946 0.0005 -3e-06 0</pose>
           <velocity>4.4e-05 -0.015335 -0.01354 0.15347 0.000722 -0.00018</velocity>
-          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075741 -0.045653</acceleration>
+          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075738 -0.045653</acceleration>
           <wrench>0.000631 -2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_1'>
-        <pose frame=''>19.6476 -0.316032 0 0.000114 -6e-06 -0</pose>
+        <pose frame=''>19.6472 -0.316008 0 0.000114 -6e-06 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>19.6476 -0.316043 0.1 0.000114 -6e-06 -0</pose>
+          <pose frame=''>19.6472 -0.31602 0.1 0.000114 -6e-06 3e-06</pose>
           <velocity>4.1e-05 0.003207 0.005508 -0.032281 0.000419 -3e-06</velocity>
-          <acceleration>-0.000903 4.63532 4.7619 -2.45561 -0.075768 0.044132</acceleration>
-          <wrench>-0.000632 3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000913 4.63532 4.7619 -2.45561 -0.075913 0.044133</acceleration>
+          <wrench>-0.000639 3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_10'>
-        <pose frame=''>14.447 -0.351061 -5.4e-05 0.0005 -3e-06 0</pose>
+        <pose frame=''>14.4466 -0.351061 -5.4e-05 0.0005 -3e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>14.447 -0.351111 0.099946 0.0005 -3e-06 0</pose>
+          <pose frame=''>14.4466 -0.351111 0.099946 0.0005 -3e-06 0</pose>
           <velocity>4.4e-05 -0.015335 -0.01354 0.15347 0.000722 -0.00018</velocity>
-          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075741 -0.045653</acceleration>
+          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075738 -0.045653</acceleration>
           <wrench>0.000631 -2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_11'>
-        <pose frame=''>20.8411 0.216005 0 0.000114 -6e-06 -0</pose>
+        <pose frame=''>20.8407 0.216029 0 0.000114 -6e-06 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.8411 0.215994 0.1 0.000114 -6e-06 -0</pose>
+          <pose frame=''>20.8407 0.216017 0.1 0.000114 -6e-06 3e-06</pose>
           <velocity>4.1e-05 0.003207 0.005508 -0.032281 0.000419 -3e-06</velocity>
-          <acceleration>-0.000903 4.63532 4.7619 -2.45561 -0.075768 0.044132</acceleration>
-          <wrench>-0.000632 3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000913 4.63532 4.7619 -2.45561 -0.075913 0.044133</acceleration>
+          <wrench>-0.000639 3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_12'>
-        <pose frame=''>20.2228 0.245366 0 -0.000114 -6e-06 1e-06</pose>
+        <pose frame=''>20.2224 0.245343 0 -0.000114 -6e-06 -2e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.2228 0.245378 0.1 -0.000114 -6e-06 1e-06</pose>
+          <pose frame=''>20.2224 0.245355 0.1 -0.000114 -6e-06 -2e-06</pose>
           <velocity>4.1e-05 -0.003207 0.005508 0.032281 0.000419 3e-06</velocity>
-          <acceleration>-0.000897 -4.63532 4.7619 2.45561 -0.075687 -0.044132</acceleration>
-          <wrench>-0.000628 -3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000909 -4.63532 4.7619 2.45561 -0.075851 -0.044133</acceleration>
+          <wrench>-0.000636 -3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_13'>
-        <pose frame=''>19.6147 0.257405 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>19.6143 0.257405 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>19.6147 0.257455 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>19.6143 0.257455 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_14'>
-        <pose frame=''>18.944 0.164513 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>18.9436 0.164513 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>18.944 0.164563 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>18.9436 0.164563 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_15'>
-        <pose frame=''>18.3235 0.165461 0 -0.000114 -6e-06 1e-06</pose>
+        <pose frame=''>18.3231 0.165438 0 -0.000114 -6e-06 -2e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>18.3235 0.165473 0.1 -0.000114 -6e-06 1e-06</pose>
+          <pose frame=''>18.3231 0.16545 0.1 -0.000114 -6e-06 -2e-06</pose>
           <velocity>4.1e-05 -0.003207 0.005508 0.032281 0.000419 3e-06</velocity>
-          <acceleration>-0.000897 -4.63532 4.7619 2.45561 -0.075687 -0.044132</acceleration>
-          <wrench>-0.000628 -3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000909 -4.63532 4.7619 2.45561 -0.075851 -0.044133</acceleration>
+          <wrench>-0.000636 -3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_16'>
-        <pose frame=''>17.7351 0.164944 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>17.7347 0.164944 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>17.7351 0.164994 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>17.7347 0.164994 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_17'>
-        <pose frame=''>17.1851 0.097595 0 -0.000114 -6e-06 1e-06</pose>
+        <pose frame=''>17.1847 0.097572 0 -0.000114 -6e-06 -2e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>17.1851 0.097607 0.1 -0.000114 -6e-06 1e-06</pose>
+          <pose frame=''>17.1847 0.097584 0.1 -0.000114 -6e-06 -2e-06</pose>
           <velocity>4.1e-05 -0.003207 0.005508 0.032281 0.000419 3e-06</velocity>
-          <acceleration>-0.000897 -4.63532 4.7619 2.45561 -0.075687 -0.044132</acceleration>
-          <wrench>-0.000628 -3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000909 -4.63532 4.7619 2.45561 -0.075851 -0.044133</acceleration>
+          <wrench>-0.000636 -3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_18'>
-        <pose frame=''>16.5984 0.170198 -5.4e-05 0.0005 -3e-06 0</pose>
+        <pose frame=''>16.598 0.170198 -5.4e-05 0.0005 -3e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>16.5984 0.170148 0.099946 0.0005 -3e-06 0</pose>
+          <pose frame=''>16.598 0.170148 0.099946 0.0005 -3e-06 0</pose>
           <velocity>4.4e-05 -0.015335 -0.01354 0.15347 0.000722 -0.00018</velocity>
-          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075741 -0.045653</acceleration>
+          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075738 -0.045653</acceleration>
           <wrench>0.000631 -2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_19'>
-        <pose frame=''>15.8095 0.244183 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>15.8091 0.244183 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>15.8095 0.244233 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>15.8091 0.244233 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_2'>
-        <pose frame=''>20.2529 -0.416935 0 -0.000114 -6e-06 1e-06</pose>
+        <pose frame=''>20.2525 -0.416958 0 -0.000114 -6e-06 -2e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>20.2529 -0.416923 0.1 -0.000114 -6e-06 1e-06</pose>
+          <pose frame=''>20.2525 -0.416946 0.1 -0.000114 -6e-06 -2e-06</pose>
           <velocity>4.1e-05 -0.003207 0.005508 0.032281 0.000419 3e-06</velocity>
-          <acceleration>-0.000897 -4.63532 4.7619 2.45561 -0.075687 -0.044132</acceleration>
-          <wrench>-0.000628 -3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000909 -4.63532 4.7619 2.45561 -0.075851 -0.044133</acceleration>
+          <wrench>-0.000636 -3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_20'>
-        <pose frame=''>15.1368 0.210039 0 -0.000114 -6e-06 1e-06</pose>
+        <pose frame=''>15.1364 0.210016 0 -0.000114 -6e-06 -2e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>15.1368 0.210051 0.1 -0.000114 -6e-06 1e-06</pose>
+          <pose frame=''>15.1364 0.210028 0.1 -0.000114 -6e-06 -2e-06</pose>
           <velocity>4.1e-05 -0.003207 0.005508 0.032281 0.000419 3e-06</velocity>
-          <acceleration>-0.000897 -4.63532 4.7619 2.45561 -0.075687 -0.044132</acceleration>
-          <wrench>-0.000628 -3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000909 -4.63532 4.7619 2.45561 -0.075851 -0.044133</acceleration>
+          <wrench>-0.000636 -3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_21'>
-        <pose frame=''>14.4334 0.089206 0 0.000114 -6e-06 -0</pose>
+        <pose frame=''>14.433 0.08923 0 0.000114 -6e-06 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>14.4334 0.089195 0.1 0.000114 -6e-06 -0</pose>
+          <pose frame=''>14.433 0.089218 0.1 0.000114 -6e-06 3e-06</pose>
           <velocity>4.1e-05 0.003207 0.005508 -0.032281 0.000419 -3e-06</velocity>
-          <acceleration>-0.000903 4.63532 4.7619 -2.45561 -0.075768 0.044132</acceleration>
-          <wrench>-0.000632 3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000913 4.63532 4.7619 -2.45561 -0.075913 0.044133</acceleration>
+          <wrench>-0.000639 3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_22'>
-        <pose frame=''>13.5778 0.230664 -5.4e-05 0.0005 -3e-06 0</pose>
+        <pose frame=''>13.5774 0.230664 -5.4e-05 0.0005 -3e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>13.5778 0.230614 0.099946 0.0005 -3e-06 0</pose>
+          <pose frame=''>13.5774 0.230614 0.099946 0.0005 -3e-06 0</pose>
           <velocity>4.4e-05 -0.015335 -0.01354 0.15347 0.000722 -0.00018</velocity>
-          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075741 -0.045653</acceleration>
+          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075738 -0.045653</acceleration>
           <wrench>0.000631 -2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_3'>
-        <pose frame=''>19.0272 -0.32892 -5.4e-05 0.0005 -3e-06 0</pose>
+        <pose frame=''>19.0268 -0.32892 -5.4e-05 0.0005 -3e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>19.0272 -0.32897 0.099946 0.0005 -3e-06 0</pose>
+          <pose frame=''>19.0268 -0.32897 0.099946 0.0005 -3e-06 0</pose>
           <velocity>4.4e-05 -0.015335 -0.01354 0.15347 0.000722 -0.00018</velocity>
-          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075741 -0.045653</acceleration>
+          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075738 -0.045653</acceleration>
           <wrench>0.000631 -2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_4'>
-        <pose frame=''>18.3861 -0.37056 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>18.3857 -0.37056 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>18.3861 -0.37051 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>18.3857 -0.37051 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_5'>
-        <pose frame=''>17.8373 -0.416931 0 0.000114 -6e-06 -0</pose>
+        <pose frame=''>17.8369 -0.416907 0 0.000114 -6e-06 3e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>17.8373 -0.416942 0.1 0.000114 -6e-06 -0</pose>
+          <pose frame=''>17.8369 -0.416919 0.1 0.000114 -6e-06 3e-06</pose>
           <velocity>4.1e-05 0.003207 0.005508 -0.032281 0.000419 -3e-06</velocity>
-          <acceleration>-0.000903 4.63532 4.7619 -2.45561 -0.075768 0.044132</acceleration>
-          <wrench>-0.000632 3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000913 4.63532 4.7619 -2.45561 -0.075913 0.044133</acceleration>
+          <wrench>-0.000639 3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_6'>
-        <pose frame=''>17.2024 -0.356728 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>17.202 -0.356728 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>17.2024 -0.356678 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>17.202 -0.356678 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_7'>
-        <pose frame=''>16.6475 -0.335854 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
+        <pose frame=''>16.6471 -0.335854 -5.4e-05 -0.0005 -3e-06 1e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>16.6475 -0.335804 0.099946 -0.0005 -3e-06 1e-06</pose>
+          <pose frame=''>16.6471 -0.335804 0.099946 -0.0005 -3e-06 1e-06</pose>
           <velocity>4.4e-05 0.015335 -0.01354 -0.15347 0.000722 0.00018</velocity>
-          <acceleration>0.000898 3.03205 -4.7619 1.11875 0.075698 0.045653</acceleration>
+          <acceleration>0.000899 3.03205 -4.7619 1.11875 0.075704 0.045653</acceleration>
           <wrench>0.000629 2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_8'>
-        <pose frame=''>15.8644 -0.276227 0 -0.000114 -6e-06 1e-06</pose>
+        <pose frame=''>15.864 -0.27625 0 -0.000114 -6e-06 -2e-06</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>15.8644 -0.276215 0.1 -0.000114 -6e-06 1e-06</pose>
+          <pose frame=''>15.864 -0.276238 0.1 -0.000114 -6e-06 -2e-06</pose>
           <velocity>4.1e-05 -0.003207 0.005508 0.032281 0.000419 3e-06</velocity>
-          <acceleration>-0.000897 -4.63532 4.7619 2.45561 -0.075687 -0.044132</acceleration>
-          <wrench>-0.000628 -3.24473 3.33333 0 -0 0</wrench>
+          <acceleration>-0.000909 -4.63532 4.7619 2.45561 -0.075851 -0.044133</acceleration>
+          <wrench>-0.000636 -3.24473 3.33333 0 -0 0</wrench>
         </link>
       </model>
       <model name='mbzirc_red_brick_9'>
-        <pose frame=''>15.0081 -0.36417 -5.4e-05 0.0005 -3e-06 0</pose>
+        <pose frame=''>15.0077 -0.36417 -5.4e-05 0.0005 -3e-06 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>15.0081 -0.36422 0.099946 0.0005 -3e-06 0</pose>
+          <pose frame=''>15.0077 -0.36422 0.099946 0.0005 -3e-06 0</pose>
           <velocity>4.4e-05 -0.015335 -0.01354 0.15347 0.000722 -0.00018</velocity>
-          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075741 -0.045653</acceleration>
+          <acceleration>0.000901 -3.03205 -4.7619 -1.11874 0.075738 -0.045653</acceleration>
           <wrench>0.000631 -2.12243 -3.33333 0 -0 0</wrench>
         </link>
       </model>
@@ -1184,7 +1184,7 @@
         </link>
       </model>
       <model name='mbzirc_uav_assembly_wall_2'>
-        <pose frame=''>-17.9469 5.55155 0 0 0 -1.64712</pose>
+        <pose frame=''>-17.9469 5.55155 -0 0 0 -1.64712</pose>
         <scale>1 1 1</scale>
         <link name='link'>
           <pose frame=''>-17.9469 5.55155 0.85 0 0 -1.64712</pose>
