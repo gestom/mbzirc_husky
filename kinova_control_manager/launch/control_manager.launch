@@ -20,12 +20,14 @@
     
     <!-- status input from arm driver and gripper -->
     <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
+    <remap from="~tool_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
     <remap from="~joint_torques_in" to="$(arg ARM_TYPE)_driver/out/joint_torques" />
     <remap from="~end_effector_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
     <remap from="~gripper_diagnostics_in" to="husky/gripper/gripper_diagnostics" />
 
     <!-- manager status -->
     <remap from="~arm_status_out" to="kinova/arm_manager/status" />
+    <remap from="~markers_out" to="kinova/rviz_markers" />
 
     <!-- provided commands -->
     <remap from="~home_in" to="kinova/arm_manager/home_arm" />
