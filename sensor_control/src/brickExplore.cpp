@@ -47,10 +47,10 @@ float fwSpeed = 0.1;
 
 int misdetections = 0;
 
-bool needRed = False;
-bool needGreen = False;
-bool needBlue = False;
-bool needOrange = False;
+bool needRed = false;
+bool needGreen = false;
+bool needBlue = false;
+bool needOrange = false;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
@@ -181,7 +181,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         {
             //begin lidar search for bricks
             usleep(4000000);
-            state = ;
+            state = FINAL;
         }
         usleep(100);
     }
