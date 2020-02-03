@@ -1002,7 +1002,7 @@ bool kinova_control_manager::nearbyAngleDeg(float a, float b) {
 }
 //}
 
-/* nearbyAngleDeg //{ */
+/* nearbyAngleRad //{ */
 bool kinova_control_manager::nearbyAngleRad(float a, float b) {
   return std::abs(b - a) < nearby_rotation_threshold;
 }

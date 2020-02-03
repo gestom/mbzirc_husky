@@ -1,3 +1,5 @@
+import random
+
 
 partA = """
 	  <model name='mbzirc_blue_brick_0'>
@@ -14,7 +16,7 @@ partA = """
 
 partB = """
 	<model name='mbzirc_blue_brick_0'>
-	  <static>0</static>
+	  <static>1</static>
 	  <link name='link'>
 		<pose frame=''>0 0 0.1 0 -0 0</pose>
 		<inertial>
@@ -84,70 +86,104 @@ partB = """
 	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
 	</model>
 """
-int randomN = 0
+randomN = 0
+import sys
 
 def genABrick(colour, x, y, z):
 	msg = partA
-	msg.replace('mbzirc_blue_brick_0', 'brick_' + colour + '_' + str(randomN))
-	randomN += 1
-	msg.replace('-4.85759 13.9253 -5.3e-05 -0.000475 -0 0.00017', x + ' ' + y + ' ' + z + ' 0 0 0')
-	msg.replace('-4.85759 13.9253 0.099947 -0.000475 -0 0.00017', x + ' ' + y + ' ' + z + ' 0 0 0')
+	rot = str(random.uniform(-0.015, 0.015))
+	msg = msg.replace('mbzirc_blue_brick_0', 'brick_' + colour + '_' + str(randomN))
+	msg = msg.replace('-4.85759 13.9253 -5.3e-05 -0.000475 -0 0.00017', str(x) + ' ' + str(y) + ' ' + str(z) + ' 0 0 ' + rot)
+	msg = msg.replace('-4.85759 13.9253 0.099947 -0.000475 -0 0.00017', str(x) + ' ' + str(y) + ' ' + str(z) + ' 0 0 ' + rot)
 	return msg
 
-
+def genBBrick(colour, x, y, z):
+	msg = partB
+	msg = msg.replace('mbzirc_blue_brick_0', 'brick_' + colour + '_' + str(randomN))
+	if colour == 'red':
+		msg = msg.replace('<size>1.2 0.2 0.2</size>', '<size>0.3 0.2 0.2</size>')
+		msg = msg.replace('Gazebo/Blue', 'Gazebo/Red')
+		msg = msg.replace('<mass>0.381</mass>', '<mass>1.0</mass>')
+	if colour == 'green':
+		msg = msg.replace('<size>1.2 0.2 0.2</size>', '<size>0.6 0.2 0.2</size>')
+		msg = msg.replace('Gazebo/Blue', 'Gazebo/Green')
+		msg = msg.replace('<mass>0.381</mass>', '<mass>1.0</mass>')
+	if colour == 'blue':
+		msg = msg.replace('<size>1.2 0.2 0.2</size>', '<size>1.2 0.2 0.2</size>')
+		msg = msg.replace('Gazebo/Blue', 'Gazebo/Blue')
+		msg = msg.replace('<mass>0.381</mass>', '<mass>1.5</mass>')
+	if colour == 'orange':
+		msg = msg.replace('<size>1.2 0.2 0.2</size>', '<size>1.8 0.2 0.2</size>')
+		msg = msg.replace('Gazebo/Blue', 'Gazebo/Orange')
+		msg = msg.replace('<mass>0.381</mass>', '<mass>2.0</mass>')
+	return msg
 
 dataA = []
 dataB = []
 
 #red bricks
-startX = 0
-startY = 0
+startX = 0 + random.uniform(-0.1, 0.1)
+startY = 0 + random.uniform(-0.1, 0.1)
 for ix in range(4):
 	for iy in range(3):
 		if iy == 0 and (ix == 0 or ix == 3):
 			continue
 		for iz in range(2):
-			positionX = (ix * (0.3 + 0.1))
-			positionY = (iy * (0.2 + 0.1))
-			positionZ = (iz * 0.21) + 0.0 
-			dataA.append(genABrick('red', positionX, positionY, positionZ))
-			dataB.append(genBBrick('red', positionX, positionY, positionZ))
+			positionX = startX - (ix * (0.3 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionY = startY - (iy * (0.2 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionZ = (iz * 0.202) + 0.1 
+			dataA.append(genABrick('red', -positionX, positionY, positionZ))
+			dataB.append(genBBrick('red', -positionX, positionY, positionZ))
+			randomN += 1
 #green bricks
-startX = 8
-startY = 0
+startX = -2.15 + random.uniform(-0.1, 0.1)
+startY = 0 + random.uniform(-0.1, 0.1)
 for ix in range(2):
 	for iy in range(3):
 		for iz in range(2):
 			if (iz == 1) and iy == 0:
 				continue
-			positionX = (ix * (0.6 + 0.1))
-			positionY = (iy * (0.2 + 0.1))
-			positionZ = (iz * 0.21) + 0.0 
-			dataA.append(genABrick('green', positionX, positionY, positionZ))
-			dataB.append(genBBrick('green', positionX, positionY, positionZ))
+			positionX = startX - (ix * (0.6 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionY = startY - (iy * (0.2 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionZ = (iz * 0.202) + 0.1
+			dataA.append(genABrick('green', -positionX, positionY, positionZ))
+			dataB.append(genBBrick('green', -positionX, positionY, positionZ))
+			randomN += 1
 #blue bricks
-startX = 16
-startY = 0
+startX = -4.25 + random.uniform(-0.1, 0.1)
+startY = 0 + random.uniform(-0.1, 0.1)
 for ix in range(1):
 	for iy in range(3):
 		for iz in range(2):
 			if iy == 0 and iz == 1:
 				continue
-			positionX = (ix * (1.2 + 0.1))
-			positionY = (iy * (0.2 + 0.1))
-			positionZ = (iz * 0.21) + 0.0 
-			dataA.append(genABrick('blue', positionX, positionY, positionZ))
-			dataB.append(genBBrick('blue', positionX, positionY, positionZ))
+			positionX = startX - (ix * (1.2 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionY = startY - (iy * (0.2 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionZ = (iz * 0.202) + 0.1
+			dataA.append(genABrick('blue', -positionX, positionY, positionZ))
+			dataB.append(genBBrick('blue', -positionX, positionY, positionZ))
+			randomN += 1
 #orange bricks
-startX = 24
-startY = 0
+startX = -6.25 + random.uniform(-0.1, 0.1)
+startY = 0 + random.uniform(-0.1, 0.1)
 for ix in range(1):
 	for iy in range(3):
 		for iz in range(4):
 			if iz == 3 and (iy == 0 or iy == 2):
 				continue
-			positionX = (ix * (1.8 + 0.1))
-			positionY = (iy * (0.2 + 0.1))
-			positionZ = (iz * 0.21) + 0.0 
-			dataA.append(genABrick('orange', positionX, positionY, positionZ))
-			dataB.append(genBBrick('orange', positionX, positionY, positionZ))
+			positionX = startX - (ix * (1.8 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionY = startY - (iy * (0.2 + 0.1 + random.uniform(-0.02, 0.02)))
+			positionZ = (iz * 0.202) + 0.1
+			dataA.append(genABrick('orange', -positionX, positionY, positionZ))
+			dataB.append(genBBrick('orange', -positionX, positionY, positionZ))
+			randomN += 1
+
+file = ""
+with open('bricks.world.template', 'r') as f:
+	file = f.read()
+
+file = file.replace('###A###', '\n'.join(dataA))
+file = file.replace('###B###', '\n'.join(dataB))
+
+with open('bricks.world', "w") as f:
+	f.write(file)

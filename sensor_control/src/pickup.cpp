@@ -14,6 +14,8 @@
 #include <string>
 
 
+#include <mbzirc_husky_msgs/brickPosition.h>
+#include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/EndEffectorPose.h>
 #include <mbzirc_husky_msgs/ArmStatus.h>
 
@@ -47,8 +49,10 @@ std_srvs::Trigger  arm_home_soft_srv;
 std_srvs::Trigger  arm_obstacle_srv;
 mbzirc_husky_msgs::EndEffectorPose arm_goto_srv;
 mbzirc_husky_msgs::EndEffectorPose arm_goto_relative_srv;
+mbzirc_husky_msgs::brickDetect brick_detect_srv;
 
 //Arm clients
+ros::ServiceClient brick_detect_client; 
 ros::ServiceClient arm_prepare_client; 
 ros::ServiceClient arm_home_hard_client;
 ros::ServiceClient arm_home_soft_client;
@@ -110,6 +114,14 @@ bool isTerminal(EPickupState state) {
 void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* as) {
 	mbzirc_husky::pickupResult result;
 	mbzirc_husky::pickupFeedback feedback;
+	state = ALIGNING_ROBOT;
+	brick_detect_srv.request.activate = true;
+	brick_detect_srv.request.groundPlaneDistance = 0;
+	brick_detect_client.call(brick_detect_srv);
+	while (isTerminal(state))
+	{
+			
+	}
 	int num_of_cubes = goal->cubes; 
 	
 	state = HOME;
@@ -156,6 +168,10 @@ void actionServerCallback(const mbzirc_husky::pickupGoalConstPtr& goal, Server* 
 	state = STOPPING;
 }
 
+void brickPositionCallback(const mbzirc_husky_msgs::brickPositionConstPtr& msg)
+{
+	
+}
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "pickup");
@@ -173,6 +189,7 @@ int main(int argc, char** argv) {
   // robot_pose = n.subscribe("/robot_pose", 1000, poseCallback);
   
   //Services for arm
+  brick_detect_client  = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBrick");
   arm_prepare_client   = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
   arm_home_hard_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
   arm_home_soft_client = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/soft_home_arm");

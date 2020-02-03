@@ -38,6 +38,10 @@ class Husky(GroundRobot):
         self.pose.add_interface("ros")
         self.append(self.pose)
 
+        self.odometry = Odometry()
+        self.odometry.add_interface("ros", topic="/odom")
+        self.append(self.odometry)
+
         self.ls = Hokuyo()
         self.ls.translate(0, 0, 0.4)
         self.ls.add_interface("ros", topic='/scan')

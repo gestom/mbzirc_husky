@@ -229,8 +229,8 @@ int main(int argc, char** argv)
 	while (ros::ok()){
 		if (server->isPreemptRequested() && state != IDLE) state = PREEMPTED;
 		if (state == STOPPING){
-      pump->off();
-      base_cmd.linear.x = base_cmd.angular.z = 0;
+			pump->off();
+			base_cmd.linear.x = base_cmd.angular.z = 0;
 			cmd_vel.publish(base_cmd);
 			state = IDLE;
 		} 

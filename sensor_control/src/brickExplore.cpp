@@ -13,7 +13,6 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
 
@@ -22,7 +21,10 @@ ros::Publisher point_pub;
 
 typedef enum{
 	IDLE = 0,
-	EXPLORING,
+	EXPLORINGBRICKS,
+    MOVINGTOBRICKS,
+    EXPLORINGSTACKSITE,
+    MOVINGTOSTACKSITE,
     FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -45,6 +47,11 @@ float fwSpeed = 0.1;
 
 int misdetections = 0;
 
+bool needRed = False;
+bool needGreen = False;
+bool needBlue = False;
+bool needOrange = False;
+
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
 
@@ -60,16 +67,15 @@ void callback(mbzirc_husky::brick_pileConfig &config, uint32_t level) {
         spdLimit=config.spdLimit;
         realConst=config.realConst;
         dispConst=config.dispConst;
-
 }
-
-
-
 
 bool isTerminal(ESprayState state)
 {
-	if(state == EXPLORING) return false;
-	if(state == FINAL) return true;
+	if(state == EXPLORINGBRICKS) return false;
+	if(state == MOVINGTOBRICKS) return false;
+	if(state == EXPLORINGSTACKSITE) return false;
+	if(state == MOVINGTOSTACKSITE) return false;
+    if(state == FINAL) return true;
 	return true;
 }
 
@@ -163,15 +169,19 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
-	mbzirc_husky::brickExploreResult result;
+    
+    
+    mbzirc_husky::brickExploreResult result;
 
-    state = EXPLORING;
+    state = EXPLORINGBRICKS;
+    
 
     while (isTerminal(state) == false){
-        if(state == EXPLORING)
+        if(state == EXPLORINGBRICKS)
         {
+            //begin lidar search for bricks
             usleep(4000000);
-            state = FINAL;
+            state = ;
         }
         usleep(100);
     }
