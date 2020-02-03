@@ -70,7 +70,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
 		pX = (segment.x-307)/640.95*pZ-0.02;
-		pY = (segment.y-243.12)/640.95*pZ-0.05;
+		pY = (segment.y-243.12)/640.95*pZ;//-0.05;
 		brickPose.pose.pose.position.x = pX;
 		brickPose.pose.pose.position.y = pY;
 		brickPose.pose.pose.position.z = pZ;

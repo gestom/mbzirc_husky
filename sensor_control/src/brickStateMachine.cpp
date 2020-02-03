@@ -13,7 +13,8 @@ typedef enum{
     STACKING
 }EState;
 
-EState state = FINDINGBRICKS;
+//EState state = FINDINGBRICKS;
+EState state = PICKINGUP;
 bool currentlyRearranging = false;
 
 int main (int argc, char **argv) {

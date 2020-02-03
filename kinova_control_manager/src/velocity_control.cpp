@@ -337,6 +337,7 @@ void kinova_control_manager::onInit() {
     joint_angles[i]      = 0.0;
     last_joint_angles[i] = 0.0;
   }
+  last_goal = home_pose;
 
   tf2_ros::Buffer            buff;
   tf2_ros::TransformListener tfl(buff, nh_);
@@ -389,6 +390,8 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
   time_of_last_motion = ros::Time::now();
   last_goal           = default_gripping_pose;
   goTo(default_gripping_pose);
+  // TODO make this more robust
+  ros::Duration(5.0).sleep();
 
   res.success = true;
   return true;
@@ -438,7 +441,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 
   Eigen::Vector3d align_euler = quaternionToEuler(default_gripping_pose.rot);
   Eigen::Vector3d ee_euler    = quaternionToEuler(end_effector_pose_driver.rot);
-  align_euler.z()             = ee_euler.z() + brick_euler.z();
+  align_euler.z()             = ee_euler.z() + brick_euler.z() + M_PI;
 
   ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
 
@@ -462,7 +465,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     align           = Eigen::Vector3d(-brick_pose.pos.x(), brick_pose.pos.y(), brick_euler.z());
     align_euler     = quaternionToEuler(default_gripping_pose.rot);
     ee_euler        = quaternionToEuler(end_effector_pose_driver.rot);
-    align_euler.z() = ee_euler.z() + brick_euler.z();
+    align_euler.z() = ee_euler.z() + brick_euler.z() + M_PI;
 
     ROS_INFO("[kinova_control_manager]: Brick yaw: %.2f", brick_euler.z());
     ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
@@ -492,7 +495,9 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
-  while (brick_reliable) {
+
+  grip();
+  while (brick_reliable && !brick_attached) {
     msg.twist_linear_x = -brick_pose.pos.x() * linear_vel_modifier;
     msg.twist_linear_y = brick_pose.pos.y() * linear_vel_modifier;
     msg.twist_linear_z = -move_down_speed_faster;
@@ -501,7 +506,6 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   }
   ROS_WARN("[kinova_control_manager]: Entering the danger zone!");
 
-  grip();
   double magnet_to_ground = 50;
   while (!brick_attached && magnet_to_ground > 0.25) {
     magnet_to_ground = arm_base_to_ground + end_effector_pose_driver.pos.z() - 0.037;

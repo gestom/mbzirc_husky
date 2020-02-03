@@ -15,6 +15,7 @@ Server *server;
 typedef enum{
 	IDLE = 0,
 	ROBOTALIGNMENT,
+	ARMRESET,
     ARMPOSITIONING,
     ARMALIGNMENT,
     ARMDESCENT,
@@ -39,6 +40,7 @@ ros::ServiceClient homeClient;
 bool isTerminal(ESprayState state)
 {
     if(state == ROBOTALIGNMENT) return false;
+    if(state == ARMRESET) return false;
     if(state == ARMPOSITIONING) return false;
     if(state == ARMALIGNMENT) return false;
     if(state == ARMDESCENT) return false;
@@ -56,59 +58,97 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
     while (isTerminal(state) == false){
         if(state == ROBOTALIGNMENT)
         {
+	    ROS_INFO("ALIGNING ROBOT");
             geometry_msgs::Twist msg;
             msg.linear.x = 0.1;
             twistPub.publish(msg);
+	    usleep(1000000);
             msg.linear.x = -0.1;
             twistPub.publish(msg);
-            state = ARMPOSITIONING;
+            msg.linear.x = 0.0;
+            twistPub.publish(msg);
+            state = ARMRESET;
+	    ROS_INFO("ROBOT ALIGNED");
         }
-        else if(state == ARMPOSITIONING)
-        {
+	else if(state == ARMRESET)
+	{
+	    ROS_INFO("RESETTING ARM INTO POSITION");
             std_srvs::Trigger srv;
-            if(prepareClient.call(srv))
+            if(homeClient.call(srv))
             {
-                state = ARMALIGNMENT;
+                state = ARMPOSITIONING;
+	    	ROS_INFO("ARM RESET");
             }
             else
             {
                 //unsafe
                 state = ROBOTALIGNMENT;
+		ROS_INFO("ARM RESET FAILED");
+            }
+		
+	}
+        else if(state == ARMPOSITIONING)
+        {
+	    ROS_INFO("MOVING ARM INTO POSITION");
+            std_srvs::Trigger srv;
+            if(prepareClient.call(srv))
+            {
+                state = ARMALIGNMENT;
+	    	ROS_INFO("ARM POSITIONED");
+            }
+            else
+            {
+                //unsafe
+                state = ROBOTALIGNMENT;
+		ROS_INFO("ARM POSITION FAILED");
             }
         }
         else if(state == ARMALIGNMENT)
         {
+	    ROS_INFO("ALIGNING ARM");
             std_srvs::Trigger srv;
             if(alignClient.call(srv))
             {
                 state = ARMDESCENT;
+		ROS_INFO("ARM ALIGNED");
             }
             else
             {
                 state = FAIL;
+		ROS_INFO("FAILED: FAILED TO ALIGN ARM");
             }
         }
         else if(state == ARMDESCENT)
         {
+	    ROS_INFO("ARM DESCENDING");
             std_srvs::Trigger srv;
             if(pickupClient.call(srv))
             {
+		ROS_INFO("ARM DESCENDED");
                 state = ARMPICKUP;
             }
             else
             {
+		ROS_INFO("FAILED TO DESCEND ARM, RE-ALIGNING");
                 state = ARMALIGNMENT;
             }
         }
         else if(state == ARMPICKUP)
         {
+	    ROS_INFO("RAISING ARM");
             std_srvs::Trigger srv;
             if(prepareClient.call(srv))
+	    {
+		ROS_INFO("BRICK PICK UP DONE");
                 state = FINAL;
+	    }
             else
+	    {
+		ROS_INFO("BRICK PICKUP FAILED");
                 state = FAIL;
+	    }
         }
-        usleep(100);
+        usleep(1200000);
     }
     
 	if (state == FINAL) state = SUCCESS; else state = FAIL;
