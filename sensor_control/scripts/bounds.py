@@ -57,7 +57,7 @@ if __name__ == "__main__":
         points = []
 
         z = 0
-        points.append(Point(x = width/2+2, y = height/2, z=z))
+        points.append(Point(x = width/2, y = height/2, z=z))
         points.append(Point(x = -width/2, y = height/2, z=z))
         points.append(Point(x = -width/2, y = -height/2, z=z))
         points.append(Point(x = width/2, y = -height/2, z=z))
