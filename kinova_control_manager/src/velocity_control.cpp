@@ -381,6 +381,7 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   time_of_last_motion = ros::Time::now();
   last_goal           = home_pose;
 
+  ungrip();
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
   res.success = true;
@@ -583,6 +584,20 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
+    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) > (detected_brick.brick_layer * 0.2 - 0.05)) {
+      ROS_FATAL("[kinova_control_manager]: Failed to attach the brick!");
+      msg.twist_linear_x  = 0.0;
+      msg.twist_linear_y  = 0.0;
+      msg.twist_linear_z  = 0.0;
+      msg.twist_angular_x = 0.0;
+      msg.twist_angular_y = 0.0;
+      msg.twist_angular_z = 0.0;
+      publisher_cartesian_velocity.publish(msg);
+      status = IDLE;
+      ungrip();
+      res.success = false;
+      return false;
+    }
     msg.twist_linear_x  = 0.0;
     msg.twist_linear_y  = 0.0;
     msg.twist_linear_z  = -move_down_speed_mega_slow;
