@@ -36,6 +36,8 @@ typedef enum
   MOVING,
   IDLE,
   HOMING,
+  ALIGNING,
+  PICKING,
 } MotionStatus_t;
 
 /* utils //{ */
@@ -62,6 +64,10 @@ std::string statusToString(MotionStatus_t ms) {
       return "MOVING";
     case HOMING:
       return "HOMING";
+    case ALIGNING:
+      return "ALIGNING";
+    case PICKING:
+      return "PICKING";
   }
 }
 //}
@@ -101,6 +107,7 @@ struct Brick
 {
   Pose3d pose;
   int    brick_class;
+  int    brick_layer;
 };
 //}
 
@@ -409,8 +416,10 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
 /* callbackAlignArmService //{ */
 bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
+  status = ALIGNING;
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot align arm, internal feedback missing!");
+    status      = IDLE;
     res.success = false;
     return false;
   }
@@ -428,6 +437,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
       std::stringstream ss;
       ss << "Failed to launch brick detection!";
       ROS_FATAL("[kinova_arm_manager]: %s", ss.str().c_str());
+      status      = IDLE;
       res.success = false;
       res.message = ss.str().c_str();
       return false;
@@ -449,7 +459,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 
   Eigen::Vector3d align_euler = quaternionToEuler(default_gripping_pose.rot);
   Eigen::Vector3d ee_euler    = quaternionToEuler(end_effector_pose_raw.rot);
-  align_euler.z()             = ee_euler.z() + brick_euler.z() + M_PI;
+  align_euler.z()             = ee_euler.z() + brick_euler.z();
 
   ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
 
@@ -463,6 +473,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 
   if (!getting_realsense_brick) {
     ROS_FATAL("[kinova_arm_manager]: Brick pose topic did not open!");
+    status      = IDLE;
     res.success = false;
     return false;
   }
@@ -475,6 +486,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
       break;
     }
     if (!getting_realsense_brick) {
+      status      = IDLE;
       res.success = false;
       return false;
     }
@@ -484,7 +496,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     align           = Eigen::Vector3d(-detected_brick.pose.pos.x(), detected_brick.pose.pos.y(), brick_euler.z());
     align_euler     = quaternionToEuler(default_gripping_pose.rot);
     ee_euler        = quaternionToEuler(end_effector_pose_raw.rot);
-    align_euler.z() = ee_euler.z() + brick_euler.z() + M_PI;
+    align_euler.z() = ee_euler.z() + brick_euler.z();
 
     ROS_INFO("[kinova_control_manager]: Brick yaw: %.2f", brick_euler.z());
     ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
@@ -501,6 +513,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
   ros::spinOnce();
   ros::Duration(1.0);
   ros::spinOnce();
+  status      = IDLE;
   res.success = true;
   return true;
 }
@@ -509,46 +522,85 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 /* callbackPickupBrickService //{ */
 bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot start \"pickup brick\", arm is not IDLE!");
+    res.success = false;
+    return false;
+  }
+
   if (!getting_realsense_brick && !getting_gripper_diagnostics) {
     ROS_WARN("[kinova_control_manager]: Cannot pickup brick whithout realsense and gripper feedback!");
     res.success = false;
     return false;
   }
+  status = PICKING;
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
 
-  grip();
+  double stopping_height = (detected_brick.brick_layer * 0.2) - arm_base_to_ground + 0.1;
+  std::cout << "Slow down at Z: " << stopping_height << "\n";
+
   while (!brick_attached && brick_reliable) {
+
+    if (!getting_realsense_brick) {
+      ROS_ERROR("[kinova_control_manager]: Brick lost, aborting pickup");
+      msg.twist_linear_x  = 0.0;
+      msg.twist_linear_y  = 0.0;
+      msg.twist_linear_z  = 0.0;
+      msg.twist_angular_x = 0.0;
+      msg.twist_angular_y = 0.0;
+      msg.twist_angular_z = 0.0;
+      publisher_cartesian_velocity.publish(msg);
+      ros::spinOnce();
+      ros::Duration(0.01).sleep();
+      ros::spinOnce();
+      status      = IDLE;
+      res.success = false;
+      return false;
+    }
+
     msg.twist_linear_x = -detected_brick.pose.pos.x() * linear_vel_modifier;
     msg.twist_linear_y = detected_brick.pose.pos.y() * linear_vel_modifier;
     msg.twist_linear_z = -move_down_speed_faster;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
   }
+
+  // now the descent will not abort if brick is lost
   ROS_WARN("[kinova_control_manager]: Entering the danger zone!");
 
-  while (!brick_attached && detected_brick.pose.pos.z() > 0.2) {
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > stopping_height) {
+
     msg.twist_linear_x = 0.0;
     msg.twist_linear_y = 0.0;
     msg.twist_linear_z = -move_down_speed_slower;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
   }
+
+  grip();
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
-    msg.twist_linear_x = 0.0;
-    msg.twist_linear_y = 0.0;
-    msg.twist_linear_z = -move_down_speed_mega_slow;
+    msg.twist_linear_x  = 0.0;
+    msg.twist_linear_y  = 0.0;
+    msg.twist_linear_z  = -move_down_speed_mega_slow;
+    msg.twist_angular_x = 0.0;
+    msg.twist_angular_y = 0.0;
+    msg.twist_angular_z = 0.0;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.009).sleep();
   }
-  msg.twist_linear_x = 0.0;
-  msg.twist_linear_y = 0.0;
-  msg.twist_linear_z = 0.0;
-  publisher_cartesian_velocity.publish(msg);
 
+  msg.twist_linear_x  = 0.0;
+  msg.twist_linear_y  = 0.0;
+  msg.twist_linear_z  = 0.0;
+  msg.twist_angular_x = 0.0;
+  msg.twist_angular_y = 0.0;
+  msg.twist_angular_z = 0.0;
+  publisher_cartesian_velocity.publish(msg);
+  status      = IDLE;
   res.success = true;
   return true;
 }
@@ -692,13 +744,15 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
 
 /* callbackBrickPoseTopic //{ */
 void kinova_control_manager::callbackBrickPoseTopic(const mbzirc_husky_msgs::brickPositionConstPtr &msg) {
-  getting_realsense_brick = true;
+  getting_realsense_brick = msg->detected;
   last_brick_time         = ros::Time::now();
-  brick_reliable          = msg->completelyVisible;
+  brick_reliable          = msg->completelyVisible && msg->detected;
 
   detected_brick.brick_class = msg->type;
 
   if (brick_reliable) {
+    Eigen::Vector3d measurement(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+
     detected_brick.pose.pos.x() = msg->pose.pose.position.x;
     detected_brick.pose.pos.y() = msg->pose.pose.position.y;
     detected_brick.pose.pos.z() = msg->pose.pose.position.z;
@@ -707,6 +761,20 @@ void kinova_control_manager::callbackBrickPoseTopic(const mbzirc_husky_msgs::bri
     detected_brick.pose.rot.x() = msg->pose.pose.orientation.x;
     detected_brick.pose.rot.y() = msg->pose.pose.orientation.y;
     detected_brick.pose.rot.z() = msg->pose.pose.orientation.z;
+
+    double end_effector_to_ground = end_effector_pose_compensated.pos.z() + arm_base_to_ground;
+    double brick_height           = end_effector_to_ground - (detected_brick.pose.pos.z() + 0.2);
+    /* std::cout << "Brick height: " << brick_height << "\n"; */
+    if (status == ALIGNING) {
+      if (brick_height > -0.15 && brick_height < 0.15) {
+        detected_brick.brick_layer = 1;
+      } else if (brick_height >= 0.15 && brick_height < 0.35) {
+        detected_brick.brick_layer = 2;
+      } else if (brick_height >= 0.35) {
+        detected_brick.brick_layer = 3;
+      }
+      /* std::cout << "Layer: " << detected_brick.brick_layer << "\n"; */
+    }
   }
 }
 //}
@@ -744,7 +812,7 @@ void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent 
     status_msg.last_goal[i + 3]         = last_euler[i];
   }
 
-  if ((ros::Time::now() - last_brick_time).sec > 2.0) {
+  if (status == ALIGNING && (ros::Time::now() - last_brick_time).sec > 2.0) {
     ROS_WARN("[kinova_control_manager]: Brick timeout!");
     getting_realsense_brick     = false;
     detected_brick.pose.pos.x() = default_gripping_pose.pos.x();
@@ -1012,7 +1080,7 @@ void kinova_control_manager::publishTF() {
     }
     msg.scale.y = 0.2;
     msg.scale.z = 0.2;
-    msg.color.a = 1.0;
+    msg.color.a = 0.4;
     publisher_rviz_markers.publish(msg);
   }
 }
