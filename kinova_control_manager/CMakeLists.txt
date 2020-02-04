@@ -18,7 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
   kinova_description
   mrs_msgs
   mbzirc_husky_msgs
-  # mrs_lib
   # moveit_ros_planning_interface
   # sensor_msgs
   # moveit_msgs
