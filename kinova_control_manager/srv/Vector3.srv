@@ -1,4 +1,0 @@
-float64[3] pos
----
-bool success
-string message
