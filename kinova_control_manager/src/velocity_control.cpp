@@ -124,6 +124,7 @@ private:
 
   bool is_initialized              = false;
   bool brick_attached              = false;
+  bool gripper_engaged             = false;
   bool getting_joint_angles        = false;
   bool getting_gripper_diagnostics = false;
 
@@ -584,7 +585,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
-    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) < (detected_brick.brick_layer * 0.2 - 0.05)) {
+    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) < (detected_brick.brick_layer * 0.2 - 0.06)) {
       ROS_FATAL("[kinova_control_manager]: Failed to attach the brick!");
       msg.twist_linear_x  = 0.0;
       msg.twist_linear_y  = 0.0;
@@ -704,7 +705,6 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
   joint_angles[4] = msg->joint5;
   joint_angles[5] = msg->joint6;
 
-
   for (int i = 0; i < DOF; i++) {
     if (!nearbyAngleDeg(joint_angles[i], last_joint_angles[i])) {
       time_of_last_motion = ros::Time::now();
@@ -718,7 +718,7 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
   }
   //}
 
-  if ((ros::Time::now() - time_of_last_motion).sec > no_move_error_timeout) {
+  if ((ros::Time::now() - time_of_last_motion).toSec() > no_move_error_timeout) {
     /* homing handler //{ */
     if (status == HOMING) {
       if (nearbyPose(home_pose, end_effector_pose_compensated)) {
@@ -742,10 +742,14 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
 
         for (int i = 0; i < 3; i++) {
           angular_diff[i] = std::abs(p_euler[i] - q_euler[i]);
-          if (angular_diff[i] > 3.0) {
-            angular_diff[i] = std::abs(angular_diff[i] - 3.0);
+          while (angular_diff[i] > 3.0) {
+            angular_diff[i] -= 3.0;
+          }
+          while (angular_diff[i] < -3.0) {
+            angular_diff[i] += 3.0;
           }
         }
+        std::cout << "angular diff: " << angular_diff << "\n";
         double pos_error = (last_goal.pos - end_effector_pose_compensated.pos).norm();
         ROS_WARN("[Arm manager]: Destination unreachable. Position error: %.4f, Rotation error: %.2f, %.2f, %.2f", pos_error, angular_diff[0], angular_diff[1],
                  angular_diff[2]);
@@ -797,6 +801,7 @@ void kinova_control_manager::callbackBrickPoseTopic(const mbzirc_husky_msgs::bri
 /* callbackGripperDiagnosticsTopic //{ */
 void kinova_control_manager::callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr &msg) {
   getting_gripper_diagnostics = true;
+  gripper_engaged             = true;
   brick_attached              = msg->gripping_object;
 }
 //}
@@ -817,6 +822,7 @@ void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent 
   for (int i = 0; i < DOF; i++) {
     status_msg.joint_angles[i] = joint_angles[i];
   }
+  status_msg.gripper_engaged = gripper_engaged;
 
   Eigen::Vector3d euler      = quaternionToEuler(end_effector_pose_compensated.rot);
   Eigen::Vector3d last_euler = quaternionToEuler(last_goal.rot);
@@ -974,7 +980,7 @@ bool kinova_control_manager::ungrip() {
 
 /* nearbyAngleDeg //{ */
 bool kinova_control_manager::nearbyAngleDeg(double a, double b) {
-  return ((std::abs(b - a) * M_PI) / 180) < nearby_rotation_threshold;
+  return std::abs(a - b) < 0.2;
 }
 //}
 
@@ -1062,7 +1068,7 @@ void kinova_control_manager::publishTF() {
   trans.transform.rotation.z    = last_goal.rot.z();
   tb.sendTransform(trans);
 
-  if (getting_realsense_brick) {
+  if (brick_reliable) {
     visualization_msgs::Marker msg;
     msg.header.frame_id    = "end_effector_compensated";
     msg.header.stamp       = ros::Time::now();
