@@ -304,7 +304,7 @@ void schedulerCallback(const mbzirc_husky_msgs::brickGoal::ConstPtr& msg)
     blueBricksRequired = 0;
     orangeBricksRequired = 0;
 
-    for(i = 0; i < msg->brickType.length; i++)
+    for(int i = 0; i < msg->brickType.size(); i++)
     {
         if(msg->brickType[i] == 0)
             redBricksRequired++;
@@ -346,14 +346,14 @@ void moveToApproachWP()
     //and if facing the front of the stack -ve y steps back
     //basically just as in the spec book
     //all in map frame
-    wayPointX = 3.0f;
-    wayPointY = -1.5f;
-    stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
-    originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
-    originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+    float wayPointX = 3.0f;
+    float wayPointY = -1.5f;
+    float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+    float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+    float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
     //add the y
-    mapWPX = originX - (frontNormalX * wayPointY);
-    mapWPY = originY - (frontNormalY * wayPointY);
+    float mapWPX = originX - (frontNormalX * wayPointY);
+    float mapWPY = originY - (frontNormalY * wayPointY);
     //add the x
     mapWPX += (gradientX * wayPointX);
     mapWPY -= (gradientY * wayPointX);
