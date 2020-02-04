@@ -1,4 +1,5 @@
 sensor_control/maps/*
 rosbags/*
 *.swp
+*.swo
 *.pyc

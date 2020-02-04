@@ -7,11 +7,14 @@
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
 #include <mbzirc_husky/brick_pileConfig.h>
-
+#include <mbzirc_husky_msgs/brickGoal.h>
+#include <actionlib/client/simple_action_client.h>
+#include <move_base_msgs/MoveBaseAction.h>
 //For labelling the brick pile
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <cmath>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
@@ -23,8 +26,10 @@ typedef enum{
 	IDLE = 0,
 	EXPLORINGBRICKS,
     MOVINGTOBRICKS,
+    BRICKAPPROACH,
     EXPLORINGSTACKSITE,
     MOVINGTOSTACKSITE,
+    STACKAPPROACH,
     FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -47,10 +52,18 @@ float fwSpeed = 0.1;
 
 int misdetections = 0;
 
-bool needRed = false;
-bool needGreen = false;
-bool needBlue = false;
-bool needOrange = false;
+//brickStackLocation in map frame
+bool brickStackLocationKnown = false;
+float brickStackRedX = 0.0f;
+float brickStackRedY = 0.0f;
+float brickStackOrangeX = 0.0f;
+float brickStackOrangeY = 0.0f;
+
+ros::Subscriber schedulerSub;
+int redBricksRequired = 0;
+int greenBricksRequired = 0;
+int blueBricksRequired = 0;
+int orangeBricksRequired = 0;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
@@ -73,8 +86,10 @@ bool isTerminal(ESprayState state)
 {
 	if(state == EXPLORINGBRICKS) return false;
 	if(state == MOVINGTOBRICKS) return false;
-	if(state == EXPLORINGSTACKSITE) return false;
+	if(state == BRICKAPPROACH) return false;
+    if(state == EXPLORINGSTACKSITE) return false;
 	if(state == MOVINGTOSTACKSITE) return false;
+    if(state == STACKAPPROACH) return false;
     if(state == FINAL) return true;
 	return true;
 }
@@ -167,21 +182,92 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	//	}		
 }	
 
+void schedulerCallback(const mbzirc_husky_msgs::brickGoal::ConstPtr& msg)
+{
+    redBricksRequired = 0;
+    greenBricksRequired = 0;
+    blueBricksRequired = 0;
+    orangeBricksRequired = 0;
+
+    for(i = 0; i < msg->brickType.length; i++)
+    {
+        if(msg->brickType[i] == 0)
+            redBricksRequired++;
+        else if(msg->brickType[i] == 1)
+            greenBricksRequired++;
+        else if(msg->brickType[i] == 2)
+            blueBricksRequired++;
+        else if(msg->brickType[i] == 3)
+            orangeBricksRequired++;
+    }
+}
+
+void approachBricks()
+{
+    schedulerSub = pn->subscribe("/brickScheduler/goals", 1, schedulerCallback);
+    state = MOVINGTOBRICKS;
+}
+
+void moveToApproachWP()
+{
+    //get front/back normals of brick stack
+    float dx = brickStackOrangeX - brickStackRedX;
+    float dy = brickStackOrangeY - brickStackRedY;
+
+    float frontNormalX = -dy;
+    float frontNormalY = dx;
+
+    //normalise normals
+    float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
+    frontNormalX /= magnitude;
+    frontNormalY /= magnitude;
+    float gradientX = dx / magnitude;
+    float gradientY = dy / magnitude;
+
+    //now we can calculate waypoint position in stack frame
+    //the following x,y are the approach path waypoints rel to stack
+    //where 0, 0 equals the red side of the stack, closest right corner
+    //and +ve x moves to the right of the stack
+    //and if facing the front of the stack -ve y steps back
+    //basically just as in the spec book
+    //all in map frame
+    wayPointX = 3.0f;
+    wayPointY = -1.5f;
+    stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+    originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+    originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+    //add the y
+    mapWPX = originX - (frontNormalX * wayPointY);
+    mapWPY = originY - (frontNormalY * wayPointY);
+    //add the x
+    mapWPX += (gradientX * wayPointX);
+    mapWPY -= (gradientY * wayPointX);
+}
+
+void moveToBricks()
+{
+    moveToApproachWP();
+}
+
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
-    
-    
     mbzirc_husky::brickExploreResult result;
-
-    state = EXPLORINGBRICKS;
     
+    if(goal->goal == 1)
+        state = EXPLORINGBRICKS;
+    else if(goal->goal == 2)
+        state = EXPLORINGSTACKSITE;      
 
     while (isTerminal(state) == false){
         if(state == EXPLORINGBRICKS)
         {
             //begin lidar search for bricks
             usleep(4000000);
-            state = FINAL;
+            approachBricks();
+        }
+        else if(state == MOVINGTOBRICKS)
+        {
+            moveToBricks();
         }
         usleep(100);
     }
