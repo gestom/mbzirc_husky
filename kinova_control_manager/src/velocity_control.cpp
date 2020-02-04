@@ -460,7 +460,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 
   Eigen::Vector3d align_euler = quaternionToEuler(default_gripping_pose.rot);
   Eigen::Vector3d ee_euler    = quaternionToEuler(end_effector_pose_raw.rot);
-  align_euler.z()             = ee_euler.z() + brick_euler.z();
+  align_euler.z()             = ee_euler.z() + brick_euler.z() + M_PI;
 
   ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
 
@@ -497,7 +497,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     align           = Eigen::Vector3d(-detected_brick.pose.pos.x(), detected_brick.pose.pos.y(), brick_euler.z());
     align_euler     = quaternionToEuler(default_gripping_pose.rot);
     ee_euler        = quaternionToEuler(end_effector_pose_raw.rot);
-    align_euler.z() = ee_euler.z() + brick_euler.z();
+    align_euler.z() = ee_euler.z() + brick_euler.z() + M_PI;
 
     ROS_INFO("[kinova_control_manager]: Brick yaw: %.2f", brick_euler.z());
     ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
@@ -584,7 +584,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
-    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) > (detected_brick.brick_layer * 0.2 - 0.05)) {
+    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) < (detected_brick.brick_layer * 0.2 - 0.05)) {
       ROS_FATAL("[kinova_control_manager]: Failed to attach the brick!");
       msg.twist_linear_x  = 0.0;
       msg.twist_linear_y  = 0.0;
