@@ -17,11 +17,11 @@ windows:
       panes:
         - sleep 5; 
           roslaunch kinova_control_manager control_manager.launch
-  - dbg:
-      layout: even-vertical
-      panes:
-        - 'history -s rosservice call /kinova/arm_manager/random_noise'
-        - 'history -s rosservice call /kinova/arm_manager/ramp'
+  # - dbg:
+  #     layout: even-vertical
+  #     panes:
+  #       - 'history -s rosservice call /kinova/arm_manager/random_noise'
+  #       - 'history -s rosservice call /kinova/arm_manager/ramp'
   - vision:
       layout: even-vertical
       panes:

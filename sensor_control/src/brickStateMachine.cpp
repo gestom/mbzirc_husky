@@ -13,7 +13,8 @@ typedef enum{
     STACKING
 }EState;
 
-EState state = FINDINGBRICKS;
+//EState state = FINDINGBRICKS;
+EState state = PICKINGUP;
 bool currentlyRearranging = false;
 
 int main (int argc, char **argv) {
@@ -31,7 +32,7 @@ int main (int argc, char **argv) {
     stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
-    while(1)
+    while(ros::ok())
     {
         if(state == FINDINGBRICKS)
         {
@@ -113,6 +114,7 @@ int main (int argc, char **argv) {
             state = FINDINGBRICKS;
             ROS_INFO("Bricks stacked, finding more bricks");
         }
+        usleep(100);
     }
     return 0;
 }

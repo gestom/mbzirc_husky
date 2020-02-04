@@ -1,4 +1,3 @@
-#include <mutex>
 #include <random>
 
 #include <ros/ros.h>
@@ -25,6 +24,8 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
+#include <visualization_msgs/Marker.h>
+
 #define DOF 6
 
 namespace kinova_control_manager
@@ -35,6 +36,8 @@ typedef enum
   MOVING,
   IDLE,
   HOMING,
+  ALIGNING,
+  PICKING,
 } MotionStatus_t;
 
 /* utils //{ */
@@ -61,6 +64,10 @@ std::string statusToString(MotionStatus_t ms) {
       return "MOVING";
     case HOMING:
       return "HOMING";
+    case ALIGNING:
+      return "ALIGNING";
+    case PICKING:
+      return "PICKING";
   }
 }
 //}
@@ -95,6 +102,15 @@ struct Pose3d
 };
 //}
 
+/* struct Brick //{ */
+struct Brick
+{
+  Pose3d pose;
+  int    brick_class;
+  int    brick_layer;
+};
+//}
+
 //}
 
 /* class definition //{ */
@@ -114,6 +130,8 @@ private:
   bool getting_realsense_brick = false;
   bool brick_reliable          = false;
 
+  ros::Time last_brick_time;
+
   std::string arm_type;
   std::string husky_base_frame_id;
   std::string kinova_base_frame_id;
@@ -131,7 +149,7 @@ private:
   Pose3d home_pose;
   Pose3d default_gripping_pose;
   Pose3d default_firefighting_pose;
-  Pose3d original_wrist_offset;
+  Pose3d wrist_offset;
 
   double nearby_position_threshold;
   double nearby_rotation_threshold;
@@ -144,17 +162,13 @@ private:
 
   // arm status
   MotionStatus_t status;
-
-  double    joint_angles[DOF];
-  double    last_joint_angles[DOF];
-  Pose3d    end_effector_pose;
-  Pose3d    last_goal;
-  Pose3d    brick_pose;
-  ros::Time time_of_last_motion;
-
-  std::mutex brick_pose_mutex;
-  std::mutex end_effector_mutex;
-  std::mutex joint_angles_mutex;
+  double         joint_angles[DOF];
+  double         last_joint_angles[DOF];
+  Pose3d         end_effector_pose_raw;
+  Pose3d         end_effector_pose_compensated;
+  Pose3d         last_goal;
+  ros::Time      time_of_last_motion;
+  Brick          detected_brick;
 
   // advertised services
   ros::ServiceServer service_server_homing;
@@ -174,9 +188,11 @@ private:
   ros::Publisher publisher_arm_status;
   ros::Publisher publisher_end_effector_pose;
   ros::Publisher publisher_cartesian_velocity;
+  ros::Publisher publisher_rviz_markers;
 
   // subscribers
   ros::Subscriber subscriber_joint_angles;
+  ros::Subscriber subscriber_tool_pose;
   ros::Subscriber subscriber_brick_pose;
   ros::Subscriber subscriber_gripper_diagnostics;
 
@@ -190,6 +206,7 @@ private:
 
   // topic callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
+  void callbackToolPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg);
   void callbackBrickPoseTopic(const mbzirc_husky_msgs::brickPositionConstPtr &msg);
   void callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr &msg);
 
@@ -206,7 +223,6 @@ private:
   // transform stuff
   tf2_ros::TransformBroadcaster tb;
 
-  void endEffectorFromTF();
   void publishTF();
 };
 //}
@@ -238,7 +254,7 @@ void kinova_control_manager::onInit() {
   nh_.getParam("default_gripping_pose", gripping_pose_raw);
   nh_.getParam("default_firefighting_pose", firefighting_pose_raw);
   nh_.getParam("husky_to_arm_base_transform", husky_to_arm_base_transform);
-  nh_.getParam("original_wrist_offset", wrist_offset_raw);
+  nh_.getParam("wrist_offset", wrist_offset_raw);
 
   nh_.getParam("husky_base_frame_id", husky_base_frame_id);
   nh_.getParam("kinova_base_frame_id", kinova_base_frame_id);
@@ -288,13 +304,12 @@ void kinova_control_manager::onInit() {
   default_firefighting_pose.rot = eulerToQuaternion(Eigen::Vector3d(firefighting_pose_raw[3], firefighting_pose_raw[4], firefighting_pose_raw[5]));
 
   if (wrist_offset_raw.size() != 6) {
-    ROS_ERROR("[kinova_control_manager]: Parameter \"original_wrist_offset\" expected to have 3 elements [X,Y,Z,roll,pitch,yaw], got %ld!",
-              wrist_offset_raw.size());
+    ROS_ERROR("[kinova_control_manager]: Parameter \"wrist_offset\" expected to have 3 elements [X,Y,Z,roll,pitch,yaw], got %ld!", wrist_offset_raw.size());
     ros::shutdown();
   }
 
-  original_wrist_offset.pos = Eigen::Vector3d(wrist_offset_raw[0], wrist_offset_raw[1], wrist_offset_raw[2]);
-  original_wrist_offset.rot = eulerToQuaternion(Eigen::Vector3d(wrist_offset_raw[3], wrist_offset_raw[4], wrist_offset_raw[5]));
+  wrist_offset.pos = Eigen::Vector3d(wrist_offset_raw[0], wrist_offset_raw[1], wrist_offset_raw[2]);
+  wrist_offset.rot = eulerToQuaternion(Eigen::Vector3d(wrist_offset_raw[3], wrist_offset_raw[4], wrist_offset_raw[5]));
 
   //}
 
@@ -316,12 +331,14 @@ void kinova_control_manager::onInit() {
   publisher_arm_status         = nh_.advertise<mbzirc_husky_msgs::ArmStatus>("arm_status_out", 1);
   publisher_end_effector_pose  = nh_.advertise<kinova_msgs::ArmPoseActionGoal>("end_effector_pose_out", 1);
   publisher_cartesian_velocity = nh_.advertise<kinova_msgs::PoseVelocity>("cartesian_velocity_out", 1);
+  publisher_rviz_markers       = nh_.advertise<visualization_msgs::Marker>("markers_out", 1);
 
   // subscribers
   subscriber_joint_angles = nh_.subscribe("joint_angles_in", 1, &kinova_control_manager::callbackJointAnglesTopic, this, ros::TransportHints().tcpNoDelay());
   subscriber_brick_pose   = nh_.subscribe("brick_pose_in", 1, &kinova_control_manager::callbackBrickPoseTopic, this, ros::TransportHints().tcpNoDelay());
   subscriber_gripper_diagnostics =
       nh_.subscribe("gripper_diagnostics_in", 1, &kinova_control_manager::callbackGripperDiagnosticsTopic, this, ros::TransportHints().tcpNoDelay());
+  subscriber_tool_pose = nh_.subscribe("tool_pose_in", 1, &kinova_control_manager::callbackToolPoseTopic, this, ros::TransportHints().tcpNoDelay());
 
   // timers
   status_timer = nh_.createTimer(ros::Rate(status_timer_rate), &kinova_control_manager::statusTimer, this);
@@ -332,6 +349,7 @@ void kinova_control_manager::onInit() {
     joint_angles[i]      = 0.0;
     last_joint_angles[i] = 0.0;
   }
+  last_goal = home_pose;
 
   tf2_ros::Buffer            buff;
   tf2_ros::TransformListener tfl(buff, nh_);
@@ -363,6 +381,7 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   time_of_last_motion = ros::Time::now();
   last_goal           = home_pose;
 
+  ungrip();
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
   res.success = true;
@@ -385,6 +404,11 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
   last_goal           = default_gripping_pose;
   goTo(default_gripping_pose);
 
+  while (status != MotionStatus_t::IDLE) {
+    ros::Duration(0.01).sleep();
+    ros::spinOnce();
+  }
+
   res.success = true;
   return true;
 }
@@ -393,15 +417,17 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
 /* callbackAlignArmService //{ */
 bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
+  status = ALIGNING;
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot align arm, internal feedback missing!");
+    status      = IDLE;
     res.success = false;
     return false;
   }
 
   mbzirc_husky_msgs::brickDetect brick_srv;
   brick_srv.request.activate            = true;
-  brick_srv.request.groundPlaneDistance = end_effector_pose.pos[2] + arm_base_to_ground;
+  brick_srv.request.groundPlaneDistance = end_effector_pose_raw.pos[2] + arm_base_to_ground;
   service_client_brick_detector.call(brick_srv.request, brick_srv.response);
 
   ROS_WARN("[kinova_arm_manager]: Waiting for brick detection...");
@@ -412,49 +438,83 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
       std::stringstream ss;
       ss << "Failed to launch brick detection!";
       ROS_FATAL("[kinova_arm_manager]: %s", ss.str().c_str());
+      status      = IDLE;
       res.success = false;
       res.message = ss.str().c_str();
       return false;
     }
   }
 
-  ROS_INFO("[kinova_arm_manager]: Got brick pose: [%.2f, %.2f, %.2f]", brick_srv.response.brickPose.pose.position.x,
-           brick_srv.response.brickPose.pose.position.y, brick_srv.response.brickPose.pose.position.z);
-
-  Eigen::Vector3d align(-brick_srv.response.brickPose.pose.position.x, brick_srv.response.brickPose.pose.position.y, 0.0);
-
-  ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f]", align[0], align[1]);
 
   Eigen::Quaterniond brick_orientation_msg;
-  brick_orientation_msg.w()              = brick_srv.response.brickPose.pose.orientation.w;
-  brick_orientation_msg.x()              = brick_srv.response.brickPose.pose.orientation.x;
-  brick_orientation_msg.y()              = brick_srv.response.brickPose.pose.orientation.y;
-  brick_orientation_msg.z()              = brick_srv.response.brickPose.pose.orientation.z;
-  Eigen::Vector3d brick_euler            = quaternionToEuler(brick_orientation_msg);
-  Eigen::Vector3d default_gripping_euler = quaternionToEuler(default_gripping_pose.rot);
-  tf2::Quaternion q(brick_srv.response.brickPose.pose.orientation.w, brick_srv.response.brickPose.pose.orientation.x,
-                    brick_srv.response.brickPose.pose.orientation.y, brick_srv.response.brickPose.pose.orientation.z);
-  tf2::Matrix3x3  m(q);
+  brick_orientation_msg.w()   = brick_srv.response.brickPose.pose.orientation.w;
+  brick_orientation_msg.x()   = brick_srv.response.brickPose.pose.orientation.x;
+  brick_orientation_msg.y()   = brick_srv.response.brickPose.pose.orientation.y;
+  brick_orientation_msg.z()   = brick_srv.response.brickPose.pose.orientation.z;
+  Eigen::Vector3d brick_euler = quaternionToEuler(brick_orientation_msg);
 
-  double          roll, pitch, yaw;
-  m.getRPY(roll, pitch, yaw);
-  ROS_INFO("brick euler: %.3f, brick yaw: %.3f", brick_euler[2],  yaw);
-  /* default_gripping_euler[2]              = std::min(brick_euler[2], brick_euler[2] - (M_PI/2)); */
-  //default_gripping_euler[2] = brick_euler[2] - 0.11;
+  ROS_INFO("[kinova_arm_manager]: Got brick pose: [%.2f, %.2f, %.2f]", brick_srv.response.brickPose.pose.position.x,
+           brick_srv.response.brickPose.pose.position.y, brick_euler.z());
+
+  Eigen::Vector3d align(-brick_srv.response.brickPose.pose.position.x, brick_srv.response.brickPose.pose.position.y, brick_euler.z());
+
+  Eigen::Vector3d align_euler = quaternionToEuler(default_gripping_pose.rot);
+  Eigen::Vector3d ee_euler    = quaternionToEuler(end_effector_pose_raw.rot);
+  align_euler.z()             = ee_euler.z() + brick_euler.z();
+
+  ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
 
   Pose3d new_pose;
-  new_pose.pos.x() = end_effector_pose.pos.x() + align[0];
-  new_pose.pos.y() = end_effector_pose.pos.y() + align[1];
-  new_pose.pos.z() = 0.55;
-  new_pose.rot     = eulerToQuaternion(default_gripping_euler);
+  new_pose.pos.x() = end_effector_pose_raw.pos.x() + align.x();
+  new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
+  new_pose.pos.z() = default_gripping_pose.pos.z();
+  new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
   goTo(new_pose);
   ros::Duration(2.0).sleep();
 
   if (!getting_realsense_brick) {
     ROS_FATAL("[kinova_arm_manager]: Brick pose topic did not open!");
+    status      = IDLE;
     res.success = false;
     return false;
   }
+
+  bool aligned = false;
+
+  for (int i = 0; i < 10; i++) {
+
+    if (aligned) {
+      break;
+    }
+    if (!getting_realsense_brick) {
+      status      = IDLE;
+      res.success = false;
+      return false;
+    }
+
+    brick_euler = quaternionToEuler(detected_brick.pose.rot);
+
+    align           = Eigen::Vector3d(-detected_brick.pose.pos.x(), detected_brick.pose.pos.y(), brick_euler.z());
+    align_euler     = quaternionToEuler(default_gripping_pose.rot);
+    ee_euler        = quaternionToEuler(end_effector_pose_raw.rot);
+    align_euler.z() = ee_euler.z() + brick_euler.z();
+
+    ROS_INFO("[kinova_control_manager]: Brick yaw: %.2f", brick_euler.z());
+    ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
+
+    Pose3d new_pose;
+    new_pose.pos.x() = end_effector_pose_raw.pos.x() + align.x();
+    new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
+    new_pose.pos.z() = default_gripping_pose.pos.z();
+    new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
+    goTo(new_pose);
+    ros::Duration(1.0).sleep();
+    aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
+  }
+  ros::spinOnce();
+  ros::Duration(1.0);
+  ros::spinOnce();
+  status      = IDLE;
   res.success = true;
   return true;
 }
@@ -463,50 +523,99 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
 /* callbackPickupBrickService //{ */
 bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot start \"pickup brick\", arm is not IDLE!");
+    res.success = false;
+    return false;
+  }
+
   if (!getting_realsense_brick && !getting_gripper_diagnostics) {
     ROS_WARN("[kinova_control_manager]: Cannot pickup brick whithout realsense and gripper feedback!");
     res.success = false;
     return false;
   }
+  status = PICKING;
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
-  while (brick_reliable) {
-    msg.twist_linear_x = -brick_pose.pos.x() * linear_vel_modifier;
-    msg.twist_linear_y = brick_pose.pos.y() * linear_vel_modifier;
+
+  double stopping_height = (detected_brick.brick_layer * 0.2) - arm_base_to_ground + 0.1;
+  std::cout << "Slow down at Z: " << stopping_height << "\n";
+
+  while (!brick_attached && brick_reliable) {
+
+    if (!getting_realsense_brick) {
+      ROS_ERROR("[kinova_control_manager]: Brick lost, aborting pickup");
+      msg.twist_linear_x  = 0.0;
+      msg.twist_linear_y  = 0.0;
+      msg.twist_linear_z  = 0.0;
+      msg.twist_angular_x = 0.0;
+      msg.twist_angular_y = 0.0;
+      msg.twist_angular_z = 0.0;
+      publisher_cartesian_velocity.publish(msg);
+      ros::spinOnce();
+      ros::Duration(0.01).sleep();
+      ros::spinOnce();
+      status      = IDLE;
+      res.success = false;
+      return false;
+    }
+
+    msg.twist_linear_x = -detected_brick.pose.pos.x() * linear_vel_modifier;
+    msg.twist_linear_y = detected_brick.pose.pos.y() * linear_vel_modifier;
     msg.twist_linear_z = -move_down_speed_faster;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
   }
+
+  // now the descent will not abort if brick is lost
   ROS_WARN("[kinova_control_manager]: Entering the danger zone!");
 
-  grip();
-  double magnet_to_ground = 50;
-  while (!brick_attached && magnet_to_ground > 0.25) {
-    magnet_to_ground = arm_base_to_ground + end_effector_pose.pos.z() - 0.037;
-    //std::cout << "Magent to ground: " << magnet_to_ground << "\n";
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > stopping_height) {
+
     msg.twist_linear_x = 0.0;
     msg.twist_linear_y = 0.0;
     msg.twist_linear_z = -move_down_speed_slower;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
-  } 
+  }
+
+  grip();
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
-  
+
   while (!brick_attached) {
-    //magnet_to_ground = arm_base_to_ground + end_effector_pose.pos.z() - 0.037;
-    //std::cout << "Magent to ground: " << magnet_to_ground << "\n";
-    msg.twist_linear_x = 0.0;
-    msg.twist_linear_y = 0.0;
-    msg.twist_linear_z = -move_down_speed_mega_slow;
+    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) > (detected_brick.brick_layer * 0.2 - 0.05)) {
+      ROS_FATAL("[kinova_control_manager]: Failed to attach the brick!");
+      msg.twist_linear_x  = 0.0;
+      msg.twist_linear_y  = 0.0;
+      msg.twist_linear_z  = 0.0;
+      msg.twist_angular_x = 0.0;
+      msg.twist_angular_y = 0.0;
+      msg.twist_angular_z = 0.0;
+      publisher_cartesian_velocity.publish(msg);
+      status = IDLE;
+      ungrip();
+      res.success = false;
+      return false;
+    }
+    msg.twist_linear_x  = 0.0;
+    msg.twist_linear_y  = 0.0;
+    msg.twist_linear_z  = -move_down_speed_mega_slow;
+    msg.twist_angular_x = 0.0;
+    msg.twist_angular_y = 0.0;
+    msg.twist_angular_z = 0.0;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.009).sleep();
   }
-  msg.twist_linear_x = 0.0;
-  msg.twist_linear_y = 0.0;
-  msg.twist_linear_z = 0.0;
-  publisher_cartesian_velocity.publish(msg);
 
+  msg.twist_linear_x  = 0.0;
+  msg.twist_linear_y  = 0.0;
+  msg.twist_linear_z  = 0.0;
+  msg.twist_angular_x = 0.0;
+  msg.twist_angular_y = 0.0;
+  msg.twist_angular_z = 0.0;
+  publisher_cartesian_velocity.publish(msg);
+  status      = IDLE;
   res.success = true;
   return true;
 }
@@ -515,7 +624,6 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
 /* callbackGoToService //{ */
 bool kinova_control_manager::callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
-  /* std::scoped_lock lock(end_effector_mutex); */
   if (!is_initialized) {
     ROS_ERROR("[kinova_control_manager]: Cannot execute \"goTo\", not initialized!");
     res.success = false;
@@ -550,7 +658,6 @@ bool kinova_control_manager::callbackGoToService(mbzirc_husky_msgs::EndEffectorP
 /* callbackGoToRelativeService //{ */
 bool kinova_control_manager::callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
-  /* std::scoped_lock lock(end_effector_mutex); */
   if (!is_initialized) {
     ROS_ERROR("[kinova_control_manager]: Cannot execute \"goToRelative\", not initialized!");
     res.success = false;
@@ -584,7 +691,6 @@ bool kinova_control_manager::callbackGoToRelativeService(mbzirc_husky_msgs::EndE
 
 /* callbackJointAnglesTopic //{ */
 void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg) {
-  /* std::scoped_lock lock(joint_angles_mutex); */
   getting_joint_angles = true;
 
   for (int i = 0; i < DOF; i++) {
@@ -615,7 +721,7 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
   if ((ros::Time::now() - time_of_last_motion).sec > no_move_error_timeout) {
     /* homing handler //{ */
     if (status == HOMING) {
-      if (nearbyPose(home_pose, end_effector_pose)) {
+      if (nearbyPose(home_pose, end_effector_pose_compensated)) {
         ROS_INFO("[Arm manager]: Homing complete");
       } else {
         ROS_ERROR("[Arm manager]: Homing error! Check arm collisions");
@@ -627,11 +733,11 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
 
     /* moving handler //{ */
     if (status == MOVING) {
-      if (nearbyPose(last_goal, end_effector_pose)) {
+      if (nearbyPose(last_goal, end_effector_pose_compensated)) {
         ROS_INFO("[Arm manager]: Goal reached");
       } else {
         Eigen::Vector3d p_euler = quaternionToEuler(last_goal.rot);
-        Eigen::Vector3d q_euler = quaternionToEuler(end_effector_pose.rot);
+        Eigen::Vector3d q_euler = quaternionToEuler(end_effector_pose_compensated.rot);
         Eigen::Vector3d angular_diff;
 
         for (int i = 0; i < 3; i++) {
@@ -640,7 +746,7 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
             angular_diff[i] = std::abs(angular_diff[i] - 3.0);
           }
         }
-        double pos_error = (last_goal.pos - end_effector_pose.pos).norm();
+        double pos_error = (last_goal.pos - end_effector_pose_compensated.pos).norm();
         ROS_WARN("[Arm manager]: Destination unreachable. Position error: %.4f, Rotation error: %.2f, %.2f, %.2f", pos_error, angular_diff[0], angular_diff[1],
                  angular_diff[2]);
       }
@@ -653,17 +759,38 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
 
 /* callbackBrickPoseTopic //{ */
 void kinova_control_manager::callbackBrickPoseTopic(const mbzirc_husky_msgs::brickPositionConstPtr &msg) {
-  /* std::scoped_lock lock(brick_pose_mutex); */
-  getting_realsense_brick = true;
-  brick_reliable          = msg->completelyVisible;
-  brick_pose.pos.x()      = msg->pose.pose.position.x;
-  brick_pose.pos.y()      = msg->pose.pose.position.y;
-  brick_pose.pos.z()      = msg->pose.pose.position.z;
+  getting_realsense_brick = msg->detected;
+  last_brick_time         = ros::Time::now();
+  brick_reliable          = msg->completelyVisible && msg->detected;
 
-  brick_pose.rot.w() = msg->pose.pose.orientation.w;
-  brick_pose.rot.x() = msg->pose.pose.orientation.x;
-  brick_pose.rot.y() = msg->pose.pose.orientation.y;
-  brick_pose.rot.z() = msg->pose.pose.orientation.z;
+  detected_brick.brick_class = msg->type;
+
+  if (brick_reliable) {
+    Eigen::Vector3d measurement(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+
+    detected_brick.pose.pos.x() = msg->pose.pose.position.x;
+    detected_brick.pose.pos.y() = msg->pose.pose.position.y;
+    detected_brick.pose.pos.z() = msg->pose.pose.position.z;
+
+    detected_brick.pose.rot.w() = msg->pose.pose.orientation.w;
+    detected_brick.pose.rot.x() = msg->pose.pose.orientation.x;
+    detected_brick.pose.rot.y() = msg->pose.pose.orientation.y;
+    detected_brick.pose.rot.z() = msg->pose.pose.orientation.z;
+
+    double end_effector_to_ground = end_effector_pose_compensated.pos.z() + arm_base_to_ground;
+    double brick_height           = end_effector_to_ground - (detected_brick.pose.pos.z() + 0.2);
+    /* std::cout << "Brick height: " << brick_height << "\n"; */
+    if (status == ALIGNING) {
+      if (brick_height > -0.15 && brick_height < 0.15) {
+        detected_brick.brick_layer = 1;
+      } else if (brick_height >= 0.15 && brick_height < 0.35) {
+        detected_brick.brick_layer = 2;
+      } else if (brick_height >= 0.35) {
+        detected_brick.brick_layer = 3;
+      }
+      /* std::cout << "Layer: " << detected_brick.brick_layer << "\n"; */
+    }
+  }
 }
 //}
 
@@ -676,11 +803,10 @@ void kinova_control_manager::callbackGripperDiagnosticsTopic(const mrs_msgs::Gri
 
 /* statusTimer //{ */
 void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
+
   if (!is_initialized) {
     return;
   }
-  endEffectorFromTF();
-
   mbzirc_husky_msgs::ArmStatus status_msg;
   status_msg.arm_type     = arm_type;
   status_msg.header.stamp = ros::Time::now();
@@ -692,14 +818,22 @@ void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent 
     status_msg.joint_angles[i] = joint_angles[i];
   }
 
-  Eigen::Vector3d euler      = quaternionToEuler(end_effector_pose.rot);
+  Eigen::Vector3d euler      = quaternionToEuler(end_effector_pose_compensated.rot);
   Eigen::Vector3d last_euler = quaternionToEuler(last_goal.rot);
   for (int i = 0; i < 3; i++) {
-    status_msg.end_effector_pose[i]     = end_effector_pose.pos[i];
+    status_msg.end_effector_pose[i]     = end_effector_pose_compensated.pos[i];
     status_msg.end_effector_pose[i + 3] = euler[i];
     status_msg.last_goal[i]             = last_goal.pos[i];
     status_msg.last_goal[i + 3]         = last_euler[i];
   }
+
+  if (status == ALIGNING && (ros::Time::now() - last_brick_time).sec > 2.0) {
+    ROS_WARN("[kinova_control_manager]: Brick timeout!");
+    getting_realsense_brick     = false;
+    detected_brick.pose.pos.x() = default_gripping_pose.pos.x();
+    detected_brick.pose.pos.y() = default_gripping_pose.pos.y();
+  }
+
   publisher_arm_status.publish(status_msg);
   publishTF();
 }
@@ -712,12 +846,11 @@ void kinova_control_manager::goTo(Pose3d pose) {
   ROS_INFO("[kinova_control_manager]: Moving end effector to position [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(),
            euler[0], euler[1], euler[2]);
 
-
   last_goal = pose;  // store last_goal before compensation (this is the actual position of the wrist)
 
   // offset compensation because no wrist is attached
-  pose.rot *= original_wrist_offset.rot;
-  pose.pos += pose.rot * original_wrist_offset.pos;
+  pose.rot *= wrist_offset.rot;
+  pose.pos += pose.rot * wrist_offset.pos;
 
   kinova_msgs::ArmPoseActionGoal msg;
 
@@ -743,14 +876,14 @@ void kinova_control_manager::goTo(Pose3d pose) {
 /* void kinova_control_manager::goToRelative(Pose3d rel_pose) { */
 
 /*   Pose3d goal_pose = end_effector_pose; */
-/*   goal_pose.rot *= original_wrist_offset.rot; */
-/*   goal_pose.pos += goal_pose.rot * original_wrist_offset.pos; */
+/*   goal_pose.rot *= wrist_offset.rot; */
+/*   goal_pose.pos += goal_pose.rot * wrist_offset.pos; */
 
 /*   goal_pose = goal_pose + rel_pose; */
 
 /*   last_goal = goal_pose; */
-/*   last_goal.rot *= original_wrist_offset.rot.inverse(); */
-/*   last_goal.pos -= goal_pose.rot * original_wrist_offset.pos;  // remove the compensation (this is the actual position of the end effector) */
+/*   last_goal.rot *= wrist_offset.rot.inverse(); */
+/*   last_goal.pos -= goal_pose.rot * wrist_offset.pos;  // remove the compensation (this is the actual position of the end effector) */
 
 /*   Eigen::Vector3d euler = quaternionToEuler(rel_pose.rot); */
 /*   ROS_INFO("[kinova_control_manager]: Moving end effector to [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", goal_pose.pos.x(), goal_pose.pos.y(), */
@@ -876,37 +1009,6 @@ bool kinova_control_manager::nearbyVector(Eigen::Vector3d u, Eigen::Vector3d v) 
 }
 //}
 
-/* endEffectorFromTF //{ */
-void kinova_control_manager::endEffectorFromTF() {
-
-  tf2_ros::Buffer            buff;
-  tf2_ros::TransformListener tl(buff);
-
-  geometry_msgs::TransformStamped trans;
-
-  while (ros::ok()) {
-    try {
-      trans                     = buff.lookupTransform("j2n6s300_link_base", "j2n6s300_end_effector", ros::Time(0));
-      end_effector_pose.pos.x() = trans.transform.translation.x;
-      end_effector_pose.pos.y() = trans.transform.translation.y;
-      end_effector_pose.pos.z() = trans.transform.translation.z;
-      end_effector_pose.rot.w() = trans.transform.rotation.w;
-      end_effector_pose.rot.x() = trans.transform.rotation.x;
-      end_effector_pose.rot.y() = trans.transform.rotation.y;
-      end_effector_pose.rot.z() = trans.transform.rotation.z;
-
-      // wrist compensation
-      /* end_effector_pose.rot *= original_wrist_offset.rot.inverse(); */
-      end_effector_pose.pos -= end_effector_pose.rot * original_wrist_offset.pos;
-      return;
-    }
-    catch (tf2::TransformException &ex) {
-      ros::Duration(0.01).sleep();
-    }
-  }
-}
-//}
-
 /* publishTF //{ */
 void kinova_control_manager::publishTF() {
   geometry_msgs::TransformStamped trans;
@@ -918,7 +1020,8 @@ void kinova_control_manager::publishTF() {
   /* trans.transform.translation.z = husky_to_arm_base_transform[2]; */
   trans.transform.translation.x = 0.0;
   trans.transform.translation.y = 0.0;
-  trans.transform.translation.z = 0.0;
+  /* trans.transform.translation.z = 0.0; */
+  trans.transform.translation.z = arm_base_to_ground;
   Eigen::Quaterniond rot        = Eigen::Quaterniond::Identity();
   trans.transform.rotation.w    = rot.w();
   trans.transform.rotation.x    = rot.x();
@@ -929,11 +1032,88 @@ void kinova_control_manager::publishTF() {
   trans.header.stamp            = ros::Time::now();
   trans.header.frame_id         = kinova_base_frame_id;
   trans.child_frame_id          = "end_effector_compensated";
-  trans.transform.translation.x = end_effector_pose.pos.x();
-  trans.transform.translation.y = end_effector_pose.pos.y();
-  trans.transform.translation.z = end_effector_pose.pos.z();
-  trans.transform.rotation      = tf2::toMsg(end_effector_pose.rot);
+  trans.transform.translation.x = end_effector_pose_compensated.pos.x();
+  trans.transform.translation.y = end_effector_pose_compensated.pos.y();
+  trans.transform.translation.z = end_effector_pose_compensated.pos.z();
+  trans.transform.rotation.w    = end_effector_pose_compensated.rot.w();
+  trans.transform.rotation.x    = end_effector_pose_compensated.rot.x();
+  trans.transform.rotation.y    = end_effector_pose_compensated.rot.y();
+  trans.transform.rotation.z    = end_effector_pose_compensated.rot.z();
   tb.sendTransform(trans);
+
+  trans.header.stamp            = ros::Time::now();
+  trans.header.frame_id         = kinova_base_frame_id;
+  trans.child_frame_id          = "end_effector_raw";
+  trans.transform.translation.x = end_effector_pose_raw.pos.x();
+  trans.transform.translation.y = end_effector_pose_raw.pos.y();
+  trans.transform.translation.z = end_effector_pose_raw.pos.z();
+  trans.transform.rotation      = tf2::toMsg(end_effector_pose_raw.rot);
+  tb.sendTransform(trans);
+
+  trans.header.stamp            = ros::Time::now();
+  trans.header.frame_id         = kinova_base_frame_id;
+  trans.child_frame_id          = "last_goal";
+  trans.transform.translation.x = last_goal.pos.x();
+  trans.transform.translation.y = last_goal.pos.y();
+  trans.transform.translation.z = last_goal.pos.z();
+  trans.transform.rotation.w    = last_goal.rot.w();
+  trans.transform.rotation.x    = last_goal.rot.x();
+  trans.transform.rotation.y    = last_goal.rot.y();
+  trans.transform.rotation.z    = last_goal.rot.z();
+  tb.sendTransform(trans);
+
+  if (getting_realsense_brick) {
+    visualization_msgs::Marker msg;
+    msg.header.frame_id    = "end_effector_compensated";
+    msg.header.stamp       = ros::Time::now();
+    msg.ns                 = "current_namespace";
+    msg.action             = visualization_msgs::Marker::ADD;
+    msg.type               = visualization_msgs::Marker::CUBE;
+    msg.id                 = 666;
+    msg.pose.position.x    = detected_brick.pose.pos.x();
+    msg.pose.position.y    = detected_brick.pose.pos.y();
+    msg.pose.position.z    = detected_brick.pose.pos.z() + 0.1;
+    msg.pose.orientation.x = detected_brick.pose.rot.x();
+    msg.pose.orientation.y = detected_brick.pose.rot.y();
+    msg.pose.orientation.z = detected_brick.pose.rot.z();
+    msg.pose.orientation.w = detected_brick.pose.rot.w();
+    switch (detected_brick.brick_class) {
+      case 1:
+        msg.scale.x = 0.3;
+        msg.color.r = 1.0;
+        break;
+      case 2:
+        msg.scale.x = 0.6;
+        msg.color.g = 1.0;
+        break;
+      case 3:
+        msg.scale.x = 1.2;
+        msg.color.b = 1.0;
+        break;
+      default:
+        return;
+    }
+    msg.scale.y = 0.2;
+    msg.scale.z = 0.2;
+    msg.color.a = 0.4;
+    publisher_rviz_markers.publish(msg);
+  }
+}
+//}
+
+/* callbackToolPoseTopic //{ */
+void kinova_control_manager::callbackToolPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg) {
+  end_effector_pose_raw.rot.w() = msg->pose.orientation.w;
+  end_effector_pose_raw.rot.x() = msg->pose.orientation.x;
+  end_effector_pose_raw.rot.y() = msg->pose.orientation.y;
+  end_effector_pose_raw.rot.z() = msg->pose.orientation.z;
+
+  end_effector_pose_raw.pos.x() = msg->pose.position.x;
+  end_effector_pose_raw.pos.y() = msg->pose.position.y;
+  end_effector_pose_raw.pos.z() = msg->pose.position.z;
+
+  end_effector_pose_compensated.pos = end_effector_pose_raw.pos - (end_effector_pose_raw.rot * wrist_offset.pos);
+  end_effector_pose_compensated.rot = wrist_offset.rot * end_effector_pose_raw.rot;
 }
 //}
 

@@ -83,7 +83,7 @@ add_dependencies(fireExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPO
 add_dependencies(fireStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-add_dependencies(brickPickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(brickPickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS} kinova_control_manager_gencpp)
 add_dependencies(brickRearrange ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickStack ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
