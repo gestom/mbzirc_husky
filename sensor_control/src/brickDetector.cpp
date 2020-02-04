@@ -67,6 +67,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	segment = segmentation->findSegment(depthImage,5000,10000000,wantedType);
 	float pX,pY,pZ;
 	brickPose.detected = false;
+	brickPose.completelyVisible = false;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
 		pX = (segment.x-307)/640.95*pZ-0.02;
