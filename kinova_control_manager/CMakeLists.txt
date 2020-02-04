@@ -8,9 +8,9 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   std_msgs
   geometry_msgs
-  tf
+  # tf
   tf2
-  tf2_geometry_msgs
+  # tf2_geometry_msgs
   kinova_msgs
   kinova_driver
   kinova_bringup
@@ -42,7 +42,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(kinova_control_manager src/velocity_control.cpp)
+add_library(kinova_control_manager src/control_manager.cpp)
 
 target_link_libraries(kinova_control_manager
   ${catkin_LIBRARIES}

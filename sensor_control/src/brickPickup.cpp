@@ -16,12 +16,13 @@ Server *server;
 
 typedef enum{
 	IDLE = 0,
-	ARMRESET,	//arm goes to dock position
-	ARMPOSITIONING, //arm goes to overview positions
-	ROBOTALIGNMENT,	//robot aligns to get the brick in nice position
-	ARMALIGNMENT,	//arm makes fine alignment
-	ARMDESCENT,	//arm does down and detects the magnet feedback
-	ARMPICKUP,	//grasp
+	ARMRESET,		//arm goes to dock position
+	ARMPOSITIONING, 	//arm goes to overview positions
+	ROBOTALIGNMENT,	  	//robot aligns to get the brick in nice position
+	ROBOTFINALALIGNMENT,	//robot aligns to get the brick in x direction only 
+	ARMALIGNMENT,		//arm makes fine alignment
+	ARMDESCENT,		//arm does down and detects the magnet feedback
+	ARMPICKUP,		//grasp
 	FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -43,6 +44,7 @@ ros::Subscriber subscriberBrickPose;
 bool isTerminal(ESprayState state)
 {
     if(state == ROBOTALIGNMENT) return false;
+    if(state == ROBOTFINALALIGNMENT) return false;
     if(state == ARMRESET) return false;
     if(state == ARMPOSITIONING) return false;
     if(state == ARMALIGNMENT) return false;
@@ -53,38 +55,74 @@ bool isTerminal(ESprayState state)
 }
 
 float stateMove = -1;
-
+int alignmentOK = 0;
 
 void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
 {
+	float maxX = 0.10;
+	float maxZ = 0.15;
+	float angle = tf::getYaw(msg->pose.pose.orientation);
+	geometry_msgs::Twist spd;
+	if(state == ROBOTFINALALIGNMENT)
+	{
+		printf("Robot final: %i %f %f %f\n",msg->detected,msg->pose.pose.position.x,msg->pose.pose.position.y,angle);
+		spd.linear.x = -msg->pose.pose.position.x*3;
+		spd.angular.z = 0;
+		if (fabs(msg->pose.pose.position.x) < 0.02)
+		{
+			spd.linear.x = spd.linear.y = 0; 
+			state = ROBOTFINALALIGNMENT;
+		}
+		if (spd.linear.x > +maxX) spd.linear.x = +maxX;
+		if (spd.linear.x < -maxX) spd.linear.x = -maxX;
+		if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
+		if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
+		if (fabs(msg->pose.pose.position.x) < 0.02)
+		{
+			alignmentOK++;
+			if (alignmentOK > 20){
+				spd.linear.x = spd.linear.y = 0; 
+				state = ARMALIGNMENT;
+			}		
+		}else{
+			alignmentOK = 0;
+		}
+
+		twistPub.publish(spd);
+	}
 	if(state == ROBOTALIGNMENT){
-		float angle = tf::getYaw(msg->pose.pose.orientation);
-		geometry_msgs::Twist spd;
-		float maxX = 0.10;
-		float maxZ = 0.15;
-		printf("POS: %i %f %f %f\n",msg->detected,msg->pose.pose.position.x,msg->pose.pose.position.y,angle);
+		printf("Robot align: %i %f %f %f\n",msg->detected,msg->pose.pose.position.x,msg->pose.pose.position.y,angle);
 		if (msg->detected){	
 			spd.linear.x = -msg->pose.pose.position.x*3;
-			if (spd.linear.x < 0) spd.angular.z = -msg->pose.pose.position.y;
-			if (spd.linear.x > 0) spd.angular.z = msg->pose.pose.position.y;
+			//if (spd.linear.x < 0) spd.angular.z = -msg->pose.pose.position.y;
+			//if (spd.linear.x > 0) spd.angular.z = msg->pose.pose.position.y;
+
 			spd.angular.z = (stateMove*msg->pose.pose.position.y*3-angle)*20;
 			spd.linear.x = 0;
 			if (msg->pose.pose.position.x > +0.1) stateMove = -1;
 			if (msg->pose.pose.position.x < -0.1) stateMove = +1;
 			if (angle*stateMove*msg->pose.pose.position.y > 0) spd.linear.x = stateMove*0.10;
 
-			if (spd.linear.x > +maxX) spd.linear.x = +maxX;
-			if (spd.linear.x < -maxX) spd.linear.x = -maxX;
-			if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
-			if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
 		}else{
 			spd.linear.x = spd.linear.y = 0; 
 		}
-		if (fabs(msg->pose.pose.position.x) < 0.02 && fabs(msg->pose.pose.position.y) < 0.02)
+		if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(angle) < 0.2)
 		{
-			spd.linear.x = spd.linear.y = 0; 
-			state = ARMALIGNMENT;
+			alignmentOK++;
+			if (alignmentOK > 20){
+				spd.linear.x = spd.linear.y = 0; 
+				state = ROBOTFINALALIGNMENT;
+				twistPub.publish(spd);
+				usleep(250000);
+				alignmentOK=0;
+			}
+		}else{
+			alignmentOK=0;
 		}
+		if (spd.linear.x > +maxX) spd.linear.x = +maxX;
+		if (spd.linear.x < -maxX) spd.linear.x = -maxX;
+		if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
+		if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
 		twistPub.publish(spd);
 	}
 }
@@ -119,6 +157,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 			std_srvs::Trigger srv;
 			if(prepareClient.call(srv))
 			{
+				usleep(3000000);
 				state = ROBOTALIGNMENT;
 				ROS_INFO("ARM POSITIONED");
 			}
