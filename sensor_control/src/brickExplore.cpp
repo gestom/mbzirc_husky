@@ -17,6 +17,7 @@
 #include <cmath>
 #include <sstream>
 #include <stdlib.h>
+#include <visualization_msgs/Marker.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
@@ -25,6 +26,7 @@ ros::Subscriber scan_sub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
 ros::Publisher point_of_inter_pub;
+ros::Publisher debugVisualiser;
 
 typedef enum{
 	IDLE = 0,
@@ -364,6 +366,23 @@ void moveToApproachWP()
     mapWPX -= (gradientX * wayPointX);
     mapWPY -= (gradientY * wayPointX);
 
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::ARROW;
+
+    marker.pose.position.x = mapWPX;
+    marker.pose.position.y = mapWPY;
+    marker.pose.position.z = 0;
+
+    marker.pose.orientation.x = 0;
+    marker.pose.orientation.y = 0;
+    marker.pose.orientation.z = gradientX;
+    marker.pose.orientation.w = gradientY;
+    
+    debugVisualiser.publish(marker);
+
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
@@ -383,6 +402,18 @@ void moveToApproachWP()
     else
 	    ROS_INFO("FAILED on first approach, continueing");
 
+    marker.header.stamp = ros::Time::now();
+    marker.type = visualization_msgs::Marker::ARROW;
+
+    marker.pose.position.x = originX - (frontNormalX * wayPointY) + (gradientX * 0.2);
+    marker.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
+    marker.pose.orientation.z = gradientX;
+    marker.pose.orientation.w = gradientY;
+    
+    debugVisualiser.publish(marker);
+
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = originX - (frontNormalX * wayPointY) + (gradientX * 0.2);
     goal.target_pose.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
@@ -433,7 +464,8 @@ void moveToBricks()
 	}
 	else
 	{
-		usleep(10000);		
+        ROS_INFO("Approach waiting for ransac position...");
+        usleep(1000000);		
 	}
 }
 
@@ -473,6 +505,7 @@ int main(int argc, char** argv)
 	ros::NodeHandle n;
    	pn = &n;
     movebaseAC = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
+    debugVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/debug", 1);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
