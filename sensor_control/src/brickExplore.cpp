@@ -352,8 +352,8 @@ void moveToApproachWP()
     //and if facing the front of the stack +ve y steps back
     //basically just as in the spec book
     //all in map frame
-    float wayPointX = 3.0f;
-    float wayPointY = 0.5f;
+    float wayPointX = 2.5f;
+    float wayPointY = 1.0f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
@@ -401,6 +401,8 @@ void moveToApproachWP()
 
 void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
 {
+	if(brickStackLocationKnown)
+		return;
 	ROS_INFO("RECEIVED POS");
     char* ch;
     ch = strtok(strdup(msg->data.c_str()), " ");

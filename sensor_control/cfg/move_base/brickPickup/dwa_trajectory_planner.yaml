@@ -1,7 +1,7 @@
 DWAPlannerROS:
-  acc_lim_x: 1.6
+  acc_lim_x: 0.3
   acc_lim_y: 0
-  acc_lim_th: 3.0
+  acc_lim_th: 0.4
   max_trans_vel: 0.4
   min_trans_vel: 0.0
   max_vel_x: 0.2
@@ -10,8 +10,8 @@ DWAPlannerROS:
   min_vel_y: 0
   max_rot_vel: 0.03
   min_rot_vel: 0.015
-  yaw_goal_tolerance: 0.04
-  xy_goal_tolerance: 0.1
+  yaw_goal_tolerance: 0.09
+  xy_goal_tolerance: 0.2
   latch_xy_goal_tolerance: false
   sim_time: 1.5
   sim_granularity: 0.025
