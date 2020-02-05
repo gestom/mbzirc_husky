@@ -446,7 +446,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     else if(goal->goal == 2)
         state = EXPLORINGSTACKSITE;      
 
-    while (isTerminal(state) == false){
+    while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
         {
             //begin lidar search for bricks
