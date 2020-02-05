@@ -1,13 +1,14 @@
 arm_type: "j2n6s300"
 status_timer_rate: 5 # [Hz]
 no_move_error_timeout: 1.3 # [s]
+gripper_timeout: 5.0 # [s]
 nearby_position_threshold: 0.05 # [m]
 nearby_rotation_threshold: 0.11 # [rad]
 end_effector_home_pose: [0.11114309863131741, -0.2158097313049791, 0.4881259485167549, 1.4551091600480015, 1.3555070211450448, 0.13082173974487404] # [m m m rad rad rad]
 default_gripping_pose: [0.0, -0.52, 0.52, 0.0, -3.1416, 0.0] # [m m m rad rad rad]
 default_firefighting_pose: [0.45906802294120663, -0.0013019907726987967, 0.6128451137619106, 1.5640734913191676, 3.121927023259888, 1.5827672369569061] # [m m m rad rad rad]
+raised_camera_pose: [0.16196992893835055, 0.018272304054134575, 0.8960356217042711, 0.5208933775477931, 2.0441828891657026, -1.812930351770125] # [m m m rad rad rad]
 husky_to_arm_base_transform: [-0.175, -0.13 ,0.17, 0, 0, 0] # [m m m rad rad rad]
-# original_wrist_offset: [-0.02, 0.033, 0.115, 0.0, 0.0, 0.31] # [m m m]
 wrist_offset: [0.0, 0.0, 0.118, 0.0, 0.0, 0.3] # [m m m]
 arm_base_to_ground: 0.405 # [m]
 linear_vel_modifier: 2.0
