@@ -212,7 +212,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	int first_idx;
 	bool first =true;
 	int last_idx = 0;
-	std::cout << "b1 " << b1 << " b2 " << b2 << std::endl;
+	//std::cout << "b1 " << b1 << " b2 " << b2 << std::endl;
 	if (b1 >= 0 && b2 >=0)
 	{
 
@@ -261,7 +261,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 		displacement = (maxB[b1]+maxB[b2])/2.0;
 		realAngle = (maxA[b1]+maxA[b2])/2.0;
-		fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
+		//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 	}
 	//Get the length of the line 
 	double line_len = 0;
@@ -269,7 +269,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	double dist_to_pile_2 = 0;
 	if(first_idx > 0 && last_idx >= 1){
 		line_len = dist(x[first_idx],y[first_idx],x[last_idx],y[last_idx]);
-		std::cout << "Line length: " << line_len << std::endl;
+		//std::cout << "Line length: " << line_len << std::endl;
 
 		//Get distance to the pile
 		//Represented by the distance to the point in the middle
@@ -277,11 +277,11 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if(dist(x[first_idx],y[first_idx],0,0) < dist(x[last_idx],y[last_idx],0,0)){
 				dist_to_pile = dist(x[last_idx],y[last_idx],0,0);
 				dist_to_pile_2 = dist(x[first_idx],y[first_idx],0,0);
-				std::cout << "Distance to the middle of the pile front: " << dist_to_pile << " back " << dist_to_pile_2  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
+				//std::cout << "Distance to the middle of the pile front: " << dist_to_pile << " back " << dist_to_pile_2  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
 			}else{
 				dist_to_pile = dist(x[last_idx],y[last_idx],0,0);
 				dist_to_pile_2 = dist(x[first_idx],y[first_idx],0,0);
-				std::cout << "Distance to the middle of the pile back: " << dist_to_pile_2 << " front " << dist_to_pile  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
+				//std::cout << "Distance to the middle of the pile back: " << dist_to_pile_2 << " front " << dist_to_pile  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
 			}	
 
 		}
@@ -292,7 +292,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	pcl_of_interest_msg->width = 0;
 
 	if(line_len > 1){
-		std::cout<< "Point of interest X"  << (x[last_idx]+x[first_idx])/2 << " Y " <<  (y[last_idx]+y[first_idx])/2 << std::endl;	
+		//std::cout<< "Point of interest X"  << (x[last_idx]+x[first_idx])/2 << " Y " <<  (y[last_idx]+y[first_idx])/2 << std::endl;	
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ((x[last_idx]+x[first_idx])/2, (y[last_idx]+y[first_idx])/2 , 0));
 		pcl_of_interest_msg->width++;
 
@@ -353,7 +353,7 @@ void moveToApproachWP()
     //basically just as in the spec book
     //all in map frame
     float wayPointX = 3.0f;
-    float wayPointY = 0.25f;
+    float wayPointY = 0.5f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
@@ -375,20 +375,33 @@ void moveToApproachWP()
     goal.target_pose.pose.orientation.w = gradientY;
 
     ROS_INFO("Moving to approach position");
-    //move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
-    ROS_INFO("Approached, moving to brick");
+    movebaseAC->sendGoal(goal);
+    movebaseAC->waitForResult();
+    //ROS_INFO(movebaseAC.getState());
+    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+	    ROS_INFO("Approached, moving to brick");
+    else
+	    ROS_INFO("FAILED on first approach, continueing");
 
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = originX - (frontNormalX * wayPointY) + (gradientX * 0.2);
     goal.target_pose.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
 
     ROS_INFO("Moving to brick position");
-    //move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
+    movebaseAC->sendGoal(goal);
+    movebaseAC->waitForResult();
+    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+	    ROS_INFO("Approached, moving to brick");
+    else
+	    ROS_INFO("FAILED on first approach, continueing");
+
+    //ROS_INFO(movebaseAC.getState());
     ROS_INFO("Approached, done");
 }
 
 void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
 {
+	ROS_INFO("RECEIVED POS");
     char* ch;
     ch = strtok(strdup(msg->data.c_str()), " ");
     int varIdx = 0;
@@ -405,6 +418,7 @@ void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
         varIdx++;
         ch = strtok(NULL, " ");
     }
+    ROS_INFO("POSITION STORED");
 	brickStackLocationKnown = true;
 }
 
@@ -412,6 +426,7 @@ void moveToBricks()
 {
 	if(brickStackLocationKnown)
 	{
+		ROS_INFO("MOVING TO LOC");
 		moveToApproachWP();
 	}
 	else
@@ -461,7 +476,7 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   	dynServer.setCallback(f);
 	scan_sub = n.subscribe("/scan",100, scanCallback);	
-	//locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
+	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);
