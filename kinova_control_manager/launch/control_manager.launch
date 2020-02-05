@@ -27,6 +27,7 @@
 
     <!-- manager status -->
     <remap from="~arm_status_out" to="kinova/arm_manager/status" />
+    <remap from="~cam_to_ground_out" to="kinova/arm_manager/camera_to_ground" />
     <remap from="~markers_out" to="kinova/rviz_markers" />
 
     <!-- provided commands -->
