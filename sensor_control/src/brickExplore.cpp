@@ -67,6 +67,8 @@ int greenBricksRequired = 0;
 int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
 
+ros::Subscriber locationDebug;
+
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -345,19 +347,19 @@ void moveToApproachWP()
     //the following x,y are the approach path waypoints rel to stack
     //where 0, 0 equals the red side of the stack, closest right corner
     //and +ve x moves to the right of the stack
-    //and if facing the front of the stack -ve y steps back
+    //and if facing the front of the stack +ve y steps back
     //basically just as in the spec book
     //all in map frame
     float wayPointX = 3.0f;
-    float wayPointY = -1.5f;
+    float wayPointY = 0.25f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
     //add the y
-    float mapWPX = originX - (frontNormalX * wayPointY);
-    float mapWPY = originY - (frontNormalY * wayPointY);
+    float mapWPX = originX + (frontNormalX * wayPointY);
+    float mapWPY = originY + (frontNormalY * wayPointY);
     //add the x
-    mapWPX += (gradientX * wayPointX);
+    mapWPX -= (gradientX * wayPointX);
     mapWPY -= (gradientY * wayPointX);
 
     move_base_msgs::MoveBaseGoal goal;
@@ -369,11 +371,39 @@ void moveToApproachWP()
     //goal orientation
     goal.target_pose.pose.orientation.z = gradientX;
     goal.target_pose.pose.orientation.w = gradientY;
+
+    ROS_INFO("Moving to approach position");
+    move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
+    ROS_INFO("Approached, moving to brick");
+
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = originX - (frontNormalX * wayPointY) + (gradientX * 0.2);
+    goal.target_pose.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
+
+    ROS_INFO("Moving to brick position");
+    move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
+    ROS_INFO("Approached, done");
+}
+
+void locationDebugCallback(msg )
+{
+	brickStackLocationKnown = true;
+	brickStackRedX = ;
+	brickStackRedY = ;
+	brickStackOrangeX = ;
+	brickStackOrangeY = ;	
 }
 
 void moveToBricks()
 {
-    moveToApproachWP();
+	if(brickStackLocationKnown)
+	{
+		moveToApproachWP();
+	}
+	else
+	{
+		usleep(10000);		
+	}
 }
 
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
@@ -389,7 +419,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         if(state == EXPLORINGBRICKS)
         {
             //begin lidar search for bricks
-            usleep(4000000);
+            usleep(2000000);
             approachBricks();
         }
         else if(state == MOVINGTOBRICKS)
@@ -417,6 +447,7 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   	dynServer.setCallback(f);
 	scan_sub = n.subscribe("/scan",100, scanCallback);	
+	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);

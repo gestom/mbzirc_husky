@@ -8,7 +8,7 @@ on = True
 
 def callback(msg):
     global on
-    if float(msg.battery_voltage) < 24 and on:
+    if float(msg.battery_voltage) < 23 and on:
         on = False
         sendEmail()
 
