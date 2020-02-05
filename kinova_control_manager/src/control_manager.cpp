@@ -546,7 +546,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     align_euler.z() = ee_euler.z() + brick_euler.z() + M_PI;
 
     ROS_INFO("[kinova_control_manager]: Brick yaw: %.2f", brick_euler.z());
-    ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
+    ROS_INFO("[kinova_control_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
 
     Pose3d new_pose;
     new_pose.pos.x() = end_effector_pose_raw.pos.x() + align.x();
@@ -556,6 +556,15 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     goTo(new_pose);
     ros::Duration(1.0).sleep();
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
+  }
+  if (end_effector_pose_compensated.pos.y() < 0.42 || end_effector_pose_compensated.pos.y() > 0.58) {
+    ROS_ERROR("[kinova_control_manager]: Alignment in Y axis failed.");
+    ros::spinOnce();
+    ros::Duration(1.0);
+    ros::spinOnce();
+    status      = IDLE;
+    res.success = false;
+    return false;
   }
   ros::spinOnce();
   ros::Duration(1.0);
@@ -585,7 +594,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
 
-  double stopping_height = (detected_brick.brick_layer * 0.2) - arm_base_to_ground + 0.1;
+  double stopping_height = (detected_brick.brick_layer * 0.2) - arm_base_to_ground + 0.07;
   std::cout << "Slow down at Z: " << stopping_height << "\n";
 
   while (!brick_attached && brick_reliable) {
@@ -630,7 +639,8 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
-    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) < (detected_brick.brick_layer * 0.2 - 0.06)) {
+    // if it smashes into the bricks, increase the last number in the condition
+    if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) < ((detected_brick.brick_layer * 0.2) - 0.06)) {
       ROS_FATAL("[kinova_control_manager]: Failed to attach the brick!");
       msg.twist_linear_x  = 0.0;
       msg.twist_linear_y  = 0.0;
@@ -945,7 +955,7 @@ void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent 
   }
 
   publisher_arm_status.publish(status_msg);
-  
+
   std_msgs::Float64 cam_to_ground;
   cam_to_ground.data = end_effector_pose_compensated.pos.z() + arm_base_to_ground;
   publisher_camera_to_ground.publish(cam_to_ground);
@@ -1001,9 +1011,7 @@ bool kinova_control_manager::grip() {
   std_srvs::Trigger trig;
   service_client_grip.call(trig.request, trig.response);
   ROS_INFO_STREAM("[kinova_control_manager]: " << trig.response.message);
-  if(trig.response.success){
-    gripper_start_time = ros::Time::now();
-  }
+  gripper_start_time = ros::Time::now();
   return trig.response.success;
 }
 //}
@@ -1032,19 +1040,11 @@ bool kinova_control_manager::nearbyAngleRad(double a, double b) {
 /* nearbyPose //{ */
 bool kinova_control_manager::nearbyPose(Pose3d p, Pose3d q) {
   double pos_diff = (p.pos - q.pos).norm();
-  /* std::cout << "Pos diff: " << pos_diff << "\n"; */
+  double angular_diff = p.rot.angularDistance(q.rot);
 
-  Eigen::Vector3d p_euler = quaternionToEuler(p.rot);
-  Eigen::Vector3d q_euler = quaternionToEuler(q.rot);
-  Eigen::Vector3d angular_diff;
+  std::cout << "Angular diff: " << angular_diff << "\n";
 
-  for (int i = 0; i < 3; i++) {
-    angular_diff[i] = std::abs(p_euler[i] - q_euler[i]);
-  }
-  /* std::cout << "Angular diff: " << angular_diff[0] << ", " << angular_diff[1] << ", " << angular_diff[2] << "\n"; */
-
-  return (pos_diff < nearby_position_threshold) && (angular_diff[0] < nearby_rotation_threshold) && (angular_diff[1] < nearby_rotation_threshold) &&
-         (angular_diff[2] < nearby_rotation_threshold);
+  return (pos_diff < nearby_position_threshold) && (angular_diff < nearby_rotation_threshold);
 }
 //}
 
