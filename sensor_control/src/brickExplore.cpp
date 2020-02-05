@@ -67,6 +67,8 @@ int greenBricksRequired = 0;
 int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
 
+actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
+
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
 PointCloud::Ptr pcl_two_line_msg (new PointCloud);
@@ -357,6 +359,16 @@ void moveToApproachWP()
     //add the x
     mapWPX += (gradientX * wayPointX);
     mapWPY -= (gradientY * wayPointX);
+
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = mapWPX;
+    goal.target_pose.pose.position.y = mapWPY;
+
+    //goal orientation
+    goal.target_pose.pose.orientation.z = gradientX;
+    goal.target_pose.pose.orientation.w = gradientY;
 }
 
 void moveToBricks()
@@ -399,6 +411,7 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "brickExplore");
 	ros::NodeHandle n;
    	pn = &n;
+    movebaseAC = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
@@ -417,4 +430,6 @@ int main(int argc, char** argv)
 		ros::spinOnce();
 		usleep(1000);
 	}
+    delete server;
+    delete movebaseAC;
 }
