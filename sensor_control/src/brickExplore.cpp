@@ -373,7 +373,7 @@ void moveToApproachWP()
     goal.target_pose.pose.orientation.w = gradientY;
 
     ROS_INFO("Moving to approach position");
-    move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
+    //move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
     ROS_INFO("Approached, moving to brick");
 
     goal.target_pose.header.stamp = ros::Time::now();
@@ -381,18 +381,18 @@ void moveToApproachWP()
     goal.target_pose.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
 
     ROS_INFO("Moving to brick position");
-    move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
+    //move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
     ROS_INFO("Approached, done");
 }
-
-void locationDebugCallback(msg )
+/*
+void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
 {
 	brickStackLocationKnown = true;
 	brickStackRedX = ;
 	brickStackRedY = ;
 	brickStackOrangeX = ;
 	brickStackOrangeY = ;	
-}
+}*/
 
 void moveToBricks()
 {
@@ -447,7 +447,7 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   	dynServer.setCallback(f);
 	scan_sub = n.subscribe("/scan",100, scanCallback);	
-	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
+	//locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);
