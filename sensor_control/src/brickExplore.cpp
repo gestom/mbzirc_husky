@@ -15,6 +15,8 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <cmath>
+#include <sstream>
+#include <stdlib.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
@@ -384,15 +386,27 @@ void moveToApproachWP()
     //move_base_msgs::MoveBaseState moveState = movebaseAC.sendGoalAndWait(goal, ros::Duration(0,0), ros::Duration(0,0));
     ROS_INFO("Approached, done");
 }
-/*
+
 void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
 {
+    char* ch;
+    ch = strtok(strdup(msg->data.c_str()), " ");
+    int varIdx = 0;
+    while(ch != NULL)
+    {
+        if(varIdx == 0)
+            brickStackRedX = atof(ch);
+        else if(varIdx == 1)
+            brickStackRedY = atof(ch);
+        else if(varIdx == 2)
+            brickStackOrangeX = atof(ch);
+        else if(varIdx == 3)
+            brickStackOrangeY = atof(ch);
+        varIdx++;
+        ch = strtok(NULL, " ");
+    }
 	brickStackLocationKnown = true;
-	brickStackRedX = ;
-	brickStackRedY = ;
-	brickStackOrangeX = ;
-	brickStackOrangeY = ;	
-}*/
+}
 
 void moveToBricks()
 {
