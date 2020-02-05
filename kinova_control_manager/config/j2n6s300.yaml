@@ -17,3 +17,10 @@ move_down_speed_slower: 0.1 # [m/s]
 move_down_speed_mega_slow: 0.022 # [m/s]
 husky_base_frame_id: "base_link"
 kinova_base_frame_id: "j2n6s300_link_base"
+
+brick_storage: [-0.4, 0.0, 0.35, 0.0, -3.14159, 1.5708,
+                -0.4, 0.1, 0.35, 0.0, -3.14159, 1.5708,
+                -0.4, 0.2, 0.35, 0.0, -3.14159, 1.5708]
+
+
+
