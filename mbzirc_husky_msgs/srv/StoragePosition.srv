@@ -1,4 +1,6 @@
-float64[3] pos
+int32 position
+int32 layer
+
 ---
 bool success
 string message

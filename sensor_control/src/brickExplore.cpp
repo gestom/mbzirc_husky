@@ -10,10 +10,17 @@
 #include <vector>
 #include <opencv2/core/types.hpp>
 
+#include <mbzirc_husky_msgs/brickGoal.h>
+#include <actionlib/client/simple_action_client.h>
+#include <move_base_msgs/MoveBaseAction.h>
 //For labelling the brick pile
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <cmath>
+#include <sstream>
+#include <stdlib.h>
+#include <visualization_msgs/Marker.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
@@ -22,13 +29,16 @@ ros::Subscriber scan_sub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
 ros::Publisher point_of_inter_pub;
+ros::Publisher debugVisualiser;
 
 typedef enum{
 	IDLE = 0,
 	EXPLORINGBRICKS,
     MOVINGTOBRICKS,
+    BRICKAPPROACH,
     EXPLORINGSTACKSITE,
     MOVINGTOSTACKSITE,
+    STACKAPPROACH,
     FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -51,10 +61,22 @@ float fwSpeed = 0.1;
 
 int misdetections = 0;
 
-bool needRed = false;
-bool needGreen = false;
-bool needBlue = false;
-bool needOrange = false;
+//brickStackLocation in map frame
+bool brickStackLocationKnown = false;
+float brickStackRedX = 0.0f;
+float brickStackRedY = 0.0f;
+float brickStackOrangeX = 0.0f;
+float brickStackOrangeY = 0.0f;
+
+ros::Subscriber schedulerSub;
+int redBricksRequired = 0;
+int greenBricksRequired = 0;
+int blueBricksRequired = 0;
+int orangeBricksRequired = 0;
+
+ros::Subscriber locationDebug;
+
+actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
@@ -79,9 +101,11 @@ bool isTerminal(ESprayState state)
 {
 	if(state == EXPLORINGBRICKS) return false;
 	if(state == MOVINGTOBRICKS) return false;
-	if(state == EXPLORINGSTACKSITE) return false;
+	if(state == BRICKAPPROACH) return false;
+    if(state == EXPLORINGSTACKSITE) return false;
 	if(state == MOVINGTOSTACKSITE) return false;
-        if(state == FINAL) return true;
+    if(state == STACKAPPROACH) return false;
+    if(state == FINAL) return true;
 	return true;
 }
 
@@ -196,6 +220,21 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		double tmpy;
 		double d;
 
+	int first_idx;
+	bool first =true;
+	int last_idx = 0;
+	//std::cout << "b1 " << b1 << " b2 " << b2 << std::endl;
+	if (b1 >= 0 && b2 >=0)
+	{
+
+		pcl_msg->header.frame_id = "velodyne";
+		pcl_msg->height = 1;
+		pcl_msg->points.clear();
+		pcl_msg->width = 0;
+		pcl_two_line_msg->header.frame_id = "velodyne";
+		pcl_two_line_msg->height = 1;
+		pcl_two_line_msg->points.clear();
+		pcl_two_line_msg->width = 0;
 		for (int j = 0; j <= num_ranges; j++)
 		{
 			if (fabs(maxA[i]*x[j]-y[j]+maxB[i])<tolerance && maxEval[i] > minPoints) {
@@ -224,7 +263,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 	//Printing length between points 
 	//for(int i =0; i < distan.size(); i++) std::cout << " " << distan[i];
-	-//std::cout << std::endl;	
+	//std::cout << std::endl;	
 
 	//Get the length of the lines 
 	double line_len;
@@ -245,6 +284,29 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 				poi_f_idx = first_idx[i];
 				poi_l_idx = last_idx[i];
 				poi_hypo = i;
+		displacement = (maxB[b1]+maxB[b2])/2.0;
+		realAngle = (maxA[b1]+maxA[b2])/2.0;
+		//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
+	}
+	//Get the length of the line 
+	double line_len = 0;
+	double dist_to_pile = 0;
+	double dist_to_pile_2 = 0;
+	if(first_idx > 0 && last_idx >= 1){
+		line_len = dist(x[first_idx],y[first_idx],x[last_idx],y[last_idx]);
+		//std::cout << "Line length: " << line_len << std::endl;
+
+		//Get distance to the pile
+		//Represented by the distance to the point in the middle
+		if((last_idx-first_idx) >= 1 ){
+			if(dist(x[first_idx],y[first_idx],0,0) < dist(x[last_idx],y[last_idx],0,0)){
+				dist_to_pile = dist(x[last_idx],y[last_idx],0,0);
+				dist_to_pile_2 = dist(x[first_idx],y[first_idx],0,0);
+				//std::cout << "Distance to the middle of the pile front: " << dist_to_pile << " back " << dist_to_pile_2  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
+			}else{
+				dist_to_pile = dist(x[last_idx],y[last_idx],0,0);
+				dist_to_pile_2 = dist(x[first_idx],y[first_idx],0,0);
+				//std::cout << "Distance to the middle of the pile back: " << dist_to_pile_2 << " front " << dist_to_pile  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
 			}	
 		}
 
@@ -364,21 +426,209 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 }
 
 
+void schedulerCallback(const mbzirc_husky_msgs::brickGoal::ConstPtr& msg)
+{
+    redBricksRequired = 0;
+    greenBricksRequired = 0;
+    blueBricksRequired = 0;
+    orangeBricksRequired = 0;
+
+    for(int i = 0; i < msg->brickType.size(); i++)
+    {
+        if(msg->brickType[i] == 0)
+            redBricksRequired++;
+        else if(msg->brickType[i] == 1)
+            greenBricksRequired++;
+        else if(msg->brickType[i] == 2)
+            blueBricksRequired++;
+        else if(msg->brickType[i] == 3)
+            orangeBricksRequired++;
+    }
+}
+
+void approachBricks()
+{
+    schedulerSub = pn->subscribe("/brickScheduler/goals", 1, schedulerCallback);
+    state = MOVINGTOBRICKS;
+}
+
+void moveToApproachWP()
+{
+    //get front/back normals of brick stack
+    float dx = brickStackOrangeX - brickStackRedX;
+    float dy = brickStackOrangeY - brickStackRedY;
+
+    float frontNormalX = -dy;
+    float frontNormalY = dx;
+
+    //normalise normals
+    float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
+    frontNormalX /= magnitude;
+    frontNormalY /= magnitude;
+    float gradientX = dx / magnitude;
+    float gradientY = dy / magnitude;
+
+    //now we can calculate waypoint position in stack frame
+    //the following x,y are the approach path waypoints rel to stack
+    //where 0, 0 equals the red side of the stack, closest right corner
+    //and +ve x moves to the right of the stack
+    //and if facing the front of the stack +ve y steps back
+    //basically just as in the spec book
+    //all in map frame
+    float wayPointX = 2.5f;
+    float wayPointY = 0.35f;
+    float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+    const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+    const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+    //add the y
+    float mapWPX = originX + (frontNormalX * wayPointY);
+    float mapWPY = originY + (frontNormalY * wayPointY);
+    //add the x
+    mapWPX -= (gradientX * (wayPointX+0.2));
+    mapWPY -= (gradientY * (wayPointX+0.2));
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::ARROW;
+
+    marker.scale.x = 0.4;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+
+    marker.color.r = 0;
+    marker.color.g = 0;
+    marker.color.b = 0;
+    marker.color.a = 1;
+
+    marker.pose.position.x = mapWPX;
+    marker.pose.position.y = mapWPY;
+    marker.pose.position.z = 0;
+
+    marker.pose.orientation.x = 0;
+    marker.pose.orientation.y = 0;
+    marker.pose.orientation.z = 0;
+    marker.pose.orientation.w = 1;
+    
+    debugVisualiser.publish(marker);
+
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = mapWPX;
+    goal.target_pose.pose.position.y = mapWPY;
+
+    //goal orientation
+    goal.target_pose.pose.orientation.z = 0;
+    goal.target_pose.pose.orientation.w = 1;
+
+    ROS_INFO("Moving to approach position");
+    movebaseAC->sendGoal(goal);
+    movebaseAC->waitForResult();
+    //ROS_INFO(movebaseAC.getState());
+    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+	    ROS_INFO("Approached, moving to brick");
+    else
+	    ROS_INFO("FAILED on first approach, continueing");
+
+	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
+	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
+
+	goal.target_pose.pose.orientation.z = -0.9;
+	goal.target_pose.pose.orientation.w = -0.5;
+
+    marker.header.stamp = ros::Time::now();
+    marker.type = visualization_msgs::Marker::ARROW;
+
+
+    marker.pose.position.x = mapWPX;
+    marker.pose.position.y = mapWPY;
+    marker.pose.position.z = 0.3;
+    marker.pose.orientation.z = 0;
+    marker.pose.orientation.w = 1;
+    
+    debugVisualiser.publish(marker);
+
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = mapWPX;
+    goal.target_pose.pose.position.y = mapWPY;
+	ROS_INFO("%f", mapWPX);
+	ROS_INFO("%f", mapWPY);
+
+    ROS_INFO("Moving to brick position");
+    movebaseAC->sendGoal(goal);
+    movebaseAC->waitForResult();
+    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+	    ROS_INFO("Approached, moving to brick");
+    else
+	    ROS_INFO("FAILED on first approach, continueing");
+
+    //ROS_INFO(movebaseAC.getState());
+    ROS_INFO("Approached, done");
+    state = FINAL;
+}
+
+void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
+{
+	if(brickStackLocationKnown)
+		return;
+	ROS_INFO("RECEIVED POS");
+    char* ch;
+    ch = strtok(strdup(msg->data.c_str()), " ");
+    int varIdx = 0;
+    while(ch != NULL)
+    {
+        if(varIdx == 0)
+            brickStackRedX = atof(ch);
+        else if(varIdx == 1)
+            brickStackRedY = atof(ch);
+        else if(varIdx == 2)
+            brickStackOrangeX = atof(ch);
+        else if(varIdx == 3)
+            brickStackOrangeY = atof(ch);
+        varIdx++;
+        ch = strtok(NULL, " ");
+    }
+    ROS_INFO("POSITION STORED");
+	brickStackLocationKnown = true;
+}
+
+void moveToBricks()
+{
+	if(brickStackLocationKnown)
+	{
+		ROS_INFO("MOVING TO LOC");
+		moveToApproachWP();
+	}
+	else
+	{
+        ROS_INFO("Approach waiting for ransac position...");
+        usleep(1000000);		
+	}
+}
+
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
-    
-    
     mbzirc_husky::brickExploreResult result;
-
-    state = EXPLORINGBRICKS;
     
+    if(goal->goal == 1)
+        state = EXPLORINGBRICKS;
+    else if(goal->goal == 2)
+        state = EXPLORINGSTACKSITE;      
 
-    while (isTerminal(state) == false){
+    while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
         {
             //begin lidar search for bricks
-            usleep(4000000);
-            state = FINAL;
+            usleep(2000000);
+            approachBricks();
+        }
+        else if(state == MOVINGTOBRICKS)
+        {
+            moveToBricks();
         }
         usleep(100);
     }
@@ -395,6 +645,8 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "brickExplore");
 	ros::NodeHandle n;
    	pn = &n;
+    movebaseAC = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
+    debugVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/debug", 1);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
@@ -402,6 +654,7 @@ int main(int argc, char** argv)
 	scan_sub = n.subscribe("/scan",100, scanCallback);	
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
+	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);
 	server = new Server(n, "brickExploreServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();
@@ -413,4 +666,6 @@ int main(int argc, char** argv)
 		ros::spinOnce();
 		usleep(1000);
 	}
+    delete server;
+    delete movebaseAC;
 }

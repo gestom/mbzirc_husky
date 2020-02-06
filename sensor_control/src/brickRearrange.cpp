@@ -35,7 +35,7 @@ void actionServerCallback(const mbzirc_husky::brickRearrangeGoalConstPtr &goal, 
 
     state = REARRANGING;
 
-    while (isTerminal(state) == false){
+    while (isTerminal(state) == false && ros::ok()){
         if(state == REARRANGING)
         {
             ROS_INFO("Rearranging bricks");

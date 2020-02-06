@@ -56,4 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         <rosparam command="load" file="$(find husky_base)/config/diagnostics.yaml"/>
     </node>
 
+	<!--Battery warning emailer-->
+	<node pkg="mbzirc_husky" type="battery.py" name="battery" output="screen" /> 
+
 </launch>

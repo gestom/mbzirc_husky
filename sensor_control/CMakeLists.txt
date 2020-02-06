@@ -41,11 +41,12 @@ add_action_files(
 )
 
 generate_dynamic_reconfigure_options(
-  	cfg/spray.cfg
-  	cfg/pickup.cfg
+	cfg/spray.cfg
+	cfg/pickup.cfg
+	cfg/detectBrick.cfg
 	cfg/brick_pile.cfg
-    cfg/bounds.cfg
-)
+	cfg/bounds.cfg
+	)
 
 generate_messages(
     DEPENDENCIES
