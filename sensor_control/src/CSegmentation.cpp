@@ -99,9 +99,9 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				for (int j =0;j<4;j++){
 					pos = position+expand[j];
 					//a pokud maji hledanou barvu,
-					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 50) nncount++;
+					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 100) nncount++; //TODO indoor/outdoor settings
 					//if (buffer[pos] != 0) nncount++;
-					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 50){
+					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 100){
 						//pridame jejich pozici do souradnic aktualniho segmentu
 						stack[queueEnd++] = pos;
 						//a otagujem je 
