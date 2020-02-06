@@ -441,6 +441,8 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
     return false;
   }
 
+  bool have_brick = brick_attached;
+
   ROS_INFO("[kinova_control_manager]: Assuming a default gripping pose");
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
@@ -452,8 +454,15 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
     ros::spinOnce();
   }
 
+  if(have_brick != brick_attached){
+  	ROS_ERROR("[kinova_control_manager]: Brick lost during ascent!");
+	res.success = false;
+	return false;
+  }
+  
   res.success = true;
   return true;
+
 }
 //}
 
@@ -579,7 +588,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     ros::Duration(1.0).sleep();
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
   }
-  if (end_effector_pose_compensated.pos.y() < 0.42 || end_effector_pose_compensated.pos.y() > 0.58) {
+  if (end_effector_pose_compensated.pos.y() > -0.42 || end_effector_pose_compensated.pos.y() < -0.58) {
     ROS_ERROR("[kinova_control_manager]: Alignment in Y axis failed.");
     ros::spinOnce();
     ros::Duration(1.0);
@@ -612,6 +621,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
     return false;
   }
   status = PICKING;
+  time_of_last_motion = ros::Time::now();
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
@@ -931,6 +941,9 @@ void kinova_control_manager::callbackBrickPoseTopic(const mbzirc_husky_msgs::bri
 /* callbackGripperDiagnosticsTopic //{ */
 void kinova_control_manager::callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr &msg) {
   getting_gripper_diagnostics = true;
+  if(!gripper_engaged && msg->gripper_on){
+  	gripper_start_time = ros::Time::now();
+  }
   gripper_engaged             = msg->gripper_on;
   brick_attached              = msg->gripping_object;
 }
@@ -1032,7 +1045,6 @@ bool kinova_control_manager::grip() {
   std_srvs::Trigger trig;
   service_client_grip.call(trig.request, trig.response);
   ROS_INFO_STREAM("[kinova_control_manager]: " << trig.response.message);
-  gripper_start_time = ros::Time::now();
   return trig.response.success;
 }
 //}

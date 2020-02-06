@@ -355,16 +355,16 @@ void moveToApproachWP()
     //basically just as in the spec book
     //all in map frame
     float wayPointX = 2.5f;
-    float wayPointY = 1.0f;
+    float wayPointY = 0.35f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
-    float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
-    float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+    const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+    const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
     //add the y
     float mapWPX = originX + (frontNormalX * wayPointY);
     float mapWPY = originY + (frontNormalY * wayPointY);
     //add the x
-    mapWPX -= (gradientX * wayPointX);
-    mapWPY -= (gradientY * wayPointX);
+    mapWPX -= (gradientX * (wayPointX+0.2));
+    mapWPY -= (gradientY * (wayPointX+0.2));
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
@@ -372,14 +372,23 @@ void moveToApproachWP()
     marker.id = 0;
     marker.type = visualization_msgs::Marker::ARROW;
 
+    marker.scale.x = 0.4;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+
+    marker.color.r = 0;
+    marker.color.g = 0;
+    marker.color.b = 0;
+    marker.color.a = 1;
+
     marker.pose.position.x = mapWPX;
     marker.pose.position.y = mapWPY;
     marker.pose.position.z = 0;
 
     marker.pose.orientation.x = 0;
     marker.pose.orientation.y = 0;
-    marker.pose.orientation.z = gradientX;
-    marker.pose.orientation.w = gradientY;
+    marker.pose.orientation.z = 0;
+    marker.pose.orientation.w = 1;
     
     debugVisualiser.publish(marker);
 
@@ -390,8 +399,8 @@ void moveToApproachWP()
     goal.target_pose.pose.position.y = mapWPY;
 
     //goal orientation
-    goal.target_pose.pose.orientation.z = gradientX;
-    goal.target_pose.pose.orientation.w = gradientY;
+    goal.target_pose.pose.orientation.z = 0;
+    goal.target_pose.pose.orientation.w = 1;
 
     ROS_INFO("Moving to approach position");
     movebaseAC->sendGoal(goal);
@@ -402,21 +411,31 @@ void moveToApproachWP()
     else
 	    ROS_INFO("FAILED on first approach, continueing");
 
+	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
+	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
+
+	goal.target_pose.pose.orientation.z = -0.9;
+	goal.target_pose.pose.orientation.w = -0.5;
+
     marker.header.stamp = ros::Time::now();
     marker.type = visualization_msgs::Marker::ARROW;
 
-    marker.pose.position.x = originX - (frontNormalX * wayPointY) + (gradientX * 0.2);
-    marker.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
-    marker.pose.orientation.z = gradientX;
-    marker.pose.orientation.w = gradientY;
+
+    marker.pose.position.x = mapWPX;
+    marker.pose.position.y = mapWPY;
+    marker.pose.position.z = 0.3;
+    marker.pose.orientation.z = 0;
+    marker.pose.orientation.w = 1;
     
     debugVisualiser.publish(marker);
 
     goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = originX - (frontNormalX * wayPointY) + (gradientX * 0.2);
-    goal.target_pose.pose.position.y = originY - (frontNormalY * wayPointY) + (gradientY * 0.2);
+    goal.target_pose.pose.position.x = mapWPX;
+    goal.target_pose.pose.position.y = mapWPY;
+	ROS_INFO("%f", mapWPX);
+	ROS_INFO("%f", mapWPY);
 
     ROS_INFO("Moving to brick position");
     movebaseAC->sendGoal(goal);
@@ -428,6 +447,7 @@ void moveToApproachWP()
 
     //ROS_INFO(movebaseAC.getState());
     ROS_INFO("Approached, done");
+    state = FINAL;
 }
 
 void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
