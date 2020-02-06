@@ -1,0 +1,22 @@
+<launch>
+
+    <!--<node pkg="move_base" type="move_base" name="move_base" output="screen">
+        <param name="controller_frequency" value="10.0"/>
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/general/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/general/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/general/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/general/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/general/dwa_trajectory_planner.yaml" command="load" />
+    </node>-->
+
+    <node pkg="move_base" type="move_base" name="move_base_bricks" output="screen">
+        <param name="controller_frequency" value="10.0"/>
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/brickPickup/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/brickPickup/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/brickPickup/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/brickPickup/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find mbzirc_husky)/cfg/move_base/brickPickup/dwa_trajectory_planner.yaml" command="load" />
+    </node>
+
+    <!--<node pkg="tf" type="static_transform_publisher" name="static_tf_base_link_to_velodyne" args="0 0 0.3 0 0 0 base_link base_laser_link 100"/>-->
+</launch>

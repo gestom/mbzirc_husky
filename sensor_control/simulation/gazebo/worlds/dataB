@@ -1,0 +1,3239 @@
+
+	<model name='brick_red_0'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_1'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_2'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_3'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_4'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_5'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_6'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_7'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_8'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_9'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_10'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_11'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_12'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_13'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_14'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_15'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_16'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_17'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_18'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_red_19'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Red</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.3 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_20'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_21'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_22'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_23'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_24'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_25'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_26'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_27'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_28'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_green_29'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Green</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>0.6 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_blue_30'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Blue</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_blue_31'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Blue</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_blue_32'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Blue</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_blue_33'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Blue</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_blue_34'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Blue</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.2 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_35'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_36'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_37'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_38'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_39'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_40'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_41'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_42'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_43'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>
+
+
+	<model name='brick_orange_44'>
+	  <static>0</static>
+	  <link name='link'>
+		<pose frame=''>0 0 0.1 0 -0 0</pose>
+		<inertial>
+		  <mass>0.381</mass>
+		  <inertia>
+			<ixx>0.00252984</ixx>
+			<ixy>0</ixy>
+			<ixz>0</ixz>
+			<iyy>0.046802</iyy>
+			<iyz>0</iyz>
+			<izz>0.046802</izz>
+		  </inertia>
+		</inertial>
+		<visual name='main_box'>
+		  <geometry>
+			<box>
+			  <size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/Orange</name>
+			</script>
+		  </material>
+		</visual>
+		<visual name='white_plate'>
+		  <pose frame=''>0 0 0.1 0 -0 0</pose>
+		  <geometry>
+			<box>
+			  <size>0.3 0.15 0.006</size>
+			</box>
+		  </geometry>
+		  <material>
+			<script>
+			  <uri>file://media/materials/scripts/gazebo.material</uri>
+			  <name>Gazebo/White</name>
+			</script>
+		  </material>
+		</visual>
+		<collision name='collision'>
+		  <pose frame=''>0 0 0 0 -0 0</pose>
+		  <geometry>
+			<box>
+				<size>1.8 0.2 0.2</size>
+			</box>
+		  </geometry>
+		  <max_contacts>10</max_contacts>
+		  <surface>
+			<contact>
+			  <ode/>
+			</contact>
+			<bounce/>
+			<friction>
+			  <ode/>
+			  <torsional>
+				<ode/>
+			  </torsional>
+			</friction>
+		  </surface>
+		</collision>
+		<self_collide>0</self_collide>
+		<kinematic>0</kinematic>
+		<gravity>1</gravity>
+		<enable_wind>0</enable_wind>
+	  </link>
+	  <pose frame=''>-4.85759 13.9253 0 0 -0 0</pose>
+	</model>

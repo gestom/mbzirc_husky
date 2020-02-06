@@ -8,8 +8,9 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   std_msgs
   geometry_msgs
-  tf
-  tf_conversions
+  # tf
+  tf2
+  # tf2_geometry_msgs
   kinova_msgs
   kinova_driver
   kinova_bringup
@@ -17,7 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
   kinova_description
   mrs_msgs
   mbzirc_husky_msgs
-  # mrs_lib
   # moveit_ros_planning_interface
   # sensor_msgs
   # moveit_msgs
@@ -42,7 +42,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(kinova_control_manager src/arm_manager.cpp)
+add_library(kinova_control_manager src/control_manager.cpp)
 
 target_link_libraries(kinova_control_manager
   ${catkin_LIBRARIES}

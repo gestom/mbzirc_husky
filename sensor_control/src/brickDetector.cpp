@@ -5,10 +5,12 @@
 #include "CSegmentation.h"
 #include <image_transport/image_transport.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Float64.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <dynamic_reconfigure/server.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
+#include <mbzirc_husky/detectBrickConfig.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 
 int numDetections = 0;
@@ -20,7 +22,9 @@ ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
 image_transport::Subscriber subimDepth;
+ros::Subscriber subHeight;
 image_transport::ImageTransport *it;
+ros::NodeHandle *n;
 
 CSegmentation *segmentation;
 CRawImage *grayImage;
@@ -30,16 +34,17 @@ int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
 int groundPlaneDistance = 0;
 int wantedType = 0;
-
+float cameraXOffset = -0.02;
+float cameraYOffset = -0.02;
+float cameraXAngleOffset = 0;
+float cameraYAngleOffset = 0;
 //parameter reconfiguration
-/*void reconfigureCallback(social_card_reader::social_cardConfig &config, uint32_t level) 
+void reconfigureCallback(mbzirc_husky::detectBrickConfig &config, uint32_t level) 
 {
-	ROS_INFO("Reconfigure Request: %lf %lf %lf %lf %lf %lf %lf", config.userDiameter, config.masterDiameter, config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
-	outerDimUser = config.userDiameter/100.0;
-	outerDimMaster = config.masterDiameter/100.0;
-	distanceTolerance = config.distanceTolerance/100.0;
-	detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
-}*/
+	cameraXOffset = config.cameraXOffset;
+	cameraYOffset = config.cameraYOffset;
+	ROS_INFO("Reconfigure Request: %lf %lf", cameraXOffset,cameraYOffset);
+}
 
 
 void grayImageCallback(const sensor_msgs::ImageConstPtr& msg)
@@ -50,6 +55,12 @@ void grayImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		grayImage = new CRawImage(msg->width,msg->height,msg->step/msg->width);
 	}
 	memcpy(grayImage->data,(void*)&msg->data[0],msg->step*msg->height);
+}
+
+void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
+{
+	groundPlaneDistance = msg->data*1000+20;
+	printf("Ground plane: %i\n",groundPlaneDistance);
 }
 
 void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
@@ -64,13 +75,14 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	memcpy(depthImage->data,(void*)&msg->data[0],msg->step*msg->height);
 	depthImage->getClosest(groundPlaneDistance);
-	segment = segmentation->findSegment(depthImage,5000,10000000,wantedType);
+	segment = segmentation->findSegment(depthImage,15000,10000000,wantedType);
 	float pX,pY,pZ;
 	brickPose.detected = false;
+	brickPose.completelyVisible = false;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
-		pX = (segment.x-307)/640.95*pZ-0.02;
-		pY = (segment.y-243.12)/640.95*pZ-0.05;
+		pX = (segment.x-307)/640.95*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		pY = (segment.y-243.12)/640.95*pZ+cameraYOffset+cameraXAngleOffset*pZ;
 		brickPose.pose.pose.position.x = pX;
 		brickPose.pose.pose.position.y = pY;
 		brickPose.pose.pose.position.z = pZ;
@@ -106,8 +118,11 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::brickDetect::Response &res)
 {
+
 	if (req.activate){
+		segmentation->resetTracking(depthImage,req.x,req.y);
 	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
+		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
 		groundPlaneDistance = req.groundPlaneDistance;
 		numDetections = 0;
 		numDetectionAttempts = 0;
@@ -137,6 +152,7 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 		res.detected = false;
 		res.activated = false;
 	       	subimDepth.shutdown();
+		subHeight.shutdown();
 	}
 	return true;
 }
@@ -146,23 +162,19 @@ int main(int argc, char** argv)
 {
 	segmentation = new CSegmentation();
 	ros::init(argc, argv, "brickDetector");
-	ros::NodeHandle n;
-	it = new image_transport::ImageTransport(n);
+	n = new ros::NodeHandle();
+	it = new image_transport::ImageTransport(*n);
 	grayImage = new CRawImage(defaultImageWidth,defaultImageHeight,4);
 	depthImage = new CRawDepthImage(defaultImageWidth,defaultImageHeight,4);
 	imagePub = it->advertise("/image_with_features", 1);
-	ros::ServiceServer service = n.advertiseService("detectBricks", detect);
-	//initialize dynamic reconfiguration feedback
-//	dynamic_reconfigure::Server<social_card_reader::social_cardConfig> server;
-//	dynamic_reconfigure::Server<social_card_reader::social_cardConfig>::CallbackType dynSer;
-//	dynSer = boost::bind(&reconfigureCallback, _1, _2);
-//	server.setCallback(dynSer);
+	ros::ServiceServer service = n->advertiseService("detectBricks", detect);
 
-//	photoTf = new CTransformation(outerDimUser);
-//	commandTf = new CTransformation(outerDimMaster);
-	//image_transport::Subscriber subimGray = it.subscribe("/head_xtion/rgb/image_mono", 1, grayImageCallback);
-	posePub = n.advertise<mbzirc_husky_msgs::brickPosition>("/brickPosition", 1);
-	//command_pub = n.advertise<std_msgs::String>("/socialCardReader/commands", 1);
+	//initialize dynamic reconfiguration feedback
+	dynamic_reconfigure::Server<mbzirc_husky::detectBrickConfig> server;
+	dynamic_reconfigure::Server<mbzirc_husky::detectBrickConfig>::CallbackType dynSer = boost::bind(&reconfigureCallback, _1, _2);
+	server.setCallback(dynSer);
+
+	posePub = n->advertise<mbzirc_husky_msgs::brickPosition>("/brickPosition", 1);
 
 	while (ros::ok()){
 		ros::spinOnce();

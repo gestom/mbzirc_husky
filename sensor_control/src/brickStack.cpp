@@ -12,7 +12,8 @@ Server *server;
 
 typedef enum{
 	IDLE = 0,
-	STACKING,
+	MOVING,
+    STACKING,
     FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -33,14 +34,14 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 {
 	mbzirc_husky::brickStackResult result;
 
-    state = STACKING;
+    state = MOVING;
 
-    while (isTerminal(state) == false){
-        if(state == STACKING)
+    while (isTerminal(state) == false && ros::ok()){
+        if(state == STACKING || state == MOVING)
         {
             ROS_INFO("Stacking bricks");
             //handled inside of themal callback
-            usleep(4000000);
+            usleep(3000000);
             state = FINAL;
         }
         usleep(100);

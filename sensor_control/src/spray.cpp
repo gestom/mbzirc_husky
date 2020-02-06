@@ -174,7 +174,7 @@ void actionServerCallback(const mbzirc_husky::sprayGoalConstPtr &goal, Server* a
 		timer.start();
 		pump->on();
 	}*/
-	while (isTerminal(state) == false){
+	while (isTerminal(state) == false && ros::ok()){
     if(state == TURNING)
     {
       //handled inside of themal callback
@@ -229,8 +229,8 @@ int main(int argc, char** argv)
 	while (ros::ok()){
 		if (server->isPreemptRequested() && state != IDLE) state = PREEMPTED;
 		if (state == STOPPING){
-      pump->off();
-      base_cmd.linear.x = base_cmd.angular.z = 0;
+			pump->off();
+			base_cmd.linear.x = base_cmd.angular.z = 0;
 			cmd_vel.publish(base_cmd);
 			state = IDLE;
 		} 
