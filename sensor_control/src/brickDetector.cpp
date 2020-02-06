@@ -75,7 +75,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	memcpy(depthImage->data,(void*)&msg->data[0],msg->step*msg->height);
 	depthImage->getClosest(groundPlaneDistance);
-	segment = segmentation->findSegment(depthImage,15000,10000000,wantedType);
+	segment = segmentation->findSegment(depthImage,13000,10000000,wantedType);
 	float pX,pY,pZ;
 	brickPose.detected = false;
 	brickPose.completelyVisible = false;

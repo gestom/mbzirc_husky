@@ -301,8 +301,10 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		float dX = (segmentArray[i].x-priorPosition.x);
 		float dY = (segmentArray[i].y-priorPosition.y);
 		segmentArray[i].crit = 10000-sqrt(dX*dX+dY*dY);
-		printf("Segment %i: %f %f %f %f\n",i,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
+		//segmentArray[i].crit = segmentArray[i].x;
+		printf("Segment %i %f: %f %f %f %f\n",i,segmentArray[i].crit,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
 	}
+	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	
 	int XX,YY;
 	for (int i = 0;i<numSegments;i++){

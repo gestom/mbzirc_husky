@@ -6,6 +6,7 @@
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
+#include <mbzirc_husky_msgs/Float64.h>
 #include <actionlib/server/simple_action_server.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
@@ -26,6 +27,8 @@ typedef enum{
 	ARMPICKUP,		//grasp
 	ARMSTORAGE,		//arm goes to position above the brick compartment
 	BRICKSTORE,		//brick is put into the storage and magnet released
+	ARMLOWPOSITIONING,
+	ARMLOWALIGNMENT,	//arm makes fine alignment
 	FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -38,7 +41,9 @@ ros::NodeHandle* pn;
 ros::Publisher twistPub;
 
 //service clients for the arm
+ros::ServiceClient service_client_brick_detector;
 ros::ServiceClient prepareClient;
+ros::ServiceClient liftClient;
 ros::ServiceClient alignClient;
 ros::ServiceClient pickupClient;
 ros::ServiceClient homeClient;
@@ -56,6 +61,8 @@ bool isTerminal(ESprayState state)
     if(state == ARMRESET) return false;
     if(state == ARMPOSITIONING) return false;
     if(state == ARMALIGNMENT) return false;
+    if(state == ARMLOWPOSITIONING) return false;
+    if(state == ARMLOWALIGNMENT) return false;
     if(state == ARMDESCENT) return false;
     if(state == ARMPICKUP) return false;
     if(state == ARMSTORAGE) return false;
@@ -166,19 +173,26 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 		else if(state == ARMPOSITIONING)
 		{
 			ROS_INFO("MOVING ARM INTO POSITION");
-			std_srvs::Trigger srv;
+			mbzirc_husky_msgs::Float64 srv;
+			srv.request.data = 0;
 			if(prepareClient.call(srv))
 			{
 				usleep(3000000);
-				//state = ROBOTALIGNMENT;
-				state = ARMALIGNMENT;
+				state = ROBOTALIGNMENT;
+				mbzirc_husky_msgs::brickDetect brick_srv;
+				brick_srv.request.activate            = true;
+				brick_srv.request.groundPlaneDistance = 0;
+				brick_srv.request.x = 640;
+				brick_srv.request.y = 480;
+				service_client_brick_detector.call(brick_srv.request, brick_srv.response);
+				//state = ARMALIGNMENT;
 				ROS_INFO("ARM POSITIONED");
 			}
 			else
 			{
 				//unsafe
-				//state = ROBOTALIGNMENT;
-				state = ARMALIGNMENT;
+				state = ROBOTALIGNMENT;
+				//state = ARMALIGNMENT;
 				ROS_INFO("ARM POSITION FAILED");
 			}
 		}
@@ -205,18 +219,22 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 			{
 				ROS_INFO("ARM DESCENDED");
 				state = ARMPICKUP;
+				mbzirc_husky_msgs::brickDetect stop_brick_detection;
+				stop_brick_detection.request.activate = false;
+				service_client_brick_detector.call(stop_brick_detection.request, stop_brick_detection.response);
 			}
 			else
 			{
 				ROS_INFO("FAILED TO DESCEND ARM, RE-ALIGNING");
 				state = ARMALIGNMENT;
 			}
+
 		}
 		else if(state == ARMPICKUP)
 		{
 			ROS_INFO("RAISING ARM");
 			std_srvs::Trigger srv;
-			if(prepareClient.call(srv))
+			if(liftClient.call(srv))
 			{
 				ROS_INFO("BRICK PICK UP DONE");
 				state = ARMSTORAGE;
@@ -257,12 +275,53 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 					active_storage = 0;
 					active_layer++;
 				}
-				state = FINAL;
+				state = ARMLOWPOSITIONING;
 			}
 			else
 			{
 				ROS_INFO("FAILED TO STORE THE BRICK");
+				state = ARMLOWPOSITIONING;
 			}
+		}
+		else if(state == ARMLOWPOSITIONING)
+		{
+			ROS_INFO("MOVING ARM INTO LOW BRICK POSITION");
+			mbzirc_husky_msgs::Float64 srv;
+			srv.request.data = -0.3;
+			if(prepareClient.call(srv))
+			{
+				usleep(3000000);
+				state = ARMLOWALIGNMENT;
+				mbzirc_husky_msgs::brickDetect brick_srv;
+				brick_srv.request.activate            = true;
+				brick_srv.request.groundPlaneDistance = 0;
+				brick_srv.request.x = 640;
+				brick_srv.request.y = 480;
+				service_client_brick_detector.call(brick_srv.request, brick_srv.response);
+		
+			}
+			else
+			{
+				//unsafe
+				state = ROBOTALIGNMENT;
+				//state = ARMALIGNMENT;
+				ROS_INFO("ARM POSITION FAILED");
+			}
+
+		}
+		else if(state == ARMLOWALIGNMENT)
+		{
+				std_srvs::Trigger srv;
+				if(alignClient.call(srv))
+				{
+					state = ARMDESCENT;
+					ROS_INFO("ARM ALIGNED");
+				}
+				else
+				{
+					state = FAIL;
+					ROS_INFO("FAILED: FAILED TO ALIGN ARM");
+				}
 		}
 		usleep(1200000);
 	}
@@ -282,7 +341,9 @@ int main(int argc, char** argv)
 
     twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
-    prepareClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
+    service_client_brick_detector = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
+    prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+    liftClient= n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/lift_brick");
     alignClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
     pickupClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
     homeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");

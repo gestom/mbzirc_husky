@@ -33,6 +33,7 @@
     <remap from="~home_in" to="kinova/arm_manager/home_arm" />
     <remap from="~soft_home_in" to="kinova/arm_manager/soft_home_arm" />
     <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
+    <remap from="~lift_brick_in" to="kinova/arm_manager/lift_brick" />
     <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" />
     <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
     <remap from="~pickup_in" to="kinova/arm_manager/pickup_brick" />
