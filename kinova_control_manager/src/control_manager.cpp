@@ -142,6 +142,7 @@ private:
 
   // position control
   bool goTo(Pose3d pose);
+  void goToNonBlocking(Pose3d pose);
   bool goToRelative(Pose3d pose);
 
   // configuration params
@@ -190,6 +191,7 @@ private:
   ros::ServiceServer service_server_goto_relative;
   ros::ServiceServer service_server_pickup_brick;
   ros::ServiceServer service_server_goto_storage;
+  ros::ServiceServer service_server_store_brick;
 
   // called services
   ros::ServiceClient service_client_homing;
@@ -219,6 +221,7 @@ private:
   bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackPickupBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
+  bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
 
   // topic callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
@@ -364,6 +367,7 @@ void kinova_control_manager::onInit() {
   service_server_align_arm        = nh_.advertiseService("align_arm_in", &kinova_control_manager::callbackAlignArmService, this);
   service_server_goto             = nh_.advertiseService("goto_in", &kinova_control_manager::callbackGoToService, this);
   service_server_goto_storage     = nh_.advertiseService("goto_storage_in", &kinova_control_manager::callbackGoToStorageService, this);
+  service_server_store_brick     = nh_.advertiseService("store_brick_in", &kinova_control_manager::callbackStoreBrickService, this);
   service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
   service_server_pickup_brick = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
 
@@ -595,7 +599,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
     new_pose.pos.z() = default_gripping_pose.pos.z();
     new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
-    goTo(new_pose);
+    goToNonBlocking(new_pose);
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
   }
   if (end_effector_pose_compensated.pos.y() > -0.42 || end_effector_pose_compensated.pos.y() < -0.58) {
@@ -831,6 +835,44 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
 }
 //}
 
+/* callbackStoreBrickService //{ */
+bool kinova_control_manager::callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res){
+if (!is_initialized) {
+    ROS_ERROR("[kinova_control_manager]: Cannot store brick, not initialized!");
+    res.success = false;
+    res.message = "Cannot execute deploy brick into storage, not initialized!";
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[kinova_control_manager]: Cannot store brick, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot store brick, arm is not IDLE!");
+    res.success = false;
+    res.message = "Cannot store brick, arm is not IDLE!";
+    return false;
+  }
+
+  status = MOVING;
+  time_of_last_motion = ros::Time::now();
+
+  Pose3d new_goal = storage_pose[req.position];
+  new_goal.pos.z() += (0.2 * req.layer) - 0.3;
+  bool goal_reached = goTo(new_goal);
+  ungrip();
+  if (goal_reached && !brick_attached){
+  	res.success = true;
+	 return true;
+  }
+  res.success = false;
+  return false;
+}
+//}
+
 /* callbackJointAnglesTopic //{ */
 void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg) {
   getting_joint_angles = true;
@@ -1036,6 +1078,43 @@ bool kinova_control_manager::goTo(Pose3d pose) {
   }
 
   return nearbyPose(end_effector_pose_compensated, last_goal);
+}
+//}
+
+/* goToNonBlocking //{ */
+void kinova_control_manager::goToNonBlocking(Pose3d pose) {
+  Eigen::Vector3d euler = quaternionToEuler(pose.rot);
+
+  ROS_INFO("[kinova_control_manager]: Moving end effector to position [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(),
+           euler[0], euler[1], euler[2]);
+
+  last_goal = pose;  // store last_goal before compensation (this is the actual position of the wrist)
+
+  // offset compensation because no wrist is attached
+  pose.rot *= wrist_offset.rot;
+  pose.pos += pose.rot * wrist_offset.pos;
+
+  kinova_msgs::ArmPoseActionGoal msg;
+
+  msg.goal.pose.pose.position.x = pose.pos.x();
+  msg.goal.pose.pose.position.y = pose.pos.y();
+  msg.goal.pose.pose.position.z = pose.pos.z();
+
+  msg.goal.pose.pose.orientation.x = pose.rot.x();
+  msg.goal.pose.pose.orientation.y = pose.rot.y();
+  msg.goal.pose.pose.orientation.z = pose.rot.z();
+  msg.goal.pose.pose.orientation.w = pose.rot.w();
+
+  std::stringstream ss;
+  ss << arm_type << "_link_base";
+  msg.goal.pose.header.frame_id = ss.str().c_str();
+  msg.header.frame_id           = ss.str().c_str();
+
+  publisher_end_effector_pose.publish(msg);
+
+  ros::spinOnce();
+  ros::Duration(1.0).sleep();
+  ros::spinOnce();
 }
 //}
 

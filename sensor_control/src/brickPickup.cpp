@@ -5,6 +5,7 @@
 #include <mbzirc_husky/brickPickupAction.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
+#include <mbzirc_husky_msgs/StoragePosition.h>
 #include <actionlib/server/simple_action_server.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
@@ -23,6 +24,8 @@ typedef enum{
 	ARMALIGNMENT,		//arm makes fine alignment
 	ARMDESCENT,		//arm does down and detects the magnet feedback
 	ARMPICKUP,		//grasp
+	ARMSTORAGE,		//arm goes to position above the brick compartment
+	BRICKSTORE,		//brick is put into the storage and magnet released
 	FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -39,7 +42,12 @@ ros::ServiceClient prepareClient;
 ros::ServiceClient alignClient;
 ros::ServiceClient pickupClient;
 ros::ServiceClient homeClient;
+ros::ServiceClient armStorageClient;
+ros::ServiceClient brickStoreClient;
 ros::Subscriber subscriberBrickPose;
+
+int active_storage = 0; // TODO make this an enum??;
+int active_layer = 0; // TODO make this an enum??;
 
 bool isTerminal(ESprayState state)
 {
@@ -50,6 +58,8 @@ bool isTerminal(ESprayState state)
     if(state == ARMALIGNMENT) return false;
     if(state == ARMDESCENT) return false;
     if(state == ARMPICKUP) return false;
+    if(state == ARMSTORAGE) return false;
+    if(state == BRICKSTORE) return false;
     if(state == FINAL) return true;
 	return true;
 }
@@ -146,7 +156,9 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 			else
 			{
 				//unsafe
-				state = ROBOTALIGNMENT;
+				
+				//state = ROBOTALIGNMENT;
+				state = ARMALIGNMENT;
 				ROS_INFO("ARM RESET FAILED");
 			}
 
@@ -158,13 +170,15 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 			if(prepareClient.call(srv))
 			{
 				usleep(3000000);
-				state = ROBOTALIGNMENT;
+				//state = ROBOTALIGNMENT;
+				state = ARMALIGNMENT;
 				ROS_INFO("ARM POSITIONED");
 			}
 			else
 			{
 				//unsafe
-				state = ROBOTALIGNMENT;
+				//state = ROBOTALIGNMENT;
+				state = ARMALIGNMENT;
 				ROS_INFO("ARM POSITION FAILED");
 			}
 		}
@@ -205,12 +219,49 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 			if(prepareClient.call(srv))
 			{
 				ROS_INFO("BRICK PICK UP DONE");
-				state = FINAL;
+				state = ARMSTORAGE;
 			}
 			else
 			{
 				ROS_INFO("BRICK PICKUP FAILED");
 				state = FAIL;
+			}
+		}
+		else if(state == ARMSTORAGE)
+		{
+			ROS_INFO("MOVING ARM INTO STORAGE POSITION %d, LAYER %d", active_storage, active_layer);
+			mbzirc_husky_msgs::StoragePosition srv;
+			srv.request.position = active_storage;
+			srv.request.layer = active_layer;
+			if(armStorageClient.call(srv))
+			{
+				ROS_INFO("BRICK READY FOR STORAGE");
+				state = BRICKSTORE;
+			}
+			else
+			{
+				ROS_INFO("FAILED TO REACH STORAGE");
+			}
+		}
+		else if(state == BRICKSTORE)
+		{
+			ROS_INFO("STORING BRICK IN POSITION %d, LAYER %d", active_storage, active_layer);
+			mbzirc_husky_msgs::StoragePosition srv;
+			srv.request.position = active_storage;
+			srv.request.layer = active_layer;
+			if(brickStoreClient.call(srv))
+			{
+				ROS_INFO("BRICK STORED IN POSITION %d", active_storage);
+				active_storage++;
+				if(active_storage > 2){
+					active_storage = 0;
+					active_layer++;
+				}
+				state = FINAL;
+			}
+			else
+			{
+				ROS_INFO("FAILED TO STORE THE BRICK");
 			}
 		}
 		usleep(1200000);
@@ -235,6 +286,8 @@ int main(int argc, char** argv)
     alignClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
     pickupClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
     homeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+    armStorageClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
+    brickStoreClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
     subscriberBrickPose   = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 
     // Dynamic reconfiguration server
@@ -253,3 +306,4 @@ int main(int argc, char** argv)
         usleep(1000);
     }
 }
+

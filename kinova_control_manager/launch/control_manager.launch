@@ -37,9 +37,12 @@
     <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
     <remap from="~pickup_in" to="kinova/arm_manager/pickup_brick" />
     <remap from="~goto_in" to="kinova/arm_manager/goto" />
+    <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
     <remap from="~goto_storage_in" to="kinova/arm_manager/goto_storage" />
+    <remap from="~store_brick_in" to="kinova/arm_manager/store_brick" />
     <!-- <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" /> -->
     
     
   </node>
 </launch>
+
