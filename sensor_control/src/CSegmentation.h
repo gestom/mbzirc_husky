@@ -46,12 +46,15 @@ class CSegmentation
 		~CSegmentation();
 		SSegment findSegment(CRawDepthImage* image,int minSegmentSize,int maxSegmentSize,int wantedType = 0);
 		SSegment getSegment(int type,int number);
+		void resetTracking(CRawDepthImage* im,int iX = 0,int iY = 0);
 
 		SSegment segmentArray[MAX_SEGMENTS];
 		bool debug;
 		bool drawSegments;
 		int numSegments,threshold;
 		float sizeRatioTolerance;
+		SSegment priorPosition;
+		SSegment defaultPosition;
 };
 
 #endif

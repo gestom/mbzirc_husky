@@ -118,7 +118,9 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::brickDetect::Response &res)
 {
+
 	if (req.activate){
+		segmentation->resetTracking(depthImage,req.x,req.y);
 	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
 		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
 		groundPlaneDistance = req.groundPlaneDistance;
@@ -172,11 +174,7 @@ int main(int argc, char** argv)
 	dynamic_reconfigure::Server<mbzirc_husky::detectBrickConfig>::CallbackType dynSer = boost::bind(&reconfigureCallback, _1, _2);
 	server.setCallback(dynSer);
 
-//	photoTf = new CTransformation(outerDimUser);
-//	commandTf = new CTransformation(outerDimMaster);
-	//image_transport::Subscriber subimGray = it.subscribe("/head_xtion/rgb/image_mono", 1, grayImageCallback);
 	posePub = n->advertise<mbzirc_husky_msgs::brickPosition>("/brickPosition", 1);
-	//command_pub = n.advertise<std_msgs::String>("/socialCardReader/commands", 1);
 
 	while (ros::ok()){
 		ros::spinOnce();
