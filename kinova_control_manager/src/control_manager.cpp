@@ -459,9 +459,17 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
   mbzirc_husky_msgs::brickDetect brick_srv;
   brick_srv.request.activate            = true;
   brick_srv.request.groundPlaneDistance = end_effector_pose_raw.pos[2] + arm_base_to_ground;
+  brick_srv.request.x = 640;
+  brick_srv.request.y = 480;
   service_client_brick_detector.call(brick_srv.request, brick_srv.response);
-
-
+ 
+  detected_brick.pose.pos.x() = brick_srv.response.brickPose.pose.position.x;
+  detected_brick.pose.pos.y() = brick_srv.response.brickPose.pose.position.y;
+  detected_brick.pose.pos.z() = brick_srv.response.brickPose.pose.position.z;
+  detected_brick.pose.rot.w() = brick_srv.response.brickPose.pose.orientation.w;
+  detected_brick.pose.rot.x() = brick_srv.response.brickPose.pose.orientation.x;
+  detected_brick.pose.rot.y() = brick_srv.response.brickPose.pose.orientation.y;
+  detected_brick.pose.rot.z() = brick_srv.response.brickPose.pose.orientation.z;
 
   res.success = goal_reached;
   return goal_reached;
@@ -510,7 +518,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
   }
 
   status = ALIGNING;
-
+/*
   ROS_WARN("[kinova_arm_manager]: Waiting for brick detection...");
   ros::Time t_start = ros::Time::now();
   while (!brick_srv.response.activated) {
@@ -525,7 +533,6 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
       return false;
     }
   }
-
 
   Eigen::Quaterniond brick_orientation_msg;
   brick_orientation_msg.w()   = brick_srv.response.brickPose.pose.orientation.w;
@@ -552,7 +559,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
   new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
   goTo(new_pose);
   ros::Duration(2.0).sleep();
-
+*/
   if (!getting_realsense_brick) {
     ROS_FATAL("[kinova_arm_manager]: Brick pose topic did not open!");
     status      = IDLE;
@@ -573,11 +580,11 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
       return false;
     }
 
-    brick_euler = quaternionToEuler(detected_brick.pose.rot);
+    Eigen::Vector3d brick_euler = quaternionToEuler(detected_brick.pose.rot);
 
-    align           = Eigen::Vector3d(-detected_brick.pose.pos.x(), detected_brick.pose.pos.y(), brick_euler.z());
-    align_euler     = quaternionToEuler(default_gripping_pose.rot);
-    ee_euler        = quaternionToEuler(end_effector_pose_raw.rot);
+    Eigen::Vector3d align           = Eigen::Vector3d(-detected_brick.pose.pos.x(), detected_brick.pose.pos.y(), brick_euler.z());
+    Eigen::Vector3d align_euler     = quaternionToEuler(default_gripping_pose.rot);
+    Eigen::Vector3d ee_euler        = quaternionToEuler(end_effector_pose_raw.rot);
     align_euler.z() = ee_euler.z() + brick_euler.z() + M_PI;
 
     ROS_INFO("[kinova_control_manager]: Brick yaw: %.2f", brick_euler.z());
@@ -680,6 +687,9 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   }
 
   grip();
+  mbzirc_husky_msgs::brickDetect stop_brick_detection;
+  stop_brick_detection.request.activate = false;
+  service_client_brick_detector.call(stop_brick_detection.request, stop_brick_detection.response);
   ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
