@@ -48,10 +48,10 @@ typedef enum{
 ESprayState state = IDLE;
 ros::NodeHandle* pn;
 
-float tolerance = 0.025;
-float angleTolerance = 0.50;
-float distanceTolerance = 0.25;
-float distance = 2.80;
+float tolerance = 0.12;
+float angleTolerance = 0.2;
+float distanceTolerance = 0.4;
+float distance = 0.3;
 int minPoints = 0;
 int maxEvalu = 360;
 float spdLimit = 0.3;
@@ -196,233 +196,237 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			max_idx = h1; 
 		}	
 	}
-/*
-	//Wall detection
+
+	/*
+	if( STATE == RANDOM){
+		//Wall detection
+		pcl_msg->header.frame_id = "velodyne";
+		pcl_msg->height = 1;
+		pcl_msg->points.clear();
+		pcl_msg->width = 0;
+
+		std::vector<float> distan;
+		distan.clear();
+		int first_idx[numHypotheses];
+		int last_idx[numHypotheses];
+		bool first[numHypotheses];
+
+		for(int i = 0; i < numHypotheses; i++){
+
+			first[i]=true;
+			last_idx[i] = 0;
+			std::vector<cv::Point> line;
+			line.clear();
+			cv::Point tmp;
+			double tmpx;
+			double tmpy;
+			double d;
+			for (int j = 0; j <= num_ranges; j++)
+			{
+				if (fabs(maxA[i]*x[j]-y[j]+maxB[i])<tolerance && maxEval[i] > minPoints) {
+					pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
+					pcl_msg->width++;
+					tmp.x = x[j];
+					tmp.y = y[j];
+					line.push_back(tmp);
+
+					//Look for first and last point in the detected line 	
+					if(first[i]){
+						first_idx[i] = j;
+						first[i] = false;					
+					}
+					if(last_idx[i] < j){
+						last_idx[i] = j;	
+					}
+					//d = dist(x[j],y[j],tmpx,tmpy);			
+					//distan.push_back(d);	
+				}
+
+			}	
+			ransacLines.push_back(line);
+		}
+
+
+		//Printing length between points 
+		//for(int i =0; i < distan.size(); i++) std::cout << " " << distan[i];
+		//std::cout << std::endl;	
+
+		//Get the length of the lines 
+		double line_len;
+		double dist_to_poi = 0;
+		double line_len_poi = 0;
+		int poi_f_idx;
+		int poi_l_idx;
+		int poi_hypo;
+		for(int i=0;i<ransacLines.size();i++) {
+			if(first_idx[i] > 0 && last_idx[i] >= 1){
+				line_len = dist(x[first_idx[i]],y[first_idx[i]],x[last_idx[i]],y[last_idx[i]]);
+				//float line_le = dist((*)ransacLines[i][ransacLines[i].begin()].x,*ransacLines[i][ransacLines.begin()].y,*ransacLines[i][ransacLines.end()].x,*ransacLines[i][ransacLines.end()].y);
+				std::cout << "Line length " << i << " " << line_len << std::endl;
+				//std::cout << "Line length r" << i << " " << line_le << std::endl;
+
+				if(line_len > 1 && line_len < 8 && line_len_poi < line_len){
+					line_len_poi = line_len;
+					poi_f_idx = first_idx[i];
+					poi_l_idx = last_idx[i];
+					poi_hypo = i;
+					displacement = (maxB[b1]+maxB[b2])/2.0;
+					realAngle = (maxA[b1]+maxA[b2])/2.0;
+				}
+			}
+		}	
+
+		pcl_of_interest_msg->header.frame_id = "velodyne";
+		pcl_of_interest_msg->height = 1;
+		pcl_of_interest_msg->points.clear();
+		pcl_of_interest_msg->width = 0;
+
+		if(line_len_poi > 1 && line_len_poi < 8) {
+
+			std::cout<< "Point of interest X"  << (x[poi_l_idx]+x[poi_f_idx])/2 << " Y " <<  (y[poi_l_idx]+y[poi_f_idx])/2 << std::endl;	
+			pcl_of_interest_msg->points.push_back (pcl::PointXYZ((x[poi_f_idx]+x[poi_l_idx])/2, (y[poi_l_idx]+y[poi_f_idx])/2 , 0));
+			pcl_of_interest_msg->width++;
+
+			dist_to_poi = dist((x[poi_l_idx]+x[poi_f_idx])/2,(y[poi_l_idx]+y[poi_f_idx])/2, 0,0);
+			std::cout << "Distance to the point of interest: " << dist_to_poi << std::endl;
+
+			//For debug only
+			for (int j = 0; j <= num_ranges; j++){
+				if (fabs(maxA[poi_hypo]*x[j]-y[j]+maxB[poi_hypo])<tolerance){
+					pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
+					pcl_msg->width++;
+
+				}
+			}
+
+		}
+
+
+		pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
+		point_pub.publish (pcl_msg);
+		pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
+		point_of_inter_pub.publish (pcl_of_interest_msg);
+	}
+
+	*/
+		
+	//Finding the two best used for pile detection from front 
+	//if(STATUS == EXPLORINGBRICKSITE){ 	
+	int b1 = -1;
+	int b2 = -1;
+	eval = 0; 
+	float realDist,realAngle,displacement;
+	for (int h1 = 0; h1 <= numHypotheses; h1++){
+		for (int h2 = h1+1; h2 <= numHypotheses; h2++){
+			if (fabs(maxA[h1]-maxA[h2]) < angleTolerance && maxEval[h1] > minPoints && maxEval[h2] > minPoints ){
+				realAngle = (maxA[h1]+maxA[h2])/2.0;
+				realDist = fabs(maxB[h1]-maxB[h2])*cos(atan(realAngle));
+							fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
+				//if (fabs(realDist-distance)<distanceTolerance){
+					if (maxEval[h1]+maxEval[h2] > eval){
+						eval = maxEval[h1] + maxEval[h2];
+						b1 = h1;
+						b2 = h2;
+					}
+				//}
+			}
+		}
+	}
+
+
+	pcl_of_interest_msg->header.frame_id = "velodyne";
+	pcl_of_interest_msg->height = 1;
+	pcl_of_interest_msg->points.clear();
+	pcl_of_interest_msg->width = 0;
+	
 	pcl_msg->header.frame_id = "velodyne";
 	pcl_msg->height = 1;
 	pcl_msg->points.clear();
 	pcl_msg->width = 0;
 
-	std::vector<float> distan;
-	distan.clear();
-	int first_idx[numHypotheses];
-	int last_idx[numHypotheses];
-	bool first[numHypotheses];
 
-	for(int i = 0; i < numHypotheses; i++){
+	pcl_two_line_msg->header.frame_id = "velodyne";
+	pcl_two_line_msg->height = 1;
+	pcl_two_line_msg->points.clear();
+	pcl_two_line_msg->width = 0;
+	
+	float red_side_x;
+	float red_side_y;
+	float ax,bx;
+	float xx,yy,xxx,yyy,xo,yo; 
+	double x4; 
+	double y4; 
+	std::cout << b1 << std::endl;
 
-		first[i]=true;
-		last_idx[i] = 0;
-		std::vector<cv::Point> line;
-		line.clear();
-		cv::Point tmp;
-		double tmpx;
-		double tmpy;
-		double d;
+	if (b1 >= 0 && b2 >=0){
 
-	int first_idx;
-	bool first =true;
-	int last_idx = 0;
-	//std::cout << "b1 " << b1 << " b2 " << b2 << std::endl;
-	if (b1 >= 0 && b2 >=0)
-	{
+		bool f = true;
+		bool ff = true;
+		bool s = false;
+		for ( int j = 0; j <= num_ranges; j++){
 
-		pcl_msg->header.frame_id = "velodyne";
-		pcl_msg->height = 1;
-		pcl_msg->points.clear();
-		pcl_msg->width = 0;
-		pcl_two_line_msg->header.frame_id = "velodyne";
-		pcl_two_line_msg->height = 1;
-		pcl_two_line_msg->points.clear();
-		pcl_two_line_msg->width = 0;
-		for (int j = 0; j <= num_ranges; j++)
-		{
-			if (fabs(maxA[i]*x[j]-y[j]+maxB[i])<tolerance && maxEval[i] > minPoints) {
+			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance)  {
+				pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));
+				pcl_two_line_msg->width++;
+				if(f){
+					red_side_x = x[j]; 
+					red_side_y = y[j];
+					f = false;
+				}
+
+			}else if (fabs(maxA[b2]*x[j]-y[j]+maxB[b2])<tolerance){
 				pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
 				pcl_msg->width++;
-				tmp.x = x[j];
-				tmp.y = y[j];
-				line.push_back(tmp);
+				if(s){
+					xxx = x[j]; 
+					yyy = y[j];
+				}	
+				if(ff){
+					xx = x[j]; 
+					yy = y[j];
+					ff = false;
+					s = true;
+				}
+					xo = x[j];
+					yo = y[j];
 
-				//Look for first and last point in the detected line 	
-				if(first[i]){
-					first_idx[i] = j;
-					first[i] = false;					
-				}
-				if(last_idx[i] < j){
-					last_idx[i] = j;	
-				}
-				//d = dist(x[j],y[j],tmpx,tmpy);			
-				//distan.push_back(d);	
 			}
+			
+					displacement = (maxB[b1]+maxB[b2])/2.0;
+					realAngle = (maxA[b1]+maxA[b2])/2.0;
+			fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
-		}	
-		ransacLines.push_back(line);
-	}
-
-
-	//Printing length between points 
-	//for(int i =0; i < distan.size(); i++) std::cout << " " << distan[i];
-	//std::cout << std::endl;	
-
-	//Get the length of the lines 
-	double line_len;
-	double dist_to_poi = 0;
-	double line_len_poi = 0;
-	int poi_f_idx;
-	int poi_l_idx;
-	int poi_hypo;
-	for(int i=0;i<ransacLines.size();i++) {
-		if(first_idx[i] > 0 && last_idx[i] >= 1){
-			line_len = dist(x[first_idx[i]],y[first_idx[i]],x[last_idx[i]],y[last_idx[i]]);
-			//float line_le = dist((*)ransacLines[i][ransacLines[i].begin()].x,*ransacLines[i][ransacLines.begin()].y,*ransacLines[i][ransacLines.end()].x,*ransacLines[i][ransacLines.end()].y);
-			std::cout << "Line length " << i << " " << line_len << std::endl;
-			//std::cout << "Line length r" << i << " " << line_le << std::endl;
-
-			if(line_len > 1 && line_len < 8 && line_len_poi < line_len){
-				line_len_poi = line_len;
-				poi_f_idx = first_idx[i];
-				poi_l_idx = last_idx[i];
-				poi_hypo = i;
-		displacement = (maxB[b1]+maxB[b2])/2.0;
-		realAngle = (maxA[b1]+maxA[b2])/2.0;
-		//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
-	}
-	//Get the length of the line 
-	double line_len = 0;
-	double dist_to_pile = 0;
-	double dist_to_pile_2 = 0;
-	if(first_idx > 0 && last_idx >= 1){
-		line_len = dist(x[first_idx],y[first_idx],x[last_idx],y[last_idx]);
-		//std::cout << "Line length: " << line_len << std::endl;
-
-		//Get distance to the pile
-		//Represented by the distance to the point in the middle
-		if((last_idx-first_idx) >= 1 ){
-			if(dist(x[first_idx],y[first_idx],0,0) < dist(x[last_idx],y[last_idx],0,0)){
-				dist_to_pile = dist(x[last_idx],y[last_idx],0,0);
-				dist_to_pile_2 = dist(x[first_idx],y[first_idx],0,0);
-				//std::cout << "Distance to the middle of the pile front: " << dist_to_pile << " back " << dist_to_pile_2  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
-			}else{
-				dist_to_pile = dist(x[last_idx],y[last_idx],0,0);
-				dist_to_pile_2 = dist(x[first_idx],y[first_idx],0,0);
-				//std::cout << "Distance to the middle of the pile back: " << dist_to_pile_2 << " front " << dist_to_pile  <<  " X " << x[last_idx] << " y " << y[last_idx] << " Xf " << x[first_idx] << " yf " << y[first_idx] << std::endl;
-			}	
 		}
 
-	}
-	std::cout << "Line length max: "  << line_len_poi << std::endl;
-	pcl_of_interest_msg->header.frame_id = "velodyne";
-	pcl_of_interest_msg->height = 1;
-	pcl_of_interest_msg->points.clear();
-	pcl_of_interest_msg->width = 0;
+		//Compute edge of pile
+		//Normalized of line 
+		double dx = xx - xxx;
+		double dy = yy - yyy;
+		double magnitude = sqrt(dx*dx + dy*dy);
+		dx = dx / magnitude;
+		dy = dy / magnitude;
+		double lambda = (dx * (red_side_x - xxx)) + (dy * (red_side_y - yyy));
+		brickStackRedX = (dx * lambda) + xxx;
+		brickStackRedY = (dy * lambda) + yyy;
+		x4 = (dx * lambda) + xxx;
+		y4 = (dy * lambda) + yyy;
+		brickStackLocationKnown = true;
+		
+		brickStackOrangeX = xo;
+		brickStackOrangeY = yo;
 
-	if(line_len_poi > 1 && line_len_poi < 8) {
-
-		std::cout<< "Point of interest X"  << (x[poi_l_idx]+x[poi_f_idx])/2 << " Y " <<  (y[poi_l_idx]+y[poi_f_idx])/2 << std::endl;	
-		pcl_of_interest_msg->points.push_back (pcl::PointXYZ((x[poi_f_idx]+x[poi_l_idx])/2, (y[poi_l_idx]+y[poi_f_idx])/2 , 0));
+		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(x4,y4, 0));
+		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(xo,yo, 0));
 		pcl_of_interest_msg->width++;
-
-		dist_to_poi = dist((x[poi_l_idx]+x[poi_f_idx])/2,(y[poi_l_idx]+y[poi_f_idx])/2, 0,0);
-		std::cout << "Distance to the point of interest: " << dist_to_poi << std::endl;
-
-		//For debug only
-		for (int j = 0; j <= num_ranges; j++){
-			if (fabs(maxA[poi_hypo]*x[j]-y[j]+maxB[poi_hypo])<tolerance){
-				pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
-				pcl_msg->width++;
-
-			}
-		}
-
-	}
-
+		pcl_of_interest_msg->width++;
+	}	
 	pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
 	point_pub.publish (pcl_msg);
+	pcl_conversions::toPCL(ros::Time::now(), pcl_two_line_msg->header.stamp);
+	point_two_pub.publish (pcl_two_line_msg);
 	pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
 	point_of_inter_pub.publish (pcl_of_interest_msg);
-	*/
-	
-
-	//Finding the two best used for pile detection from front 
-	//if(STATUS == EXPLORINGBRICKSITE){ 	
-		int b1 = -1;
-		int b2 = -1;
-		eval = 0; 
-		float realDist,realAngle,displacement;
-		for (int h1 = 0; h1 <= numHypotheses; h1++){
-			for (int h2 = h1+1; h2 <= numHypotheses; h2++){
-				if (fabs(maxA[h1]-maxA[h2]) < angleTolerance && maxEval[h1] > minPoints && maxEval[h2] > minPoints ){
-					realAngle = (maxA[h1]+maxA[h2])/2.0;
-					realDist = fabs(maxB[h1]-maxB[h2])*cos(atan(realAngle));
-					//				fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
-					if (fabs(realDist-distance)<distanceTolerance){
-						if (maxEval[h1]+maxEval[h2] > eval){
-							eval = maxEval[h1] + maxEval[h2];
-							b1 = h1;
-							b2 = h2;
-						}
-					}
-				}
-			}
-		}
-		float red_side_x;
-		float red_side_y;
-		pcl_of_interest_msg->header.frame_id = "velodyne";
-		pcl_of_interest_msg->height = 1;
-		pcl_of_interest_msg->points.clear();
-		pcl_of_interest_msg->width = 0;
-		if (b1 >= 0 && b2 >=0){
-
-			pcl_msg->header.frame_id = "velodyne";
-			pcl_msg->height = 1;
-			pcl_msg->points.clear();
-			pcl_msg->width = 0;
-
-
-			pcl_two_line_msg->header.frame_id = "velodyne";
-			pcl_two_line_msg->height = 1;
-			pcl_two_line_msg->points.clear();
-			pcl_two_line_msg->width = 0;
-			bool f = true;
-			for ( int j = 0; j <= num_ranges; j++){
-			
-				if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance)  {
-					pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));
-					pcl_two_line_msg->width++;
-					if(f){
-						red_side_x = x[j]; 
-						red_side_y = y[j];
-						f = false;
-					}
-				}else if (fabs(maxA[b2]*x[j]-y[j]+maxB[b2])<tolerance){
-					pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
-					pcl_msg->width++;
-					if(f){
-						red_side_x = x[j]; 
-						red_side_y = y[j]; 
-						f = false;
-					}
-				}
-
-
-
-				displacement = (maxB[b1]+maxB[b2])/2.0;
-				realAngle = (maxA[b1]+maxA[b2])/2.0;
-				//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
-
-			}
-
-			pcl_of_interest_msg->points.push_back (pcl::PointXYZ(red_side_x,red_side_y, 0));
-			pcl_of_interest_msg->width++;
-		}	
-		pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
-		point_pub.publish (pcl_msg);
-		pcl_conversions::toPCL(ros::Time::now(), pcl_two_line_msg->header.stamp);
-		point_two_pub.publish (pcl_two_line_msg);
-		pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
-		point_of_inter_pub.publish (pcl_of_interest_msg);
-//	}*/
+	//	}*/
 }
 
 
