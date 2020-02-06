@@ -141,8 +141,8 @@ private:
   void       statusTimer(const ros::TimerEvent &evt);
 
   // position control
-  void goTo(Pose3d pose);
-  void goToRelative(Pose3d pose);
+  bool goTo(Pose3d pose);
+  bool goToRelative(Pose3d pose);
 
   // configuration params
   Pose3d home_pose;
@@ -363,9 +363,9 @@ void kinova_control_manager::onInit() {
   service_server_raise_camera     = nh_.advertiseService("raise_camera_in", &kinova_control_manager::callbackRaiseCameraService, this);
   service_server_align_arm        = nh_.advertiseService("align_arm_in", &kinova_control_manager::callbackAlignArmService, this);
   service_server_goto             = nh_.advertiseService("goto_in", &kinova_control_manager::callbackGoToService, this);
+  service_server_goto_storage     = nh_.advertiseService("goto_storage_in", &kinova_control_manager::callbackGoToStorageService, this);
   service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
-  service_server_pickup_brick     = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
-  service_server_goto_storage     = nh_.advertiseService("move_brick_other_side_in", &kinova_control_manager::callbackGoToStorageService, this);
+  service_server_pickup_brick = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
 
   // service clients
   service_client_homing         = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
@@ -396,7 +396,6 @@ void kinova_control_manager::onInit() {
     joint_angles[i]      = 0.0;
     last_joint_angles[i] = 0.0;
   }
-  last_goal = home_pose;
 
   ROS_INFO("[kinova_control_manager]: Waiting for arm feedback...");
 
@@ -404,6 +403,7 @@ void kinova_control_manager::onInit() {
     ros::spinOnce();
     ros::Duration(0.1).sleep();
   }
+  last_goal = end_effector_pose_compensated;
 
   is_initialized = true;
   ROS_INFO("[kinova_control_manager]: Initialized Kinova Arm type: %s", arm_type.c_str());
@@ -448,21 +448,23 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
   last_goal           = default_gripping_pose;
-  goTo(default_gripping_pose);
-
-  while (status != MotionStatus_t::IDLE) {
-    ros::Duration(0.01).sleep();
-    ros::spinOnce();
-  }
+  bool goal_reached   = goTo(default_gripping_pose);
 
   if (have_brick != brick_attached) {
     ROS_ERROR("[kinova_control_manager]: Brick lost during ascent!");
     res.success = false;
     return false;
-  }
+  }  
 
-  res.success = true;
-  return true;
+  mbzirc_husky_msgs::brickDetect brick_srv;
+  brick_srv.request.activate            = true;
+  brick_srv.request.groundPlaneDistance = end_effector_pose_raw.pos[2] + arm_base_to_ground;
+  service_client_brick_detector.call(brick_srv.request, brick_srv.response);
+
+
+
+  res.success = goal_reached;
+  return goal_reached;
 }
 //}
 
@@ -508,11 +510,6 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
   }
 
   status = ALIGNING;
-
-  mbzirc_husky_msgs::brickDetect brick_srv;
-  brick_srv.request.activate            = true;
-  brick_srv.request.groundPlaneDistance = end_effector_pose_raw.pos[2] + arm_base_to_ground;
-  service_client_brick_detector.call(brick_srv.request, brick_srv.response);
 
   ROS_WARN("[kinova_arm_manager]: Waiting for brick detection...");
   ros::Time t_start = ros::Time::now();
@@ -592,7 +589,6 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     new_pose.pos.z() = default_gripping_pose.pos.z();
     new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
     goTo(new_pose);
-    ros::Duration(1.0).sleep();
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
   }
   if (end_effector_pose_compensated.pos.y() > -0.42 || end_effector_pose_compensated.pos.y() < -0.58) {
@@ -741,11 +737,11 @@ bool kinova_control_manager::callbackGoToService(mbzirc_husky_msgs::EndEffectorP
   time_of_last_motion = ros::Time::now();
 
   Pose3d pose;
-  pose.pos = Eigen::Vector3d(req.pose[0], req.pose[1], req.pose[2]);
-  pose.rot = eulerToQuaternion(Eigen::Vector3d(req.pose[3], req.pose[4], req.pose[5]));
-  goTo(pose);
-  res.success = true;
-  return true;
+  pose.pos          = Eigen::Vector3d(req.pose[0], req.pose[1], req.pose[2]);
+  pose.rot          = eulerToQuaternion(Eigen::Vector3d(req.pose[3], req.pose[4], req.pose[5]));
+  bool goal_reached = goTo(pose);
+  res.success       = goal_reached;
+  return goal_reached;
 }
 //}
 
@@ -777,9 +773,9 @@ bool kinova_control_manager::callbackGoToRelativeService(mbzirc_husky_msgs::EndE
   Pose3d pose;
   pose.pos = Eigen::Vector3d(req.pose[0], req.pose[1], req.pose[2]);
   pose.rot = eulerToQuaternion(Eigen::Vector3d(req.pose[3], req.pose[4], req.pose[5]));
-  goToRelative(pose);
-  res.success = true;
-  return true;
+  bool goal_reached = goToRelative(pose);
+  res.success = goal_reached;
+  return goal_reached;
 }
 //}
 
@@ -807,17 +803,12 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
   }
 
   ROS_INFO("[kinova_control_manager]: Moving arm to storage position %d, layer %d", req.position, req.layer);
-  bool have_brick = brick_attached;
+  bool have_brick     = brick_attached;
   status              = MOVING;
   time_of_last_motion = ros::Time::now();
   Pose3d pose         = storage_pose[req.position];
   pose.pos.z() += 0.2 * req.layer;
-  goTo(pose);
-
-  while (status != MotionStatus_t::IDLE) {
-    ros::Duration(0.01).sleep();
-    ros::spinOnce();
-  }
+  bool goal_reached = goTo(pose);
 
   if (have_brick != brick_attached) {
     ROS_ERROR("[kinova_control_manager]: Brick lost during motion!");
@@ -825,8 +816,8 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
     return false;
   }
 
-  res.success = true;
-  return true;
+  res.success = goal_reached;
+  return goal_reached;
 }
 //}
 
@@ -998,8 +989,8 @@ void kinova_control_manager::statusTimer([[maybe_unused]] const ros::TimerEvent 
 }
 //}
 
-/* goTo //{ */
-void kinova_control_manager::goTo(Pose3d pose) {
+/* goTo (blocking) //{ */
+bool kinova_control_manager::goTo(Pose3d pose) {
   Eigen::Vector3d euler = quaternionToEuler(pose.rot);
 
   ROS_INFO("[kinova_control_manager]: Moving end effector to position [%.3f, %.3f, %.3f], euler [%.3f, %.3f, %.3f]", pose.pos.x(), pose.pos.y(), pose.pos.z(),
@@ -1028,15 +1019,23 @@ void kinova_control_manager::goTo(Pose3d pose) {
   msg.header.frame_id           = ss.str().c_str();
 
   publisher_end_effector_pose.publish(msg);
+
+  while (status != MotionStatus_t::IDLE) {
+    ros::Duration(0.01).sleep();
+    ros::spinOnce();
+  }
+
+  return nearbyPose(end_effector_pose_compensated, last_goal);
 }
 //}
 
-/* goToRelative //{ */
-void kinova_control_manager::goToRelative(Pose3d rel_pose) {
+/* goToRelative (blocking) //{ */
+bool kinova_control_manager::goToRelative(Pose3d rel_pose) {
 
-  Pose3d goal_pose = last_goal + rel_pose;
-  last_goal        = goal_pose;
-  goTo(goal_pose);
+  Pose3d goal_pose  = last_goal + rel_pose;
+  last_goal         = goal_pose;
+  bool goal_reached = goTo(goal_pose);
+  return goal_reached;
 }
 //}
 
