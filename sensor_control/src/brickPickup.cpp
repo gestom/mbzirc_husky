@@ -24,7 +24,7 @@ typedef enum{
 	ROBOTFINALALIGNMENT,	//robot aligns to get the brick in x direction only 
 	ARMALIGNMENT,		//arm makes fine alignment
 	ARMDESCENT,		//arm does down and detects the magnet feedback
-	ARMPICKUP,		//grasp
+	ARMPICKUP,		//grasp and lift up
 	ARMSTORAGE,		//arm goes to position above the brick compartment
 	BRICKSTORE,		//brick is put into the storage and magnet released
 	ARMLOWPOSITIONING,
@@ -46,6 +46,7 @@ ros::ServiceClient prepareClient;
 ros::ServiceClient liftClient;
 ros::ServiceClient alignClient;
 ros::ServiceClient pickupClient;
+ros::ServiceClient liftClient;
 ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
 ros::ServiceClient brickStoreClient;
@@ -346,6 +347,7 @@ int main(int argc, char** argv)
     liftClient= n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/lift_brick");
     alignClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
     pickupClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
+    liftClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/lift_brick");
     homeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
     armStorageClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
     brickStoreClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
