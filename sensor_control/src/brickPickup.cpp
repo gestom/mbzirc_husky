@@ -23,7 +23,7 @@ typedef enum{
 	ROBOTFINALALIGNMENT,	//robot aligns to get the brick in x direction only 
 	ARMALIGNMENT,		//arm makes fine alignment
 	ARMDESCENT,		//arm does down and detects the magnet feedback
-	ARMPICKUP,		//grasp
+	ARMPICKUP,		//grasp and lift up
 	ARMSTORAGE,		//arm goes to position above the brick compartment
 	BRICKSTORE,		//brick is put into the storage and magnet released
 	FINAL,
@@ -41,6 +41,7 @@ ros::Publisher twistPub;
 ros::ServiceClient prepareClient;
 ros::ServiceClient alignClient;
 ros::ServiceClient pickupClient;
+ros::ServiceClient liftClient;
 ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
 ros::ServiceClient brickStoreClient;
@@ -216,7 +217,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 		{
 			ROS_INFO("RAISING ARM");
 			std_srvs::Trigger srv;
-			if(prepareClient.call(srv))
+			if(liftClient.call(srv))
 			{
 				ROS_INFO("BRICK PICK UP DONE");
 				state = ARMSTORAGE;
@@ -285,6 +286,7 @@ int main(int argc, char** argv)
     prepareClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
     alignClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
     pickupClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
+    liftClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/lift_brick");
     homeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
     armStorageClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
     brickStoreClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
