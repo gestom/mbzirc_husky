@@ -35,7 +35,7 @@ void actionServerCallback(const mbzirc_husky::fireExploreGoalConstPtr &goal, Ser
 
     state = EXPLORING;
 
-    while (isTerminal(state) == false){
+    while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORING)
         {
             ROS_INFO("Exploring for fires");

@@ -96,8 +96,8 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 			spd.linear.x = -msg->pose.pose.position.x*3;
 			//if (spd.linear.x < 0) spd.angular.z = -msg->pose.pose.position.y;
 			//if (spd.linear.x > 0) spd.angular.z = msg->pose.pose.position.y;
-
 			spd.angular.z = (stateMove*msg->pose.pose.position.y*3-angle)*20;
+			if (fabs(angle) > 0.3 && spd.angular.z*angle > 0.0) spd.angular.z = 0;
 			spd.linear.x = 0;
 			if (msg->pose.pose.position.x > +0.1) stateMove = -1;
 			if (msg->pose.pose.position.x < -0.1) stateMove = +1;
@@ -133,7 +133,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 
 	state = ARMRESET;
 
-	while (isTerminal(state) == false){
+	while (isTerminal(state) == false && ros::ok()){
 		if(state == ARMRESET)
 		{
 			ROS_INFO("RESETTING ARM INTO POSITION");

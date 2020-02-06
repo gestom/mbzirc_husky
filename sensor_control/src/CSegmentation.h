@@ -29,6 +29,7 @@ typedef struct{
 	int contourPoints;
 	int id;
 	int size;
+	int crit;
 	int type;
 	int warning;
 	int valid;

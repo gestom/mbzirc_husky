@@ -5,8 +5,10 @@
 
 int compareSegments(const void* m1,const void* m2)
 {
-	if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return +1;
-	if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return -1;
+	//if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return +1;
+	//if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return -1;
+	if (((SSegment*)m1)->crit <  ((SSegment*)m2)->crit) return +1;
+	if (((SSegment*)m1)->crit >  ((SSegment*)m2)->crit) return -1;
 	return 0;
 }
 
@@ -16,6 +18,7 @@ CSegmentation::CSegmentation()
 	debug = true;
 	drawSegments = true;
 	sizeRatioTolerance=0.2;
+	segmentArray[0].valid = false;
 }
 
 CSegmentation::~CSegmentation()
@@ -32,6 +35,9 @@ SSegment CSegmentation::getSegment(int type,int number)
 
 SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType)
 {
+	SSegment lastSegment;
+	lastSegment.valid = -1;
+	if (segmentArray[0].valid && numSegments > 0) lastSegment =  segmentArray[0];
 	segmentArray[0].valid = -1;
 	int width = image->width;
 	int height = image->height;
@@ -259,8 +265,10 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		if (segmentArray[i].ratio1 >sizeRatioTolerance || segmentArray[i].ratio2 >sizeRatioTolerance) segmentArray[i].valid = 0;
 	}
 	for (int i = 0;i<numSegments;i++){
-	       	segmentArray[i].size = segmentArray[i].size*segmentArray[i].valid;
-	       	if (wantedType != 0) segmentArray[i].size = segmentArray[i].size*(segmentArray[i].type == wantedType);
+		if (lastSegment.valid == true)  segmentArray[i].crit = 10000-fabs(segmentArray[i].x-lastSegment.x)-fabs(segmentArray[i].y-lastSegment.y);
+		if (lastSegment.valid == false) segmentArray[i].crit = segmentArray[i].y;
+	       	segmentArray[i].crit = segmentArray[i].crit*segmentArray[i].valid;
+	       	if (wantedType != 0) segmentArray[i].crit = segmentArray[i].crit*(segmentArray[i].type == wantedType);
 	}
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	for (int i = 0;i<numSegments;i++)

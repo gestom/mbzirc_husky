@@ -36,7 +36,7 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 
     state = MOVING;
 
-    while (isTerminal(state) == false){
+    while (isTerminal(state) == false && ros::ok()){
         if(state == STACKING || state == MOVING)
         {
             ROS_INFO("Stacking bricks");

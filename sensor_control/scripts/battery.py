@@ -3,21 +3,30 @@ import yagmail
 import rospy
 import time
 from husky_msgs.msg import HuskyStatus
+import random
 
 on = True
 
 def callback(msg):
     global on
-    if float(msg.battery_voltage) < 23 and on:
+    if float(msg.battery_voltage) < 23.8 and on:
         on = False
-        sendEmail()
+        sendEmail(msg.battery_voltage)
 
-def sendEmail():
+def sendEmail(vltge):
     print("sending battery warning email")
     yag_smtp_connection = yagmail.SMTP( user="husky.chrono@gmail.com", password="huskyhusky", host='smtp.gmail.com')
+    
     subject = 'Change my battery'
-    contents = ['Hello this is husky speaking', 'Change my battery']
-    yag_smtp_connection.send('broughtong92@gmail.com', subject, contents)
+    messages = ["Change my battery asshole", "Hey bitch change my battery"]
+
+    msgIdx = random.randint(0,len(messages)-1)
+    contents = [messages[msgIdx], ", i'm down to " + str(vltge) + "volts"]
+    emails = ["broughtong92@gmail.com", "filipmajer93@gmail.com", "krajnt1@fel.cvut.cz"]
+    #emails = ["broughtong92@gmail.com", "filipmajer93@gmail.com"]
+    for i in emails:
+        print("sending to " + i)
+        yag_smtp_connection.send(i, subject, contents)
     time.sleep(1000)
 
 if __name__ == "__main__":

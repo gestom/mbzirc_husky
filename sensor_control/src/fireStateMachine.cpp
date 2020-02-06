@@ -15,7 +15,7 @@ int main (int argc, char **argv) {
     exploreAC.waitForServer();
     ROS_INFO("Action server started, sending goal."); 
 
-    while(1)
+    while(ros::ok())
     {
         //permanently explore until a goal is found
         mbzirc_husky::fireExploreGoal exploreGoal;
