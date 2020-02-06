@@ -17,7 +17,7 @@ CSegmentation::CSegmentation()
 {
 	debug = true;
 	drawSegments = true;
-	sizeRatioTolerance=0.2;
+	sizeRatioTolerance=0.25;
 	segmentArray[0].valid = false;
 }
 
@@ -45,7 +45,7 @@ SSegment CSegmentation::getSegment(int type,int number)
 
 SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType)
 {
-	if (segmentArray[0].valid && numSegments > 0) priorPosition =  segmentArray[0]; else priorPosition = defaultPosition;
+	//if (segmentArray[0].valid && numSegments > 0) priorPosition =  segmentArray[0]; else priorPosition = defaultPosition;
 
 	segmentArray[0].valid = -1;
 	int width = image->width;
@@ -273,22 +273,37 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		segmentArray[i].ratio2 = fabs(dist[2]*dist[3]-segmentArray[i].size)/segmentArray[i].size;
 		if (segmentArray[i].ratio1 >sizeRatioTolerance || segmentArray[i].ratio2 >sizeRatioTolerance) segmentArray[i].valid = 0;
 	}
+
+
+	/*ordering stuff*/
 	for (int i = 0;i<numSegments;i++){
-		float dX = (segmentArray[i].x-priorPosition.x);
-		float dY = (segmentArray[i].y-priorPosition.y);
-		segmentArray[i].crit = 10000-sqrt(dX*dX+dY*dY);
+	       	segmentArray[i].crit = segmentArray[i].y;
 	       	segmentArray[i].crit = segmentArray[i].crit*segmentArray[i].valid;
 	       	if (wantedType != 0) segmentArray[i].crit = segmentArray[i].crit*(segmentArray[i].type == wantedType);
-		printf("Segment %i: %f %f %f %f\n",i,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
 	}
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	for (int i = 0;i<numSegments;i++)
 	{
-		if (segmentArray[i].size == 0){ 
+		if (segmentArray[i].crit == 0){ 
 			numSegments = i; 
 			break;
 		}
 	}
+	int yBrickRowThreshold = 100;
+	for (int i = 1;i<numSegments;i++){
+		if (segmentArray[0].y - segmentArray[i].y > yBrickRowThreshold){
+			numSegments = i; 
+			break;
+		} 
+	}
+	
+	for (int i = 0;i<numSegments;i++){
+		float dX = (segmentArray[i].x-priorPosition.x);
+		float dY = (segmentArray[i].y-priorPosition.y);
+		segmentArray[i].crit = 10000-sqrt(dX*dX+dY*dY);
+		printf("Segment %i: %f %f %f %f\n",i,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
+	}
+	
 	int XX,YY;
 	for (int i = 0;i<numSegments;i++){
 		for (int cn = 0;cn<4;cn++){
