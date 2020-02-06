@@ -26,6 +26,7 @@ add_service_files(DIRECTORY srv/ FILES
   Vector3.srv
   EndEffectorPose.srv
   brickDetect.srv
+  StoragePosition.srv
 )
 
 generate_messages(DEPENDENCIES
