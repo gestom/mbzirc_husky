@@ -435,6 +435,10 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   ungrip();
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
+  while(status != IDLE){
+	ros::spinOnce();
+	ros::Duration(0.05).sleep();
+  }
   res.success = true;
   return true;
 }
