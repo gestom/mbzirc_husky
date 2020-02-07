@@ -188,7 +188,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       mbzirc_husky_msgs::Float64 srv;
       srv.request.data = 0;
       if (prepareClient.call(srv)) {
-        usleep(3000000);
+        /* usleep(3000000); */
         state = ROBOTALIGNMENT;
         mbzirc_husky_msgs::brickDetect brick_srv;
         brick_srv.request.activate            = true;
@@ -209,6 +209,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       mbzirc_husky_msgs::Float64 srv;
       srv.request.data = 0.0;
       if (alignClient.call(srv)) {
+        usleep(3000000);
         state = ARMDESCENT;
         ROS_INFO("ARM ALIGNED");
       } else {

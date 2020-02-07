@@ -370,9 +370,9 @@ void kinova_control_manager::onInit() {
   service_server_raise_camera     = nh_.advertiseService("raise_camera_in", &kinova_control_manager::callbackRaiseCameraService, this);
   service_server_align_arm        = nh_.advertiseService("align_arm_in", &kinova_control_manager::callbackAlignArmService, this);
   service_server_goto             = nh_.advertiseService("goto_in", &kinova_control_manager::callbackGoToService, this);
+  service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
   service_server_goto_storage     = nh_.advertiseService("goto_storage_in", &kinova_control_manager::callbackGoToStorageService, this);
   service_server_store_brick      = nh_.advertiseService("store_brick_in", &kinova_control_manager::callbackStoreBrickService, this);
-  service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
   service_server_pickup_brick     = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
 
   // service clients
@@ -457,9 +457,9 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
   }
 
   ROS_INFO("[kinova_control_manager]: Assuming a default gripping pose");
-  status               = MotionStatus_t::MOVING;
-  time_of_last_motion  = ros::Time::now();
-  last_goal            = default_gripping_pose;
+  status              = MotionStatus_t::MOVING;
+  time_of_last_motion = ros::Time::now();
+  last_goal           = default_gripping_pose;
 
   Pose3d goal_pose = default_gripping_pose;
   goal_pose.pos.z() += req.data;
@@ -478,6 +478,12 @@ bool kinova_control_manager::callbackLiftBrickService(mbzirc_husky_msgs::Float64
 
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot move, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot move, arm is not IDLE!");
     res.success = false;
     return false;
   }
@@ -542,6 +548,12 @@ bool kinova_control_manager::callbackAlignArmService(mbzirc_husky_msgs::Float64R
 
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot align arm, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot align arm, arm is not IDLE!");
     res.success = false;
     return false;
   }
@@ -658,7 +670,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   while (!brick_attached && end_effector_pose_compensated.pos.z() > stopping_height) {
 
     if ((ros::Time::now() - time_of_last_motion).toSec() > no_move_error_timeout) {
-      ROS_ERROR("[kinova_control_manager]: Arm is not moving! Pickup failed");
+      ROS_ERROR("[kinova_control_manager]: Arm is not moving! Pickup failed. Homing may be required");
       flushVelocityTopic(msg);
       status      = IDLE;
       res.success = false;
