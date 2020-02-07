@@ -185,7 +185,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
         ROS_INFO("ARM POSITIONED");
       } else {
         // unsafe
-        state = ROBOTALIGNMENT;
+        state = ARMPOSITIONING;
         // state = ARMALIGNMENT;
         ROS_INFO("ARM POSITION FAILED");
       }
@@ -212,7 +212,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
         brickDetectorClient.call(stop_brick_detection.request, stop_brick_detection.response);
       } else {
         ROS_INFO("FAILED TO DESCEND ARM, RE-ALIGNING");
-        state = ARMALIGNMENT;
+        state = ARMRESET;
       }
 
     } else if (state == ARMPICKUP) {
@@ -282,7 +282,8 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
         state = ARMDESCENT;
         ROS_INFO("ARM ALIGNED");
       } else {
-        state = FAIL;
+	usleep(500000);
+        state = ARMLOWALIGNMENT;
         ROS_INFO("FAILED: FAILED TO ALIGN ARM");
       }
     }

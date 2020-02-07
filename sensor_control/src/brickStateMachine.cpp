@@ -13,8 +13,8 @@ typedef enum{
     STACKING
 }EState;
 
-//EState state = FINDINGBRICKS;
-EState state = PICKINGUP;
+EState state = FINDINGBRICKS;
+//EState state = PICKINGUP;
 bool currentlyRearranging = false;
 
 //0/1 first two red bricks 2/3 equals green bricks 4 blue
@@ -61,7 +61,8 @@ int main (int argc, char **argv) {
                 continue;
             }
             state = PICKINGUP;
-            ROS_INFO("Bricks found and approached, switching to pickup");
+	    usleep(1000000);
+  	    ROS_INFO("Bricks found and approached, switching to pickup");
         }
         else if(state == PICKINGUP)
         {

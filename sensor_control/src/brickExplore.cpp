@@ -757,6 +757,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     
     //goal->goal == 0 brick pickup, goal->goal == 1 stack site
     //goal->brick == 0-4 for the current brick to handle
+	ROS_INFO("Goal received %i %i", goal->goal, goal->brick);
 
     if(goal->goal == 1)
     {

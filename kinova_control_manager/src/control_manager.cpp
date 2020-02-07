@@ -435,10 +435,12 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   ungrip();
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
+  /*
   while(status != IDLE){
 	ros::spinOnce();
 	ros::Duration(0.05).sleep();
   }
+  */
   res.success = true;
   return true;
 }
@@ -469,10 +471,11 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
   goal_pose.pos.z() += req.data;
   last_goal = goal_pose;
 
-  bool goal_reached = goTo(goal_pose);
+  //bool goal_reached = goTo(goal_pose);
+  goToNonBlocking(goal_pose);
 
-  res.success = goal_reached;
-  return goal_reached;
+  res.success = true;
+  return true;
 }
 //}
 
