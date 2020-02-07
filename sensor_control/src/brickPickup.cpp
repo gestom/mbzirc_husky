@@ -43,7 +43,6 @@ ros::Publisher twistPub;
 //service clients for the arm
 ros::ServiceClient service_client_brick_detector;
 ros::ServiceClient prepareClient;
-ros::ServiceClient liftClient;
 ros::ServiceClient alignClient;
 ros::ServiceClient pickupClient;
 ros::ServiceClient liftClient;
