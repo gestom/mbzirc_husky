@@ -473,7 +473,7 @@ void positionArm()
 void moveToBrick(int brick)
 {
     //brick should be in range 1-4 representing second red brick to blue brick
-    if(brick < 1 || brick > 4)
+    if(brick < 1 || brick > 3)
         ROS_INFO("BRICK ERROR out of bounds");
     
     //get front/back normals of brick stack
@@ -489,15 +489,12 @@ void moveToBrick(int brick)
     //offset for bricks on parallel line
     float offset = 1.0f;
     if(brick >= 1)
-        offset += 0.4;
+	    //2.3
+        offset += 2.0;
     if(brick >= 2)
-        offset += 0.4 + .15 + 0.5 + 0.3;
+        offset += 0.6;
     if(brick >= 3)
-        offset += 0.7;
-    if(brick >= 4)
         offset += 0.3 + 0.5 + 0.6;
-    offset += 0.68;
-    offset += 0.35;
 
 	ROS_INFO("Brick forward offset %f", offset);
 
@@ -512,7 +509,7 @@ void moveToBrick(int brick)
     float gradientY = dy / magnitude;
 
     float wayPointX = -offset;
-    float wayPointY = 0.45f;
+    float wayPointY = 0.7f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
@@ -588,12 +585,10 @@ void moveToApproachWP()
     if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
     printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0,0,atan2(dy,dx)+0.8);
-
-    float finalOrientationTheta = (PI) - atan2(dy, dx);
-
-    //float finalOrientationZ = sin(finalOrientationTheta / 2);
-    //float finalOrientationW = cos(finalOrientationTheta / 2);
+    quat_tf.setRPY(0,0,atan2(dy,dx)-0.4);
+    float orientationZ = quat_tf.z();
+    float orientationW = quat_tf.w();
+    quat_tf.setRPY(0,0,atan2(dy,dx)+0.05);
     float finalOrientationZ = quat_tf.z();
     float finalOrientationW = quat_tf.w();
 
@@ -630,8 +625,8 @@ void moveToApproachWP()
     float orientationTheta = (PI) - atan2((wayPointY - originY), (wayPointX - originX));
     //float orientationZ = sin(orientationTheta / 2);
     //float orientationW = cos(orientationTheta / 2);
-    float orientationZ = quat_tf.z();
-    float orientationW = quat_tf.w();
+//    float orientationZ = quat_tf.z();
+  //  float orientationW = quat_tf.w();
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";

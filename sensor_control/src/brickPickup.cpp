@@ -45,6 +45,7 @@ ros::Publisher twistPub;
 
 tf::TransformListener *listener;
 geometry_msgs::PoseStamped anchorPose;
+float anchorAngle = 0;
 
 //service clients for the arm
 ros::ServiceClient service_client_brick_detector;
@@ -94,28 +95,26 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 
 
 	geometry_msgs::PoseStamped pose;
-				geometry_msgs::PoseStamped tf_pose;
-				geometry_msgs::PoseStamped robotPose;
-				float az = 0;
-				try {
-					pose.header.frame_id = "base_link";
-					pose.header.stamp = ros::Time::now();
-					pose.pose.position.x = 0;
-					pose.pose.position.y = 0;
-					pose.pose.position.z = 0;
-					pose.pose.orientation.x = 0;
-					pose.pose.orientation.y = 0;
-					pose.pose.orientation.z = 0;
-					pose.pose.orientation.w = 1;
-					listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.1));
-					listener->transformPose("/map",pose,robotPose);
-				}
-				catch (tf::TransformException &ex) {
-					ROS_ERROR("%s",ex.what());
-					//ros::Duration(1.0).sleep();
-				}
-
-
+	geometry_msgs::PoseStamped tf_pose;
+	geometry_msgs::PoseStamped robotPose;
+	float az = 0;
+	try {
+		pose.header.frame_id = "base_link";
+		pose.header.stamp = ros::Time::now();
+		pose.pose.position.x = 0;
+		pose.pose.position.y = 0;
+		pose.pose.position.z = 0;
+		pose.pose.orientation.x = 0;
+		pose.pose.orientation.y = 0;
+		pose.pose.orientation.z = 0;
+		pose.pose.orientation.w = 1;
+		listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.1));
+		listener->transformPose("/map",pose,robotPose);
+	}
+	catch (tf::TransformException &ex) {
+		ROS_ERROR("%s",ex.what());
+		//ros::Duration(1.0).sleep();
+	}
 
 
 	if(state == ROBOTFINALALIGNMENT)
@@ -153,10 +152,16 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 			if (incomingMessageCount++ > 90) {
 				float angleDiff = (msg->pose.pose.position.y*3-angle);
 				spd.angular.z =  angleDiff*10;
+				spd.linear.x = -msg->pose.pose.position.x;
 				//first, determine drone altitude, which is needed to check the expected size of objects
-				if (fabs(angleDiff) < 0.01){
+				if (fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02){
 					anchorPose = robotPose;
-				       	state = ROBOTALIGNMENT_Y; 
+					anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
+					state = ROBOTALIGNMENT_Y;
+				}
+				if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(msg->pose.pose.position.x) < 0.02){
+					spd.linear.x = spd.angular.z = 0;
+					state = ARMALIGNMENT;
 				}
 				if (spd.linear.x > +maxX)  spd.linear.x = +maxX;
 				if (spd.linear.x < -maxX)  spd.linear.x = -maxX;
@@ -168,6 +173,44 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	}
 	if (state == ROBOTALIGNMENT_Y)
 	{
+		spd.linear.x = spd.angular.z = 0;
+		float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
+		float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
+		float dist = sqrt(dx*dx+dy*dy);
+		spd.linear.x = 0.4 - dist;
+		if (dist > 0.3) {
+			spd.linear.x = 0;
+			float angleDiff = -tf::getYaw(robotPose.pose.orientation);
+			spd.angular.z =  angleDiff*10;
+			if (fabs(angleDiff) < 0.01){
+				state = ROBOTALIGNMENT_X;	
+				spd.linear.x = spd.angular.z = 0;
+				anchorPose = robotPose;
+			}
+		}
+		if (spd.linear.x > +maxX)  spd.linear.x = +maxX;
+		if (spd.linear.x < -maxX)  spd.linear.x = -maxX;
+		if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
+		if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
+		twistPub.publish(spd);
+	}
+	if (state == ROBOTALIGNMENT_X){
+		spd.linear.x = spd.angular.z = 0;
+		float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
+		float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
+		float dist = sqrt(dx*dx+dy*dy);
+		spd.linear.x = -(0.4 - dist);
+		if (dist > 0.3) {
+			state = ROBOTALIGNMENT_PHI;	
+			spd.linear.x = spd.angular.z = 0;
+			anchorPose = robotPose;
+		}
+		if (spd.linear.x > +maxX)  spd.linear.x = +maxX;
+		if (spd.linear.x < -maxX)  spd.linear.x = -maxX;
+		if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
+		if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
+		twistPub.publish(spd);
+	}
 	if (state == ROBOTALIGNMENT_PHI && false) {
 		ROS_INFO("ALIGNING ROBOT");
 		spd.linear.x = spd.angular.z = 0;
