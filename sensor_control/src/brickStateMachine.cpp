@@ -3,7 +3,6 @@
 #include <actionlib/client/terminal_state.h>
 #include <mbzirc_husky/brickExploreAction.h>
 #include <mbzirc_husky/brickPickupAction.h>
-#include <mbzirc_husky/brickRearrangeAction.h>
 #include <mbzirc_husky/brickStackAction.h>
 #include <std_srvs/Trigger.h>
 
@@ -16,8 +15,9 @@ typedef enum{
 
 //EState state = FINDINGBRICKS;
 EState state = PICKINGUP;
-bool currentlyRearranging = false;
 
+//0/1 first two red bricks 2/3 equals green bricks 4 blue
+int currentBrick = 0;
 ros::ServiceClient armHomeClient;
 
 int main (int argc, char **argv) {
@@ -31,13 +31,11 @@ int main (int argc, char **argv) {
 
     actionlib::SimpleActionClient<mbzirc_husky::brickExploreAction> exploreAC("brickExploreServer", true);
     actionlib::SimpleActionClient<mbzirc_husky::brickPickupAction> pickupAC("brickPickupServer", true);
-    actionlib::SimpleActionClient<mbzirc_husky::brickRearrangeAction> rearrangeAC("brickRearrangeServer", true);
     actionlib::SimpleActionClient<mbzirc_husky::brickStackAction> stackAC("brickStackServer", true);
 
     ROS_INFO("Waiting for action servers to start.");
     exploreAC.waitForServer();
     pickupAC.waitForServer();
-    rearrangeAC.waitForServer();
     stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
@@ -48,6 +46,7 @@ int main (int argc, char **argv) {
             //permanently explore until a goal is found
             mbzirc_husky::brickExploreGoal exploreGoal;
             exploreGoal.goal = 1;//find brick stack
+            exploreGoal.brick = currentBrick;
             actionlib::SimpleClientGoalState exploreState = exploreAC.sendGoalAndWait(exploreGoal, ros::Duration(0,0), ros::Duration(0,0));
 
             if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -84,14 +83,6 @@ int main (int argc, char **argv) {
         }
         else if(state == FINDINGSTACKSITE)
         {
-            if(!currentlyRearranging)
-            {
-                //send message to begin rearranging bricks on board
-                mbzirc_husky::brickRearrangeGoal rearrangeGoal;
-                rearrangeAC.sendGoal(rearrangeGoal);
-                currentlyRearranging = true;
-            }
-
             //send message to move to brick stack area, and tell us when finished
             mbzirc_husky::brickExploreGoal exploreGoal;
             exploreGoal.goal = 2;
@@ -105,11 +96,8 @@ int main (int argc, char **argv) {
                 continue;
             }
 
-            ROS_INFO("Found brick stack area, checking state of rearranger");
-            rearrangeAC.waitForResult(ros::Duration(0.0));
-            currentlyRearranging = false;
             state = STACKING;
-            ROS_INFO("Rearranger finished, stacking bricks");
+            ROS_INFO("Finished, stacking bricks");
         }
         else if(state == STACKING)
         {
