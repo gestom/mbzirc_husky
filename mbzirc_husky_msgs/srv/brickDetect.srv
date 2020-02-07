@@ -1,6 +1,8 @@
 bool activate
 int32 wantedType 
-int32 groundPlaneDistance 
+int32 groundPlaneDistance
+int32 x
+int32 y
 ---
 bool activated
 bool detected 

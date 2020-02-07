@@ -17,12 +17,22 @@ CSegmentation::CSegmentation()
 {
 	debug = true;
 	drawSegments = true;
-	sizeRatioTolerance=0.2;
+	sizeRatioTolerance=0.25;
 	segmentArray[0].valid = false;
 }
 
 CSegmentation::~CSegmentation()
 {
+}
+
+void CSegmentation::resetTracking(CRawDepthImage* im,int iX,int iY)
+{
+	if (iX == 0) iX = im->width/2; 
+	if (iY == 0) iY = im->height/2;
+        defaultPosition.x = iX;	
+        defaultPosition.y = iY;	
+	priorPosition = defaultPosition;
+	segmentArray[0].valid = 0;
 }
 
 SSegment CSegmentation::getSegment(int type,int number)
@@ -35,9 +45,8 @@ SSegment CSegmentation::getSegment(int type,int number)
 
 SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType)
 {
-	SSegment lastSegment;
-	lastSegment.valid = -1;
-	if (segmentArray[0].valid && numSegments > 0) lastSegment =  segmentArray[0];
+	//if (segmentArray[0].valid && numSegments > 0) priorPosition =  segmentArray[0]; else priorPosition = defaultPosition;
+
 	segmentArray[0].valid = -1;
 	int width = image->width;
 	int height = image->height;
@@ -105,9 +114,9 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				for (int j =0;j<4;j++){
 					pos = position+expand[j];
 					//a pokud maji hledanou barvu,
-					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 50) nncount++;
+					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 100) nncount++; //TODO indoor/outdoor settings
 					//if (buffer[pos] != 0) nncount++;
-					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 50){
+					if (buffer[pos] < 0 && fabs(buffer[pos]-type) < 100){
 						//pridame jejich pozici do souradnic aktualniho segmentu
 						stack[queueEnd++] = pos;
 						//a otagujem je 
@@ -264,27 +273,52 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		segmentArray[i].ratio2 = fabs(dist[2]*dist[3]-segmentArray[i].size)/segmentArray[i].size;
 		if (segmentArray[i].ratio1 >sizeRatioTolerance || segmentArray[i].ratio2 >sizeRatioTolerance) segmentArray[i].valid = 0;
 	}
+
+
+	/*ordering stuff*/
 	for (int i = 0;i<numSegments;i++){
-		if (lastSegment.valid == true)  segmentArray[i].crit = 10000-fabs(segmentArray[i].x-lastSegment.x)-fabs(segmentArray[i].y-lastSegment.y);
-		if (lastSegment.valid == false) segmentArray[i].crit = segmentArray[i].y;
+	       	segmentArray[i].crit = segmentArray[i].y;
 	       	segmentArray[i].crit = segmentArray[i].crit*segmentArray[i].valid;
 	       	if (wantedType != 0) segmentArray[i].crit = segmentArray[i].crit*(segmentArray[i].type == wantedType);
 	}
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	for (int i = 0;i<numSegments;i++)
 	{
-		if (segmentArray[i].size == 0){ 
+		if (segmentArray[i].crit == 0){ 
 			numSegments = i; 
 			break;
 		}
 	}
+	int yBrickRowThreshold = 100;
+	for (int i = 1;i<numSegments;i++){
+		if (segmentArray[0].y - segmentArray[i].y > yBrickRowThreshold){
+			numSegments = i; 
+			break;
+		} 
+	}
+	
+	for (int i = 0;i<numSegments;i++){
+		float dX = (segmentArray[i].x-priorPosition.x);
+		float dY = (segmentArray[i].y-priorPosition.y);
+		segmentArray[i].crit = 10000-sqrt(dX*dX+dY*dY);
+		//segmentArray[i].crit = segmentArray[i].x;
+		printf("Segment %i %f: %f %f %f %f\n",i,segmentArray[i].crit,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
+	}
+	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
+	
+	int XX,YY;
 	for (int i = 0;i<numSegments;i++){
 		for (int cn = 0;cn<4;cn++){
 			for (int k = -3;k<=3;k++){
 				for (int l = -3;l<=3;l++){
-					int YY = segmentArray[i].cornerY[cn]+k;
-					int XX = segmentArray[i].cornerX[cn]+l;
+					YY = segmentArray[i].cornerY[cn]+k;
+					XX = segmentArray[i].cornerX[cn]+l;
 					if ( XX > 0 && XX < width && YY>0 && YY< height ) image->data[YY*width+XX] = -segmentArray[i].type;
+					if (i == 0){
+						XX = segmentArray[i].x+k;
+						YY = segmentArray[i].y+l;
+						if ( XX > 0 && XX < width && YY>0 && YY< height ) image->data[YY*width+XX] = -segmentArray[i].type;
+					}
 				}
 			}
 		}

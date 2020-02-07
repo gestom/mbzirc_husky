@@ -21,26 +21,29 @@
     <!-- status input from arm driver and gripper -->
     <remap from="~joint_angles_in" to="$(arg ARM_TYPE)_driver/out/joint_angles" />
     <remap from="~tool_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
-    <remap from="~joint_torques_in" to="$(arg ARM_TYPE)_driver/out/joint_torques" />
     <remap from="~end_effector_pose_in" to="$(arg ARM_TYPE)_driver/out/tool_pose" />
     <remap from="~gripper_diagnostics_in" to="husky/gripper/gripper_diagnostics" />
 
     <!-- manager status -->
     <remap from="~arm_status_out" to="kinova/arm_manager/status" />
-    <remap from="~cam_to_ground_out" to="kinova/arm_manager/camera_to_ground" />
+    <remap from="~camera_to_ground_out" to="kinova/arm_manager/camera_to_ground" />
     <remap from="~markers_out" to="kinova/rviz_markers" />
 
     <!-- provided commands -->
     <remap from="~home_in" to="kinova/arm_manager/home_arm" />
     <remap from="~soft_home_in" to="kinova/arm_manager/soft_home_arm" />
     <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
+    <remap from="~lift_brick_in" to="kinova/arm_manager/lift_brick" />
     <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" />
     <remap from="~aim_at_in" to="kinova/arm_manager/aim_at_target" />
     <remap from="~pickup_in" to="kinova/arm_manager/pickup_brick" />
     <remap from="~goto_in" to="kinova/arm_manager/goto" />
     <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
-    <remap from="~goto_relative_fixed_in" to="kinova/arm_manager/goto_relative_fixed" />
+    <remap from="~goto_storage_in" to="kinova/arm_manager/goto_storage" />
+    <remap from="~store_brick_in" to="kinova/arm_manager/store_brick" />
+    <!-- <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" /> -->
     
     
   </node>
 </launch>
+
