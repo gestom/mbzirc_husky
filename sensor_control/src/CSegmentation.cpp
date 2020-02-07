@@ -17,7 +17,7 @@ CSegmentation::CSegmentation()
 {
 	debug = true;
 	drawSegments = true;
-	sizeRatioTolerance=0.25;
+	sizeRatioTolerance=1.25;
 	segmentArray[0].valid = false;
 }
 

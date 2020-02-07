@@ -15,6 +15,7 @@ typedef enum{
 
 //EState state = FINDINGBRICKS;
 EState state = PICKINGUP;
+bool currentlyRearranging = false;
 
 //0/1 first two red bricks 2/3 equals green bricks 4 blue
 int currentBrick = 0;
@@ -34,8 +35,11 @@ int main (int argc, char **argv) {
     actionlib::SimpleActionClient<mbzirc_husky::brickStackAction> stackAC("brickStackServer", true);
 
     ROS_INFO("Waiting for action servers to start.");
+    ROS_INFO("Waiting for explore...");
     exploreAC.waitForServer();
+    ROS_INFO("Waiting for pickup...");
     pickupAC.waitForServer();
+    ROS_INFO("Waiting for stack...");
     stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
@@ -78,8 +82,17 @@ int main (int argc, char **argv) {
                 state = FINDINGBRICKS;
                 continue;
             }
-            state = FINDINGSTACKSITE;
-            ROS_INFO("Brick(s) pickup up successfully, moving to stack area and rearranging");
+            if(currentBrick == 4)
+            {
+                currentBrick = 0;
+                state = FINDINGSTACKSITE;
+                ROS_INFO("All bricks pickup up successfully, moving to stack area and rearranging");
+            }
+            else
+            {
+                currentBrick++;
+                ROS_INFO("Picked up brick, going to the next (%i)", currentBrick);
+            }
         }
         else if(state == FINDINGSTACKSITE)
         {

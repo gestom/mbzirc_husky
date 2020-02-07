@@ -266,7 +266,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if(first_idx[i] > 0 && last_idx[i] >= 1){
 				line_len = dist(x[first_idx[i]],y[first_idx[i]],x[last_idx[i]],y[last_idx[i]]);
 				//float line_le = dist((*)ransacLines[i][ransacLines[i].begin()].x,*ransacLines[i][ransacLines.begin()].y,*ransacLines[i][ransacLines.end()].x,*ransacLines[i][ransacLines.end()].y);
-				std::cout << "Line length " << i << " " << line_len << std::endl;
+				//std::cout << "Line length " << i << " " << line_len << std::endl;
 				//std::cout << "Line length r" << i << " " << line_le << std::endl;
 
 				if(line_len > 1 && line_len < 8 && line_len_poi < line_len){
@@ -287,12 +287,12 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 		if(line_len_poi > 1 && line_len_poi < 8) {
 
-			std::cout<< "Point of interest X"  << (x[poi_l_idx]+x[poi_f_idx])/2 << " Y " <<  (y[poi_l_idx]+y[poi_f_idx])/2 << std::endl;	
+			//std::cout<< "Point of interest X"  << (x[poi_l_idx]+x[poi_f_idx])/2 << " Y " <<  (y[poi_l_idx]+y[poi_f_idx])/2 << std::endl;	
 			pcl_of_interest_msg->points.push_back (pcl::PointXYZ((x[poi_f_idx]+x[poi_l_idx])/2, (y[poi_l_idx]+y[poi_f_idx])/2 , 0));
 			pcl_of_interest_msg->width++;
 
 			dist_to_poi = dist((x[poi_l_idx]+x[poi_f_idx])/2,(y[poi_l_idx]+y[poi_f_idx])/2, 0,0);
-			std::cout << "Distance to the point of interest: " << dist_to_poi << std::endl;
+			//std::cout << "Distance to the point of interest: " << dist_to_poi << std::endl;
 
 			//For debug only
 			for (int j = 0; j <= num_ranges; j++){
@@ -325,7 +325,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if (fabs(maxA[h1]-maxA[h2]) < angleTolerance && maxEval[h1] > minPoints && maxEval[h2] > minPoints ){
 				realAngle = (maxA[h1]+maxA[h2])/2.0;
 				realDist = fabs(maxB[h1]-maxB[h2])*cos(atan(realAngle));
-							fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
+							//fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
 				//if (fabs(realDist-distance)<distanceTolerance){
 					if (maxEval[h1]+maxEval[h2] > eval){
 						eval = maxEval[h1] + maxEval[h2];
@@ -360,7 +360,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	float xx,yy,xxx,yyy,xo,yo; 
 	double x4; 
 	double y4; 
-	std::cout << b1 << std::endl;
+	//std::cout << b1 << std::endl;
 
 	if (b1 >= 0 && b2 >=0){
 
@@ -398,7 +398,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			
 					displacement = (maxB[b1]+maxB[b2])/2.0;
 					realAngle = (maxA[b1]+maxA[b2])/2.0;
-			fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
+			//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
 		}
 
@@ -410,14 +410,14 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		dx = dx / magnitude;
 		dy = dy / magnitude;
 		double lambda = (dx * (red_side_x - xxx)) + (dy * (red_side_y - yyy));
-		brickStackRedX = (dx * lambda) + xxx;
-		brickStackRedY = (dy * lambda) + yyy;
+		//brickStackRedX = (dx * lambda) + xxx;
+		//brickStackRedY = (dy * lambda) + yyy;
 		x4 = (dx * lambda) + xxx;
 		y4 = (dy * lambda) + yyy;
-		brickStackLocationKnown = true;
+		//brickStackLocationKnown = true;
 		
-		brickStackOrangeX = xo;
-		brickStackOrangeY = yo;
+		//brickStackOrangeX = xo;
+		//brickStackOrangeY = yo;
 
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(x4,y4, 0));
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(xo,yo, 0));
@@ -468,15 +468,121 @@ void positionArm()
     prepareClient.call(srv);
 }
 
+void moveToBrick(int brick)
+{
+    //brick should be in range 1-4 representing second red brick to blue brick
+    if(brick < 1 || brick > 4)
+        ROS_INFO("BRICK ERROR out of bounds");
+    
+    //get front/back normals of brick stack
+    float dx = brickStackOrangeX - brickStackRedX;
+    float dy = brickStackOrangeY - brickStackRedY;
+    if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
+    printf("BRICK %i: %f %f %f %f\n",brick,brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0,0,atan2(dy,dx));
+    float orientationZ = quat_tf.z();
+    float orientationW = quat_tf.w();
+
+    //offset for bricks on parallel line
+    float offset = 1.0f;
+    if(brick >= 1)
+        offset += 0.4;
+    if(brick >= 2)
+        offset += 0.4 + .15 + 0.5 + 0.3;
+    if(brick >= 3)
+        offset += 0.7;
+    if(brick >= 4)
+        offset += 0.3 + 0.5 + 0.6;
+    offset += 0.68;
+
+    float frontNormalX = -dy;
+    float frontNormalY = dx;
+
+    //normalise normals
+    float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
+    frontNormalX /= magnitude;
+    frontNormalY /= magnitude;
+    float gradientX = dx / magnitude;
+    float gradientY = dy / magnitude;
+
+    float wayPointX = offset;
+    float wayPointY = 0.55f;
+    float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+    const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+    const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+    //add the y
+    printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
+    float mapWPX = originX + (frontNormalX * wayPointY);
+    float mapWPY = originY + (frontNormalY * wayPointY);
+    //add the x
+    mapWPX -= (gradientX * (wayPointX)); 
+    mapWPY -= (gradientY * (wayPointX));
+    
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::ARROW;
+
+    marker.scale.x = 0.4;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+
+    marker.color.r = 0;
+    marker.color.g = 0;
+    marker.color.b = 0;
+    marker.color.a = 1;
+
+    marker.pose.position.x = mapWPX;
+    marker.pose.position.y = mapWPY;
+    marker.pose.position.z = 0;
+
+    marker.pose.orientation.x = 0;
+    marker.pose.orientation.y = 0;
+    marker.pose.orientation.z = orientationZ;
+    marker.pose.orientation.w = orientationW;
+    
+    debugVisualiser.publish(marker);
+
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = mapWPX;
+    goal.target_pose.pose.position.y = mapWPY;
+
+    //goal orientation
+    goal.target_pose.pose.orientation.z = orientationZ;
+    goal.target_pose.pose.orientation.w = orientationW;
+
+    ROS_INFO("Moving to brick position");
+    movebaseAC->sendGoal(goal);
+    movebaseAC->waitForResult();
+    //ROS_INFO(movebaseAC.getState());
+    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+	    ROS_INFO("Approached, moving to brick");
+    else
+	    ROS_INFO("FAILED on first approach, continueing");
+    ROS_INFO("Approached, done");
+    state=FINAL;
+}
+
 void moveToApproachWP()
 {
     //get front/back normals of brick stack
     float dx = brickStackOrangeX - brickStackRedX;
     float dy = brickStackOrangeY - brickStackRedY;
+    if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
+    printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0,0,atan2(dy,dx));
 
-    float finalOrientationTheta = (PI/2) - atan2(dy, dx);
-    float finalOrientationZ = sin(finalOrientationTheta / 2);
-    float finalOrientationW = cos(finalOrientationTheta / 2);
+    float finalOrientationTheta = (PI) - atan2(dy, dx);
+
+    //float finalOrientationZ = sin(finalOrientationTheta / 2);
+    //float finalOrientationW = cos(finalOrientationTheta / 2);
+    float finalOrientationZ = quat_tf.z();
+    float finalOrientationW = quat_tf.w();
 
     float frontNormalX = -dy;
     float frontNormalY = dx;
@@ -495,21 +601,24 @@ void moveToApproachWP()
     //and if facing the front of the stack +ve y steps back
     //basically just as in the spec book
     //all in map frame
-    float wayPointX = 2.2f;
-    float wayPointY = 0.35f;
+    float wayPointX = 2.f;
+    float wayPointY = 0.55f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
     //add the y
+    printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
     float mapWPX = originX + (frontNormalX * wayPointY);
     float mapWPY = originY + (frontNormalY * wayPointY);
     //add the x
     mapWPX -= (gradientX * (wayPointX+0.2));
     mapWPY -= (gradientY * (wayPointX+0.2));
     //orientation
-    float orientationTheta = (PI/2) - atan2((wayPointY - originY), (wayPointX - originX));
-    float orientationZ = sin(orientationTheta / 2);
-    float orientationW = cos(orientationTheta / 2);
+    float orientationTheta = (PI) - atan2((wayPointY - originY), (wayPointX - originX));
+    //float orientationZ = sin(orientationTheta / 2);
+    //float orientationW = cos(orientationTheta / 2);
+    float orientationZ = quat_tf.z();
+    float orientationW = quat_tf.w();
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
@@ -558,12 +667,10 @@ void moveToApproachWP()
 
     //fire off command to get arm ready
     positionArm();
+	printf("ALALAL: %f %f %f %f %f %f %f\n",mapWPX,originX,frontNormalX,wayPointY,gradientX,gradientY,magnitude);
 
 	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
 	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
-
-	goal.target_pose.pose.orientation.z = -0.9;
-	goal.target_pose.pose.orientation.w = -0.5;
 
     marker.header.stamp = ros::Time::now();
     marker.type = visualization_msgs::Marker::ARROW;
@@ -603,32 +710,39 @@ void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
 	if(brickStackLocationKnown)
 		return;
 	ROS_INFO("RECEIVED POS");
-    char* ch;
-    ch = strtok(strdup(msg->data.c_str()), " ");
-    int varIdx = 0;
-    while(ch != NULL)
-    {
-        if(varIdx == 0)
-            brickStackRedX = atof(ch);
-        else if(varIdx == 1)
-            brickStackRedY = atof(ch);
-        else if(varIdx == 2)
-            brickStackOrangeX = atof(ch);
-        else if(varIdx == 3)
-            brickStackOrangeY = atof(ch);
-        varIdx++;
-        ch = strtok(NULL, " ");
-    }
-    ROS_INFO("POSITION STORED");
+	char* ch;
+	ch = strtok(strdup(msg->data.c_str()), " ");
+	int varIdx = 0;
+	while(ch != NULL)
+	{
+		if(varIdx == 0)
+			brickStackRedX = atof(ch);
+		else if(varIdx == 1)
+			brickStackRedY = atof(ch);
+		else if(varIdx == 2)
+			brickStackOrangeX = atof(ch);
+		else if(varIdx == 3)
+			brickStackOrangeY = atof(ch);
+		varIdx++;
+		ch = strtok(NULL, " ");
+	}
+	ROS_INFO("POSITION STORED");
 	brickStackLocationKnown = true;
 }
 
-void moveToBricks()
+void moveToBricks(int brick)
 {
 	if(brickStackLocationKnown)
 	{
-		ROS_INFO("MOVING TO LOC");
-		moveToApproachWP();
+        if(brick == 0)
+        {
+		    ROS_INFO("Moving to first brick");
+    		moveToApproachWP();
+        }
+        else
+        {
+            moveToBrick(brick);
+        }
 	}
 	else
 	{
@@ -641,10 +755,26 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 {
     mbzirc_husky::brickExploreResult result;
     
+    //goal->goal == 0 brick pickup, goal->goal == 1 stack site
+    //goal->brick == 0-4 for the current brick to handle
+
     if(goal->goal == 1)
-        state = EXPLORINGBRICKS;
+    {
+        //brick pick up
+        if(goal->brick == 0)
+        {
+            state = EXPLORINGBRICKS;
+        }
+        else
+        {
+            state = MOVINGTOBRICKS;    
+        }
+    }
     else if(goal->goal == 2)
-        state = EXPLORINGSTACKSITE;      
+    {
+        //stack site
+        state = EXPLORINGSTACKSITE;
+    }
 
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
@@ -655,7 +785,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         }
         else if(state == MOVINGTOBRICKS)
         {
-            moveToBricks();
+            moveToBricks(goal->brick);
         }
         usleep(100);
     }
