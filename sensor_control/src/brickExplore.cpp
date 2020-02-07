@@ -9,7 +9,7 @@
 #include <mbzirc_husky/brick_pileConfig.h>
 #include <vector>
 #include <opencv2/core/types.hpp>
-
+#include <mbzirc_husky_msgs/Float64.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
@@ -27,6 +27,7 @@
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
 
+ros::ServiceClient prepareClient;
 ros::Subscriber scan_sub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
@@ -77,6 +78,7 @@ int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
 
 ros::Subscriber locationDebug;
+
 
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
@@ -458,6 +460,14 @@ void approachBricks()
     state = MOVINGTOBRICKS;
 }
 
+void positionArm()
+{
+    ROS_INFO("MOVING ARM INTO POSITION WHILE EXPLORING");
+    mbzirc_husky_msgs::Float64 srv;
+    srv.request.data = 0;
+    prepareClient.call(srv);
+}
+
 void moveToApproachWP()
 {
     //get front/back normals of brick stack
@@ -545,6 +555,9 @@ void moveToApproachWP()
 	    ROS_INFO("Approached, moving to brick");
     else
 	    ROS_INFO("FAILED on first approach, continueing");
+
+    //fire off command to get arm ready
+    positionArm();
 
 	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
 	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
@@ -665,7 +678,8 @@ int main(int argc, char** argv)
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   	dynServer.setCallback(f);
-	scan_sub = n.subscribe("/scan",100, scanCallback);	
+	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+    scan_sub = n.subscribe("/scan",100, scanCallback);	
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
 	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
