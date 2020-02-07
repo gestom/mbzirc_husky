@@ -12,6 +12,7 @@
 #include <dynamic_reconfigure/Config.h>
 #include <std_srvs/Trigger.h>
 #include <geometry_msgs/Twist.h>
+#include <tf/transform_listener.h>
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickPickupAction> Server;
 Server *server;
@@ -20,7 +21,9 @@ typedef enum{
 	IDLE = 0,
 	ARMRESET,		//arm goes to dock position
 	ARMPOSITIONING, 	//arm goes to overview positions
-	ROBOTALIGNMENT,	  	//robot aligns to get the brick in nice position
+	ROBOTALIGNMENT_PHI,	  	//robot aligns to get the brick in nice position
+	ROBOTALIGNMENT_X,	  	//robot aligns to get the brick in nice position
+	ROBOTALIGNMENT_Y,	  	//robot aligns to get the brick in nice position
 	ROBOTFINALALIGNMENT,	//robot aligns to get the brick in x direction only 
 	ARMALIGNMENT,		//arm makes fine alignment
 	ARMDESCENT,		//arm does down and detects the magnet feedback
@@ -40,6 +43,9 @@ ros::NodeHandle* pn;
 
 ros::Publisher twistPub;
 
+tf::TransformListener *listener;
+geometry_msgs::PoseStamped anchorPose;
+
 //service clients for the arm
 ros::ServiceClient service_client_brick_detector;
 ros::ServiceClient prepareClient;
@@ -58,7 +64,9 @@ int incomingMessageCount = 0;
 
 bool isTerminal(ESprayState state)
 {
-	if(state == ROBOTALIGNMENT) return false;
+	if(state == ROBOTALIGNMENT_X) return false;
+	if(state == ROBOTALIGNMENT_Y) return false;
+	if(state == ROBOTALIGNMENT_PHI) return false;
 	if(state == ROBOTFINALALIGNMENT) return false;
 	if(state == ARMRESET) return false;
 	if(state == ARMPOSITIONING) return false;
@@ -78,10 +86,38 @@ int alignmentOK = 0;
 
 void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
 {
+	int inc = 0;
 	float maxX = 0.10;
 	float maxZ = 0.15;
 	float angle = tf::getYaw(msg->pose.pose.orientation);
 	geometry_msgs::Twist spd;
+
+
+	geometry_msgs::PoseStamped pose;
+				geometry_msgs::PoseStamped tf_pose;
+				geometry_msgs::PoseStamped robotPose;
+				float az = 0;
+				try {
+					pose.header.frame_id = "base_link";
+					pose.header.stamp = ros::Time::now();
+					pose.pose.position.x = 0;
+					pose.pose.position.y = 0;
+					pose.pose.position.z = 0;
+					pose.pose.orientation.x = 0;
+					pose.pose.orientation.y = 0;
+					pose.pose.orientation.z = 0;
+					pose.pose.orientation.w = 1;
+					listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.1));
+					listener->transformPose("/map",pose,robotPose);
+				}
+				catch (tf::TransformException &ex) {
+					ROS_ERROR("%s",ex.what());
+					//ros::Duration(1.0).sleep();
+				}
+
+
+
+
 	if(state == ROBOTFINALALIGNMENT)
 	{
 		printf("Robot final: %i %f %f %f\n",msg->detected,msg->pose.pose.position.x,msg->pose.pose.position.y,angle);
@@ -109,35 +145,55 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 
 		twistPub.publish(spd);
 	}
-	if (state == ROBOTALIGNMENT) {
+	if (state == ROBOTALIGNMENT_PHI)
+	{
+		printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
+		spd.linear.x = spd.angular.z = 0;
+		if (msg->detected){
+			if (incomingMessageCount++ > 90) {
+				float angleDiff = (msg->pose.pose.position.y*3-angle);
+				spd.angular.z =  angleDiff*10;
+				//first, determine drone altitude, which is needed to check the expected size of objects
+				if (fabs(angleDiff) < 0.01){
+					anchorPose = robotPose;
+				       	state = ROBOTALIGNMENT_Y; 
+				}
+				if (spd.linear.x > +maxX)  spd.linear.x = +maxX;
+				if (spd.linear.x < -maxX)  spd.linear.x = -maxX;
+				if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
+				if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
+			}
+		}
+		twistPub.publish(spd);
+	}
+	if (state == ROBOTALIGNMENT_Y)
+	{
+	if (state == ROBOTALIGNMENT_PHI && false) {
 		ROS_INFO("ALIGNING ROBOT");
 		spd.linear.x = spd.angular.z = 0;
 		if (incomingMessageCount++ > 20){
 			printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
 			if (msg->detected) {
-				spd.linear.x = -msg->pose.pose.position.x * 3;
-				// if (spd.linear.x < 0) spd.angular.z = -msg->pose.pose.position.y;
-				// if (spd.linear.x > 0) spd.angular.z = msg->pose.pose.position.y;
 				spd.angular.z = (stateMove * msg->pose.pose.position.y * 3 - angle) * 20;
 				if (fabs(angle) > 0.3 && spd.angular.z * angle > 0.0) spd.angular.z = 0;
 				spd.linear.x = 0;
 				if (msg->pose.pose.position.x > +0.1) stateMove = -1;
 				if (msg->pose.pose.position.x < -0.1) stateMove = +1;
 				if (angle * stateMove * msg->pose.pose.position.y > 0) spd.linear.x = stateMove * 0.10;
-			} else {
-				spd.linear.x = spd.angular.z = 0;
-			}
-			if (fabs(msg->pose.pose.position.y) < 0.05 && fabs(angle) < 0.2) {
-				alignmentOK++;
-				if (alignmentOK > 20) {
-					spd.linear.x = spd.linear.y = 0;
-					state                       = ROBOTFINALALIGNMENT;
-					twistPub.publish(spd);
-					usleep(250000);
+				if (fabs(msg->pose.pose.position.y) < 0.05 && fabs(angle) < 0.2) {
+					alignmentOK++;
+					if (alignmentOK > 20) {
+						spd.linear.x = spd.linear.y = 0;
+						state                       = ROBOTFINALALIGNMENT;
+						twistPub.publish(spd);
+						usleep(250000);
+						alignmentOK = 0;
+					}
+				} else {
 					alignmentOK = 0;
 				}
 			} else {
-				alignmentOK = 0;
+				spd.linear.x = spd.angular.z = 0;
 			}
 			if (spd.linear.x > +maxX)  spd.linear.x = +maxX;
 			if (spd.linear.x < -maxX)  spd.linear.x = -maxX;
@@ -174,7 +230,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       srv.request.data = 0;
       if (prepareClient.call(srv)) {
         usleep(3500000);
-        state = ROBOTALIGNMENT;
+        state = ROBOTALIGNMENT_PHI;
 	incomingMessageCount = 0; 
         mbzirc_husky_msgs::brickDetect brick_srv;
         brick_srv.request.activate            = true;
@@ -277,7 +333,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 
       } else {
         // unsafe
-        state = ROBOTALIGNMENT;
+        state = ROBOTALIGNMENT_PHI;
         // state = ARMALIGNMENT;
         ROS_INFO("ARM POSITION FAILED");
 	usleep(3500000);
@@ -329,6 +385,7 @@ int main(int argc, char** argv)
 	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
+	listener = new tf::TransformListener();
 
 	// Dynamic reconfiguration server
 	/*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
