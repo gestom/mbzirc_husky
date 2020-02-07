@@ -266,7 +266,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if(first_idx[i] > 0 && last_idx[i] >= 1){
 				line_len = dist(x[first_idx[i]],y[first_idx[i]],x[last_idx[i]],y[last_idx[i]]);
 				//float line_le = dist((*)ransacLines[i][ransacLines[i].begin()].x,*ransacLines[i][ransacLines.begin()].y,*ransacLines[i][ransacLines.end()].x,*ransacLines[i][ransacLines.end()].y);
-				std::cout << "Line length " << i << " " << line_len << std::endl;
+				//std::cout << "Line length " << i << " " << line_len << std::endl;
 				//std::cout << "Line length r" << i << " " << line_le << std::endl;
 
 				if(line_len > 1 && line_len < 8 && line_len_poi < line_len){
@@ -287,12 +287,12 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 		if(line_len_poi > 1 && line_len_poi < 8) {
 
-			std::cout<< "Point of interest X"  << (x[poi_l_idx]+x[poi_f_idx])/2 << " Y " <<  (y[poi_l_idx]+y[poi_f_idx])/2 << std::endl;	
+			//std::cout<< "Point of interest X"  << (x[poi_l_idx]+x[poi_f_idx])/2 << " Y " <<  (y[poi_l_idx]+y[poi_f_idx])/2 << std::endl;	
 			pcl_of_interest_msg->points.push_back (pcl::PointXYZ((x[poi_f_idx]+x[poi_l_idx])/2, (y[poi_l_idx]+y[poi_f_idx])/2 , 0));
 			pcl_of_interest_msg->width++;
 
 			dist_to_poi = dist((x[poi_l_idx]+x[poi_f_idx])/2,(y[poi_l_idx]+y[poi_f_idx])/2, 0,0);
-			std::cout << "Distance to the point of interest: " << dist_to_poi << std::endl;
+			//std::cout << "Distance to the point of interest: " << dist_to_poi << std::endl;
 
 			//For debug only
 			for (int j = 0; j <= num_ranges; j++){
@@ -325,7 +325,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if (fabs(maxA[h1]-maxA[h2]) < angleTolerance && maxEval[h1] > minPoints && maxEval[h2] > minPoints ){
 				realAngle = (maxA[h1]+maxA[h2])/2.0;
 				realDist = fabs(maxB[h1]-maxB[h2])*cos(atan(realAngle));
-							fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
+							//fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
 				//if (fabs(realDist-distance)<distanceTolerance){
 					if (maxEval[h1]+maxEval[h2] > eval){
 						eval = maxEval[h1] + maxEval[h2];
@@ -360,7 +360,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	float xx,yy,xxx,yyy,xo,yo; 
 	double x4; 
 	double y4; 
-	std::cout << b1 << std::endl;
+	//std::cout << b1 << std::endl;
 
 	if (b1 >= 0 && b2 >=0){
 
@@ -398,7 +398,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			
 					displacement = (maxB[b1]+maxB[b2])/2.0;
 					realAngle = (maxA[b1]+maxA[b2])/2.0;
-			fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
+			//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
 		}
 
@@ -410,14 +410,14 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		dx = dx / magnitude;
 		dy = dy / magnitude;
 		double lambda = (dx * (red_side_x - xxx)) + (dy * (red_side_y - yyy));
-		brickStackRedX = (dx * lambda) + xxx;
-		brickStackRedY = (dy * lambda) + yyy;
+		//brickStackRedX = (dx * lambda) + xxx;
+		//brickStackRedY = (dy * lambda) + yyy;
 		x4 = (dx * lambda) + xxx;
 		y4 = (dy * lambda) + yyy;
-		brickStackLocationKnown = true;
+		//brickStackLocationKnown = true;
 		
-		brickStackOrangeX = xo;
-		brickStackOrangeY = yo;
+		//brickStackOrangeX = xo;
+		//brickStackOrangeY = yo;
 
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(x4,y4, 0));
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(xo,yo, 0));
@@ -473,10 +473,17 @@ void moveToApproachWP()
     //get front/back normals of brick stack
     float dx = brickStackOrangeX - brickStackRedX;
     float dy = brickStackOrangeY - brickStackRedY;
+    if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
+    printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0,0,atan2(dy,dx));
 
-    float finalOrientationTheta = (PI/2) - atan2(dy, dx);
-    float finalOrientationZ = sin(finalOrientationTheta / 2);
-    float finalOrientationW = cos(finalOrientationTheta / 2);
+    float finalOrientationTheta = (PI) - atan2(dy, dx);
+
+    //float finalOrientationZ = sin(finalOrientationTheta / 2);
+    //float finalOrientationW = cos(finalOrientationTheta / 2);
+    float finalOrientationZ = quat_tf.z();
+    float finalOrientationW = quat_tf.w();
 
     float frontNormalX = -dy;
     float frontNormalY = dx;
@@ -495,21 +502,24 @@ void moveToApproachWP()
     //and if facing the front of the stack +ve y steps back
     //basically just as in the spec book
     //all in map frame
-    float wayPointX = 2.2f;
-    float wayPointY = 0.35f;
+    float wayPointX = 2.f;
+    float wayPointY = 0.55f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
     //add the y
+    printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
     float mapWPX = originX + (frontNormalX * wayPointY);
     float mapWPY = originY + (frontNormalY * wayPointY);
     //add the x
     mapWPX -= (gradientX * (wayPointX+0.2));
     mapWPY -= (gradientY * (wayPointX+0.2));
     //orientation
-    float orientationTheta = (PI/2) - atan2((wayPointY - originY), (wayPointX - originX));
-    float orientationZ = sin(orientationTheta / 2);
-    float orientationW = cos(orientationTheta / 2);
+    float orientationTheta = (PI) - atan2((wayPointY - originY), (wayPointX - originX));
+    //float orientationZ = sin(orientationTheta / 2);
+    //float orientationW = cos(orientationTheta / 2);
+    float orientationZ = quat_tf.z();
+    float orientationW = quat_tf.w();
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
@@ -558,6 +568,7 @@ void moveToApproachWP()
 
     //fire off command to get arm ready
     positionArm();
+	printf("ALALAL: %f %f %f %f %f %f %f\n",mapWPX,originX,frontNormalX,wayPointY,gradientX,gradientY,magnitude);
 
 	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
 	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
@@ -603,23 +614,23 @@ void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
 	if(brickStackLocationKnown)
 		return;
 	ROS_INFO("RECEIVED POS");
-    char* ch;
-    ch = strtok(strdup(msg->data.c_str()), " ");
-    int varIdx = 0;
-    while(ch != NULL)
-    {
-        if(varIdx == 0)
-            brickStackRedX = atof(ch);
-        else if(varIdx == 1)
-            brickStackRedY = atof(ch);
-        else if(varIdx == 2)
-            brickStackOrangeX = atof(ch);
-        else if(varIdx == 3)
-            brickStackOrangeY = atof(ch);
-        varIdx++;
-        ch = strtok(NULL, " ");
-    }
-    ROS_INFO("POSITION STORED");
+	char* ch;
+	ch = strtok(strdup(msg->data.c_str()), " ");
+	int varIdx = 0;
+	while(ch != NULL)
+	{
+		if(varIdx == 0)
+			brickStackRedX = atof(ch);
+		else if(varIdx == 1)
+			brickStackRedY = atof(ch);
+		else if(varIdx == 2)
+			brickStackOrangeX = atof(ch);
+		else if(varIdx == 3)
+			brickStackOrangeY = atof(ch);
+		varIdx++;
+		ch = strtok(NULL, " ");
+	}
+	ROS_INFO("POSITION STORED");
 	brickStackLocationKnown = true;
 }
 

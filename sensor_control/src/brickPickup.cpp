@@ -58,18 +58,18 @@ int incomingMessageCount = 0;
 
 bool isTerminal(ESprayState state)
 {
-    if(state == ROBOTALIGNMENT) return false;
-    if(state == ROBOTFINALALIGNMENT) return false;
-    if(state == ARMRESET) return false;
-    if(state == ARMPOSITIONING) return false;
-    if(state == ARMALIGNMENT) return false;
-    if(state == ARMLOWPOSITIONING) return false;
-    if(state == ARMLOWALIGNMENT) return false;
-    if(state == ARMDESCENT) return false;
-    if(state == ARMPICKUP) return false;
-    if(state == ARMSTORAGE) return false;
-    if(state == BRICKSTORE) return false;
-    if(state == FINAL) return true;
+	if(state == ROBOTALIGNMENT) return false;
+	if(state == ROBOTFINALALIGNMENT) return false;
+	if(state == ARMRESET) return false;
+	if(state == ARMPOSITIONING) return false;
+	if(state == ARMALIGNMENT) return false;
+	if(state == ARMLOWPOSITIONING) return false;
+	if(state == ARMLOWALIGNMENT) return false;
+	if(state == ARMDESCENT) return false;
+	if(state == ARMPICKUP) return false;
+	if(state == ARMSTORAGE) return false;
+	if(state == BRICKSTORE) return false;
+	if(state == FINAL) return true;
 	return true;
 }
 
@@ -302,37 +302,38 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
   state = IDLE;
 }
 
-int main(int argc, char** argv) {
-  ros::init(argc, argv, "brickPickup");
-  ros::NodeHandle n;
-  pn = &n;
+int main(int argc, char** argv)
+{
+	ros::init(argc, argv, "brickPickup");
+	ros::NodeHandle n;
+	pn = &n;
 
-  twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
-  brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
-  prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
-  liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");
-  alignClient         = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/align_arm");
-  pickupClient        = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
-  homeClient          = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
-  armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
-  brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
-  subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
+	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
+	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+	liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");
+	alignClient         = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/align_arm");
+	pickupClient        = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
+	homeClient          = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
+	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
+	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 
-  // Dynamic reconfiguration server
-  /*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
-    dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
-    dynServer.setCallback(f);*/
+	// Dynamic reconfiguration server
+	/*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
+	  dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
+	  dynServer.setCallback(f);*/
 
-  server = new Server(n, "brickPickupServer", boost::bind(&actionServerCallback, _1, server), false);
-  server->start();
-  while (ros::ok()) {
-    if (server->isPreemptRequested() && state != IDLE)
-      state = PREEMPTED;
-    if (state == STOPPING) {
-      state = IDLE;
-    }
-    ros::spinOnce();
-    usleep(1000);
-  }
+	server = new Server(n, "brickPickupServer", boost::bind(&actionServerCallback, _1, server), false);
+	server->start();
+	while (ros::ok()) {
+		if (server->isPreemptRequested() && state != IDLE)
+			state = PREEMPTED;
+		if (state == STOPPING) {
+			state = IDLE;
+		}
+		ros::spinOnce();
+		usleep(1000);
+	}
 }

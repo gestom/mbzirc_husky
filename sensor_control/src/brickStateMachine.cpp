@@ -14,8 +14,8 @@ typedef enum{
     STACKING
 }EState;
 
-//EState state = FINDINGBRICKS;
-EState state = PICKINGUP;
+EState state = FINDINGBRICKS;
+//EState state = PICKINGUP;
 bool currentlyRearranging = false;
 
 ros::ServiceClient armHomeClient;
@@ -35,9 +35,13 @@ int main (int argc, char **argv) {
     actionlib::SimpleActionClient<mbzirc_husky::brickStackAction> stackAC("brickStackServer", true);
 
     ROS_INFO("Waiting for action servers to start.");
+    ROS_INFO("Waiting for explore...");
     exploreAC.waitForServer();
+    ROS_INFO("Waiting for pickup...");
     pickupAC.waitForServer();
+    ROS_INFO("Waiting for rearrange...");
     rearrangeAC.waitForServer();
+    ROS_INFO("Waiting for stack...");
     stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
