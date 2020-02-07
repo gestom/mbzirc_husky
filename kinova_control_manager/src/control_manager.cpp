@@ -194,13 +194,12 @@ private:
   ros::ServiceServer service_server_goto;
   ros::ServiceServer service_server_goto_relative;
   ros::ServiceServer service_server_pickup_brick;
-  ros::ServiceServer service_server_lift_brick;
   ros::ServiceServer service_server_goto_storage;
   ros::ServiceServer service_server_store_brick;
 
   // called services
   ros::ServiceClient service_client_homing;
-  //ros::ServiceClient service_client_brick_detector;
+  // ros::ServiceClient service_client_brick_detector;
   ros::ServiceClient service_client_grip;
   ros::ServiceClient service_client_ungrip;
 
@@ -226,7 +225,6 @@ private:
   bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackPickupBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackLiftBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
   bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
 
@@ -380,10 +378,9 @@ void kinova_control_manager::onInit() {
   service_server_pickup_brick     = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
 
   // service clients
-  service_client_homing         = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
-  //service_client_brick_detector = nh_.serviceClient<mbzirc_husky_msgs::brickDetect>("brick_detect");
-  service_client_grip           = nh_.serviceClient<std_srvs::Trigger>("grip_out");
-  service_client_ungrip         = nh_.serviceClient<std_srvs::Trigger>("ungrip_out");
+  service_client_homing = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
+  service_client_grip   = nh_.serviceClient<std_srvs::Trigger>("grip_out");
+  service_client_ungrip = nh_.serviceClient<std_srvs::Trigger>("ungrip_out");
 
   // publishers
   publisher_arm_status         = nh_.advertise<mbzirc_husky_msgs::ArmStatus>("arm_status_out", 1);
@@ -464,16 +461,16 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
   bool have_brick = brick_attached;
 
   ROS_INFO("[kinova_control_manager]: Assuming a default gripping pose");
-  status              = MotionStatus_t::MOVING;
-  time_of_last_motion = ros::Time::now();
-  last_goal           = default_gripping_pose;
+  status               = MotionStatus_t::MOVING;
+  time_of_last_motion  = ros::Time::now();
+  last_goal            = default_gripping_pose;
   gripping_pose_offset = req.data;
 
   Pose3d goal_pose = default_gripping_pose;
   goal_pose.pos.z() += gripping_pose_offset;
   last_goal = goal_pose;
 
-  bool goal_reached   = goTo(goal_pose);
+  bool goal_reached = goTo(goal_pose);
 
   res.success = goal_reached;
   return goal_reached;
@@ -496,32 +493,10 @@ bool kinova_control_manager::callbackLiftBrickService([[maybe_unused]] std_srvs:
   last_goal           = default_gripping_pose;
 
   Pose3d goal_pose = default_gripping_pose;
-  last_goal = goal_pose;
+  last_goal        = goal_pose;
 
-  bool goal_reached   = goTo(goal_pose);
-
-  res.success = goal_reached;
-  return goal_reached;
-}
-//}
-
-/* callbackLiftBrickService //{ */
-bool kinova_control_manager::callbackLiftBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
-
-  if (!getting_joint_angles) {
-    ROS_ERROR("[kinova_control_manager]: Cannot move, internal arm feedback missing!");
-    res.success = false;
-    return false;
-  }
-
-
-  bool have_brick = brick_attached;
-
-  ROS_INFO("[kinova_control_manager]: Lifting brick up");
-  status              = MotionStatus_t::MOVING;
-  time_of_last_motion = ros::Time::now();
-  last_goal           = default_gripping_pose;
-  bool goal_reached   = goTo(default_gripping_pose);
+  bool have_brick   = brick_attached;
+  bool goal_reached = goTo(goal_pose);
 
   if (have_brick != brick_attached) {
     ROS_ERROR("[kinova_control_manager]: Brick lost during ascent!");
@@ -576,7 +551,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
   }
 
   status = ALIGNING;
-  
+
   if (!getting_realsense_brick) {
     ROS_FATAL("[kinova_arm_manager]: Brick pose topic did not open!");
     status      = IDLE;
@@ -877,9 +852,7 @@ bool kinova_control_manager::callbackStoreBrickService(mbzirc_husky_msgs::Storag
   new_goal.pos.z() += (0.2 * req.layer) - 0.3;
   bool goal_reached = goTo(new_goal);
   ungrip();
-  ros::spinOnce();
-  ros::Duration(0.2);
-  ros::spinOnce();
+  ros::Duration(0.2).sleep();
   res.success = goal_reached;
   return goal_reached;
 }

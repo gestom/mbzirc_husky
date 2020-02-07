@@ -346,7 +346,6 @@ int main(int argc, char** argv)
     liftClient= n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/lift_brick");
     alignClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
     pickupClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
-    liftClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/lift_brick");
     homeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
     armStorageClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
     brickStoreClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
