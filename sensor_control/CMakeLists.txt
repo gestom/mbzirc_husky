@@ -36,7 +36,6 @@ add_action_files(
 	FILES fireExplore.action
     FILES brickExplore.action
 	FILES brickPickup.action
-    FILES brickRearrange.action
     FILES brickStack.action
 )
 
@@ -75,7 +74,6 @@ add_executable(fireStateMachine src/fireStateMachine.cpp)
 add_executable(brickStateMachine src/brickStateMachine.cpp)
 add_executable(brickExplore src/brickExplore.cpp)
 add_executable(brickPickup src/brickPickup.cpp)
-add_executable(brickRearrange src/brickRearrange.cpp)
 add_executable(brickStack src/brickStack.cpp)
 add_dependencies(spray ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(pickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
@@ -85,7 +83,6 @@ add_dependencies(fireStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin
 add_dependencies(brickStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickPickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS} kinova_control_manager_gencpp)
-add_dependencies(brickRearrange ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickStack ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries (spray ${catkin_LIBRARIES})
 target_link_libraries (pickup ${catkin_LIBRARIES})
@@ -95,7 +92,6 @@ target_link_libraries (fireExplore ${catkin_LIBRARIES})
 target_link_libraries (brickStateMachine ${catkin_LIBRARIES})
 target_link_libraries (brickExplore ${catkin_LIBRARIES})
 target_link_libraries (brickPickup ${catkin_LIBRARIES})
-target_link_libraries (brickRearrange ${catkin_LIBRARIES})
 target_link_libraries (brickStack ${catkin_LIBRARIES})
 
 #############

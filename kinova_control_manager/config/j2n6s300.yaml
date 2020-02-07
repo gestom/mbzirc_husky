@@ -1,8 +1,8 @@
 arm_type: "j2n6s300"
 status_timer_rate: 5 # [Hz]
 no_move_error_timeout: 1.3 # [s]
-gripper_timeout: 15.0 # [s]
-nearby_position_threshold: 0.05 # [m]
+gripper_timeout: 10.0 # [s]
+nearby_position_threshold: 0.07 # [m]
 nearby_rotation_threshold: 0.13 # [rad]
 end_effector_home_pose: [0.11114309863131741, -0.2158097313049791, 0.4881259485167549, 1.4551091600480015, 1.3555070211450448, 0.13082173974487404] # [m m m rad rad rad]
 default_gripping_pose: [0.0, -0.52, 0.52, 0.0, -3.1416, 0.0] # [m m m rad rad rad]
@@ -12,9 +12,9 @@ husky_to_arm_base_transform: [-0.175, -0.13 ,0.17, 0, 0, 0] # [m m m rad rad rad
 wrist_offset: [0.0, 0.0, 0.118, 0.0, 0.0, 0.3] # [m m m]
 arm_base_to_ground: 0.405 # [m]
 linear_vel_modifier: 2.0
-move_down_speed_faster: 0.2 # [m/s]
-move_down_speed_slower: 0.1 # [m/s]
-move_down_speed_mega_slow: 0.022 # [m/s]
+move_down_speed_faster: 0.3 # [m/s]
+move_down_speed_slower: 0.2 # [m/s]
+move_down_speed_mega_slow: 0.07 # [m/s]
 husky_base_frame_id: "base_link"
 kinova_base_frame_id: "j2n6s300_link_base"
 
