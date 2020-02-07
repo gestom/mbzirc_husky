@@ -110,6 +110,7 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 		twistPub.publish(spd);
 	}
 	if (state == ROBOTALIGNMENT) {
+		ROS_INFO("ALIGNING ROBOT");
 		spd.linear.x = spd.angular.z = 0;
 		if (incomingMessageCount++ > 20){
 			printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
@@ -126,7 +127,7 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 			} else {
 				spd.linear.x = spd.angular.z = 0;
 			}
-			if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(angle) < 0.2) {
+			if (fabs(msg->pose.pose.position.y) < 0.05 && fabs(angle) < 0.2) {
 				alignmentOK++;
 				if (alignmentOK > 20) {
 					spd.linear.x = spd.linear.y = 0;
@@ -172,7 +173,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       mbzirc_husky_msgs::Float64 srv;
       srv.request.data = 0;
       if (prepareClient.call(srv)) {
-        /* usleep(3000000); */
+        usleep(3500000);
         state = ROBOTALIGNMENT;
 	incomingMessageCount = 0; 
         mbzirc_husky_msgs::brickDetect brick_srv;
@@ -198,8 +199,8 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
         state = ARMDESCENT;
         ROS_INFO("ARM ALIGNED");
       } else {
-        state = FAIL;
-        ROS_INFO("FAILED: FAILED TO ALIGN ARM");
+        state = ARMRESET;
+        ROS_INFO("FAILED: FAILED TO ALIGN ARM SUCCESSFULLY");
       }
     } else if (state == ARMDESCENT) {
       ROS_INFO("ARM DESCENDING");
@@ -224,7 +225,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
         state = ARMSTORAGE;
       } else {
         ROS_INFO("BRICK PICKUP FAILED");
-        state = FAIL;
+        state = ARMALIGNMENT;
       }
     } else if (state == ARMSTORAGE) {
       ROS_INFO("MOVING ARM INTO STORAGE POSITION %d, LAYER %d", active_storage, active_layer);
@@ -245,13 +246,19 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       if (brickStoreClient.call(srv)) {
         ROS_INFO("BRICK STORED IN POSITION %d", active_storage);
         active_storage++;
-        if (active_storage > 2) {
-          active_storage = 0;
+        if (active_storage > 1) {
+		ROS_INFO("FINISHED PICKUP");
+		state = FINAL;
+
+          //active_storage = 0;
           active_layer++;
         }
-        state = ARMLOWPOSITIONING;
+	else
+	{
+		state = ARMLOWPOSITIONING;
+	}
       } else {
-        ROS_INFO("FAILED TO STORE THE BRICK");
+        ROS_INFO("FAILED TO STORE THE BRICK SUCCESSFULLY");
         state = ARMLOWPOSITIONING;
       }
     } else if (state == ARMLOWPOSITIONING) {
@@ -259,7 +266,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       mbzirc_husky_msgs::Float64 srv;
       srv.request.data = -0.3;
       if (prepareClient.call(srv)) {
-        usleep(3000000);
+        usleep(3500000);
         state = ARMLOWALIGNMENT;
         mbzirc_husky_msgs::brickDetect brick_srv;
         brick_srv.request.activate            = true;
@@ -273,9 +280,11 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
         state = ROBOTALIGNMENT;
         // state = ARMALIGNMENT;
         ROS_INFO("ARM POSITION FAILED");
+	usleep(3500000);
       }
 
     } else if (state == ARMLOWALIGNMENT) {
+	    usleep(5000000);
       mbzirc_husky_msgs::Float64 srv;
       srv.request.data = -0.3;
       if (alignClient.call(srv)) {
@@ -284,7 +293,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
       } else {
 	usleep(500000);
         state = ARMLOWALIGNMENT;
-        ROS_INFO("FAILED: FAILED TO ALIGN ARM");
+        ROS_INFO("FAILED: FAILED TO ALIGN ARM (LOW)");
       }
     }
     usleep(1200000);

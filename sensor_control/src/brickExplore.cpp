@@ -156,9 +156,11 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	ransacLines.clear();
 	for (int i = 0; i <= num_ranges; i++){
 		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
-		x[i] = scan_msg->ranges[i]*cos(angle);
-		y[i] = scan_msg->ranges[i]*sin(angle);
-		m[i] = true;
+		if(angle < 0 && angle > -(3.14/2) ){
+			x[i] = scan_msg->ranges[i]*cos(angle);
+			y[i] = scan_msg->ranges[i]*sin(angle);
+			m[i] = true;
+		}
 	}
 	int eval = 0;
 	int max_iterations = 1000;
@@ -495,6 +497,9 @@ void moveToBrick(int brick)
     if(brick >= 4)
         offset += 0.3 + 0.5 + 0.6;
     offset += 0.68;
+    offset += 0.35;
+
+	ROS_INFO("Brick forward offset %f", offset);
 
     float frontNormalX = -dy;
     float frontNormalY = dx;
@@ -506,8 +511,8 @@ void moveToBrick(int brick)
     float gradientX = dx / magnitude;
     float gradientY = dy / magnitude;
 
-    float wayPointX = offset;
-    float wayPointY = 0.55f;
+    float wayPointX = -offset;
+    float wayPointY = 0.45f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
@@ -518,7 +523,9 @@ void moveToBrick(int brick)
     //add the x
     mapWPX -= (gradientX * (wayPointX)); 
     mapWPY -= (gradientY * (wayPointX));
-    
+   
+	ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
+
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = ros::Time::now();
@@ -602,7 +609,7 @@ void moveToApproachWP()
     //basically just as in the spec book
     //all in map frame
     float wayPointX = 2.f;
-    float wayPointY = 0.55f;
+    float wayPointY = 0.45f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);

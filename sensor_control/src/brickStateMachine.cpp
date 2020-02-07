@@ -15,6 +15,7 @@ typedef enum{
 
 EState state = FINDINGBRICKS;
 //EState state = PICKINGUP;
+
 bool currentlyRearranging = false;
 
 //0/1 first two red bricks 2/3 equals green bricks 4 blue
@@ -43,10 +44,12 @@ int main (int argc, char **argv) {
     stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
+
     while(ros::ok())
     {
         if(state == FINDINGBRICKS)
         {
+		ROS_INFO("FINDING BRICKS");
             //permanently explore until a goal is found
             mbzirc_husky::brickExploreGoal exploreGoal;
             exploreGoal.goal = 1;//find brick stack
@@ -61,7 +64,7 @@ int main (int argc, char **argv) {
                 continue;
             }
             state = PICKINGUP;
-	    usleep(1000000);
+	    usleep(2500000);
   	    ROS_INFO("Bricks found and approached, switching to pickup");
         }
         else if(state == PICKINGUP)
@@ -91,6 +94,7 @@ int main (int argc, char **argv) {
             }
             else
             {
+		state = FINDINGBRICKS;
                 currentBrick++;
                 ROS_INFO("Picked up brick, going to the next (%i)", currentBrick);
             }

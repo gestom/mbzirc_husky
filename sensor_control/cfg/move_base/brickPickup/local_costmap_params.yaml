@@ -8,5 +8,5 @@ local_costmap:
   height: 5
   origin_x: -2.5
   origin_y: -2.5
-  resolution: 0.02
-  inflation_radius: 0.1
+  resolution: 0.01
+  inflation_radius: 0.05
