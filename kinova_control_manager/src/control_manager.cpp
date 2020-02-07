@@ -157,7 +157,7 @@ private:
   //  ||===========||
   //  ||     2     ||
   //  ||-----------||
-  //  ||  0  |  1  ||
+  //  ||  1  |  0  ||
   //  ||===========||
   //  ||ARM        ||
   // pose of the end effector when reaching for the N-th brick
@@ -172,8 +172,6 @@ private:
   double move_down_speed_faster;
   double move_down_speed_slower;
   double move_down_speed_mega_slow;
-
-  double gripping_pose_offset = 0.0;
 
   // arm status
   MotionStatus_t status;
@@ -219,9 +217,9 @@ private:
   // service callbacks
   bool callbackHomingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64::Request &req, mbzirc_husky_msgs::Float64::Response &res);
-  bool callbackLiftBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res);
   bool callbackRaiseCameraService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackAlignArmService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool callbackAlignArmService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res);
   bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackPickupBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
@@ -458,16 +456,13 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
     return false;
   }
 
-  bool have_brick = brick_attached;
-
   ROS_INFO("[kinova_control_manager]: Assuming a default gripping pose");
   status               = MotionStatus_t::MOVING;
   time_of_last_motion  = ros::Time::now();
   last_goal            = default_gripping_pose;
-  gripping_pose_offset = req.data;
 
   Pose3d goal_pose = default_gripping_pose;
-  goal_pose.pos.z() += gripping_pose_offset;
+  goal_pose.pos.z() += req.data;
   last_goal = goal_pose;
 
   bool goal_reached = goTo(goal_pose);
@@ -479,7 +474,7 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
 
 /* callbackLiftBrickService //{ */
 // input value is offset in Z axis relative to the default gripping position
-bool kinova_control_manager::callbackLiftBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+bool kinova_control_manager::callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot move, internal arm feedback missing!");
@@ -493,7 +488,8 @@ bool kinova_control_manager::callbackLiftBrickService([[maybe_unused]] std_srvs:
   last_goal           = default_gripping_pose;
 
   Pose3d goal_pose = default_gripping_pose;
-  last_goal        = goal_pose;
+  goal_pose.pos.z() += req.data;
+  last_goal = goal_pose;
 
   bool have_brick   = brick_attached;
   bool goal_reached = goTo(goal_pose);
@@ -535,7 +531,7 @@ bool kinova_control_manager::callbackRaiseCameraService([[maybe_unused]] std_srv
 //}
 
 /* callbackAlignArmService //{ */
-bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+bool kinova_control_manager::callbackAlignArmService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[kinova_control_manager]: Cannot align_arm, not initialized!");
@@ -585,7 +581,7 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     Pose3d new_pose;
     new_pose.pos.x() = end_effector_pose_raw.pos.x() + align.x();
     new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
-    new_pose.pos.z() = default_gripping_pose.pos.z() + gripping_pose_offset;
+    new_pose.pos.z() = default_gripping_pose.pos.z() + req.data;
     new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
     goToNonBlocking(new_pose);
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
@@ -625,8 +621,6 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
 
   status              = PICKING;
   time_of_last_motion = ros::Time::now();
-  ROS_INFO("[kinova_control_manager]: Gripping pose offset reset");
-  gripping_pose_offset = 0.0;
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
