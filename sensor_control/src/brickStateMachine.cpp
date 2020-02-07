@@ -5,6 +5,7 @@
 #include <mbzirc_husky/brickPickupAction.h>
 #include <mbzirc_husky/brickRearrangeAction.h>
 #include <mbzirc_husky/brickStackAction.h>
+#include <std_srvs/Trigger.h>
 
 typedef enum{
     FINDINGBRICKS,
@@ -17,8 +18,16 @@ EState state = FINDINGBRICKS;
 //EState state = PICKINGUP;
 bool currentlyRearranging = false;
 
+ros::ServiceClient armHomeClient;
+
 int main (int argc, char **argv) {
     ros::init(argc, argv, "brickStateMachine");
+
+    ros::NodeHandle n;
+    armHomeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm"); 
+    std_srvs::Trigger srv;
+    if(!armHomeClient.call(srv))
+        ROS_ERROR("Error resetting arm position");
 
     actionlib::SimpleActionClient<mbzirc_husky::brickExploreAction> exploreAC("brickExploreServer", true);
     actionlib::SimpleActionClient<mbzirc_husky::brickPickupAction> pickupAC("brickPickupServer", true);
@@ -44,6 +53,7 @@ int main (int argc, char **argv) {
             if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
             {
                 ROS_INFO("Explore server didn't complete. Trying again.");
+                armHomeClient.call(srv);
                 //TODO, clearly something fucked up, add some recovery behaviour here
                 continue;
             }
@@ -63,6 +73,7 @@ int main (int argc, char **argv) {
             if(pickupState != actionlib::SimpleClientGoalState::SUCCEEDED)
             {
                 ROS_INFO("Pickup failed, going back to explore");
+                armHomeClient.call(srv);
                 //TODO maybe try same again before going back to explore
                 //TODO, recovery behavious. Perhaps try again from alternative angle, and/or mark area as difficult but can return eventually
                 state = FINDINGBRICKS;
@@ -89,6 +100,7 @@ int main (int argc, char **argv) {
             if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
             {
                 ROS_INFO("Failed to find stack area.");
+                armHomeClient.call(srv);
                 //TODO add recovery behaviour
                 continue;
             }
@@ -107,6 +119,7 @@ int main (int argc, char **argv) {
             if(stackState != actionlib::SimpleClientGoalState::SUCCEEDED)
             {
                 ROS_INFO("Stack server didn't complete. Trying again.");
+                armHomeClient.call(srv);
                 //TODO, clearly something fucked up, add some recovery behaviour here
                 //TODO if fail multiple times, go back to explore anyway
                 continue;

@@ -131,7 +131,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr &goal, Ser
 {
 	mbzirc_husky::brickPickupResult result;
 
-	state = ARMRESET;
+	state = ARMPOSITIONING;
 
 	while (isTerminal(state) == false && ros::ok()){
 		if(state == ARMRESET)
