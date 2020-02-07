@@ -564,14 +564,20 @@ void moveToBrick(int brick)
 
     ROS_INFO("Moving to brick position");
     movebaseAC->sendGoal(goal);
-    movebaseAC->waitForResult();
-    //ROS_INFO(movebaseAC.getState());
-    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-	    ROS_INFO("Approached, moving to brick");
-    else
-	    ROS_INFO("FAILED on first approach, continueing");
-    ROS_INFO("Approached, done");
-    state=FINAL;
+    while(ros::ok())
+    {
+        usleep(15000000);
+        actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+        if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+        {
+            ROS_INFO("Approached current bricks, setting to final");
+            state = FINAL;
+            break;
+        }
+        ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+        state = FAIL;
+        break;
+    }
 }
 
 void moveToApproachWP()
@@ -582,7 +588,7 @@ void moveToApproachWP()
     if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
     printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0,0,atan2(dy,dx));
+    quat_tf.setRPY(0,0,atan2(dy,dx)+0.8);
 
     float finalOrientationTheta = (PI) - atan2(dy, dx);
 
@@ -665,12 +671,19 @@ void moveToApproachWP()
 
     ROS_INFO("Moving to approach position");
     movebaseAC->sendGoal(goal);
-    movebaseAC->waitForResult();
-    //ROS_INFO(movebaseAC.getState());
-    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-	    ROS_INFO("Approached, moving to brick");
-    else
-	    ROS_INFO("FAILED on first approach, continueing");
+    while(ros::ok())
+    {
+        usleep(15000000);
+        actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+        if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+        {
+            ROS_INFO("Approached outer wp, moving to bricks");
+            break;
+        }
+        ROS_INFO("Long move base action for outer wp, current state: %s", mbState.getText());
+        state = FAIL;
+        break;
+    }
 
     //fire off command to get arm ready
     positionArm();
@@ -701,15 +714,23 @@ void moveToApproachWP()
 
     ROS_INFO("Moving to brick position");
     movebaseAC->sendGoal(goal);
-    movebaseAC->waitForResult();
-    if(movebaseAC->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-	    ROS_INFO("Approached, moving to brick");
-    else
-	    ROS_INFO("FAILED on first approach, continueing");
+    while(ros::ok())
+    {
+        usleep(15000000);
+        actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+        if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+        {
+            ROS_INFO("Approached first brick, picking up");
+            state = FINAL;
+            break;
+        }
+        ROS_INFO("Long move base action for first brick, current state: %s", mbState.getText());
+        state = FAIL;
+        break;
+    }
 
     //ROS_INFO(movebaseAC.getState());
     ROS_INFO("Approached, done");
-    state = FINAL;
 }
 
 void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
