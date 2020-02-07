@@ -9,7 +9,7 @@
 #include <mbzirc_husky/brick_pileConfig.h>
 #include <vector>
 #include <opencv2/core/types.hpp>
-
+#include <mbzirc_husky_msgs/Float64.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
@@ -21,10 +21,13 @@
 #include <sstream>
 #include <stdlib.h>
 #include <visualization_msgs/Marker.h>
+#include <math.h>
+#define PI 3.14159265358979
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
 
+ros::ServiceClient prepareClient;
 ros::Subscriber scan_sub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
@@ -75,6 +78,7 @@ int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
 
 ros::Subscriber locationDebug;
+
 
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
@@ -456,11 +460,23 @@ void approachBricks()
     state = MOVINGTOBRICKS;
 }
 
+void positionArm()
+{
+    ROS_INFO("MOVING ARM INTO POSITION WHILE EXPLORING");
+    mbzirc_husky_msgs::Float64 srv;
+    srv.request.data = 0;
+    prepareClient.call(srv);
+}
+
 void moveToApproachWP()
 {
     //get front/back normals of brick stack
     float dx = brickStackOrangeX - brickStackRedX;
     float dy = brickStackOrangeY - brickStackRedY;
+
+    float finalOrientationTheta = (PI/2) - atan2(dy, dx);
+    float finalOrientationZ = sin(finalOrientationTheta / 2);
+    float finalOrientationW = cos(finalOrientationTheta / 2);
 
     float frontNormalX = -dy;
     float frontNormalY = dx;
@@ -479,7 +495,7 @@ void moveToApproachWP()
     //and if facing the front of the stack +ve y steps back
     //basically just as in the spec book
     //all in map frame
-    float wayPointX = 2.5f;
+    float wayPointX = 2.2f;
     float wayPointY = 0.35f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
@@ -490,6 +506,10 @@ void moveToApproachWP()
     //add the x
     mapWPX -= (gradientX * (wayPointX+0.2));
     mapWPY -= (gradientY * (wayPointX+0.2));
+    //orientation
+    float orientationTheta = (PI/2) - atan2((wayPointY - originY), (wayPointX - originX));
+    float orientationZ = sin(orientationTheta / 2);
+    float orientationW = cos(orientationTheta / 2);
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
@@ -512,8 +532,8 @@ void moveToApproachWP()
 
     marker.pose.orientation.x = 0;
     marker.pose.orientation.y = 0;
-    marker.pose.orientation.z = 0;
-    marker.pose.orientation.w = 1;
+    marker.pose.orientation.z = orientationZ;
+    marker.pose.orientation.w = orientationW;
     
     debugVisualiser.publish(marker);
 
@@ -524,8 +544,8 @@ void moveToApproachWP()
     goal.target_pose.pose.position.y = mapWPY;
 
     //goal orientation
-    goal.target_pose.pose.orientation.z = 0;
-    goal.target_pose.pose.orientation.w = 1;
+    goal.target_pose.pose.orientation.z = orientationZ;
+    goal.target_pose.pose.orientation.w = orientationW;
 
     ROS_INFO("Moving to approach position");
     movebaseAC->sendGoal(goal);
@@ -536,6 +556,9 @@ void moveToApproachWP()
     else
 	    ROS_INFO("FAILED on first approach, continueing");
 
+    //fire off command to get arm ready
+    positionArm();
+
 	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
 	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
 
@@ -545,20 +568,20 @@ void moveToApproachWP()
     marker.header.stamp = ros::Time::now();
     marker.type = visualization_msgs::Marker::ARROW;
 
-
     marker.pose.position.x = mapWPX;
     marker.pose.position.y = mapWPY;
     marker.pose.position.z = 0.3;
-    marker.pose.orientation.z = 0;
-    marker.pose.orientation.w = 1;
+    marker.pose.orientation.z = finalOrientationZ;
+    marker.pose.orientation.w = finalOrientationW;
     
     debugVisualiser.publish(marker);
 
     goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = mapWPX;
     goal.target_pose.pose.position.y = mapWPY;
+    goal.target_pose.pose.orientation.z = finalOrientationZ;
+    goal.target_pose.pose.orientation.w = finalOrientationW;
 	ROS_INFO("%f", mapWPX);
 	ROS_INFO("%f", mapWPY);
 
@@ -655,7 +678,8 @@ int main(int argc, char** argv)
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   	dynServer.setCallback(f);
-	scan_sub = n.subscribe("/scan",100, scanCallback);	
+	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+    scan_sub = n.subscribe("/scan",100, scanCallback);	
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
 	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
