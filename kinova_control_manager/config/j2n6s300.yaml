@@ -11,7 +11,7 @@ raised_camera_pose: [0.16196992893835055, 0.018272304054134575, 0.89603562170427
 husky_to_arm_base_transform: [-0.175, -0.13 ,0.17, 0, 0, 0] # [m m m rad rad rad]
 wrist_offset: [0.0, 0.0, 0.118, 0.0, 0.0, 0.3] # [m m m]
 arm_base_to_ground: 0.405 # [m]
-linear_vel_modifier: 2.0
+# linear_vel_modifier: 2.0
 move_down_speed_faster: 0.3 # [m/s]
 move_down_speed_slower: 0.2 # [m/s]
 move_down_speed_mega_slow: 0.06 # [m/s]
