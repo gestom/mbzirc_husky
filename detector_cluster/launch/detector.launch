@@ -1,0 +1,8 @@
+<launch>
+    <node name="detector" pkg="detector" type="detector" output="screen" launch-prefix="">
+
+            <rosparam file="$(find detector)/cfg/detector_config.yaml" />
+
+    </node>
+</launch>
+
