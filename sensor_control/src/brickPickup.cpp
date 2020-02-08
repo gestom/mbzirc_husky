@@ -29,7 +29,8 @@ typedef enum{
 	ROBOTALIGNMENT_Y,	  	//robot aligns to get the brick in nice position
 	ROBOTFINALALIGNMENT,	 	//robot aligns to get the brick in x direction only 
 	ROBOTALIGN_WITH_WALL_ODO,	//robot aligns to the wall to get the next position 
-	ROBOTMOVE_ALONG_WALL_ODO,	 //robot aligns to the wall to get the next position 
+	ROBOTMOVE_ALONG_WALL_ODO_RED,	 //robot aligns to the wall to get the next position 
+	ROBOTMOVE_ALONG_WALL_ODO_GREEN,	 //robot aligns to the wall to get the next position 
 	ROBOTALIGN_ALONG_WALL_BRICK,	 //robot aligns to the wall to get the next position 
 	ROBOTMOVE_BY,			//robot moves fw by 
 	ARMALIGNMENT,		 //arm makes fine alignment
@@ -87,7 +88,8 @@ bool isTerminal(ESprayState state)
 	if(state == ARMSTORAGE) return false;
 	if(state == BRICKSTORE) return false;
 	if (state == ROBOTALIGN_WITH_WALL_ODO) return false;
-	if (state == ROBOTMOVE_ALONG_WALL_ODO) return false;
+	if (state == ROBOTMOVE_ALONG_WALL_ODO_RED) return false;
+	if (state == ROBOTMOVE_ALONG_WALL_ODO_GREEN) return false;
 	if (state == ROBOTALIGN_ALONG_WALL_BRICK) return false;
 	if (state == ROBOTMOVE_BY) return false;
 	if(state == FINAL) return true;
@@ -141,21 +143,27 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 		float angleDiff = anchorAngle-tf::getYaw(robotPose.pose.orientation);
 		spd.angular.z =  angleDiff*10;
 		printf("Aligning with wall: %f %f\n",angleDiff,anchorAngle,tf::getYaw(robotPose.pose.orientation));
-		if (fabs(angleDiff) < 0.01){
-			state = ROBOTMOVE_ALONG_WALL_ODO;
-			spd.linear.x = spd.angular.z = 0;
-			anchorPose = robotPose;
+		if (isnormal(angleDiff)){
+			if (fabs(angleDiff) < 0.01){
+				state = ROBOTMOVE_ALONG_WALL_ODO_RED;
+				moveDistance = 0.4;
+				spd.linear.x = spd.angular.z = 0;
+				anchorPose = robotPose;
+			}
+			setSpeed(spd);
+		}else{
+			state = ROBOTMOVE_ALONG_WALL_ODO_RED;
 		}
-		setSpeed(spd);
 	}
-	if (state == ROBOTMOVE_ALONG_WALL_ODO)
+	if (state == ROBOTMOVE_ALONG_WALL_ODO_RED ||state == ROBOTMOVE_ALONG_WALL_ODO_GREEN)
 	{
 		spd.linear.x = spd.angular.z = 0;
 		float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
 		float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
 		float dist = sqrt(dx*dx+dy*dy);
 		spd.linear.x = (moveDistance - dist + 0.1);
-		printf("Moving along wall: %f %f\n",dist,spd.linear.x);
+		if (state == ROBOTMOVE_ALONG_WALL_ODO_RED) printf("Moving along to red wall: %f %f\n",dist,spd.linear.x);
+		if (state == ROBOTMOVE_ALONG_WALL_ODO_GREEN) printf("Moving along to green wall: %f %f\n",dist,spd.linear.x);
 		if (dist > moveDistance) {
 			mbzirc_husky_msgs::brickDetect brick_srv;
 			brick_srv.request.activate            = true;
@@ -163,13 +171,15 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 			brick_srv.request.x                   = 640;
 			brick_srv.request.y                   = 480;
 			brickDetectorClient.call(brick_srv.request, brick_srv.response);
-			state = ROBOTALIGN_ALONG_WALL_BRICK;
+			incomingMessageCount = 0;
+			if (state == ROBOTMOVE_ALONG_WALL_ODO_RED) state = ROBOTALIGN_ALONG_WALL_BRICK;
+			if (state == ROBOTMOVE_ALONG_WALL_ODO_GREEN) state = ARMPOSITIONING;
 			incomingMessageCount = 0;
 			spd.linear.x = spd.angular.z = 0;
 			anchorPose = robotPose;
 		}
+		setSpeed(spd);
 	}
-
 
 }
 
@@ -204,29 +214,6 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 		//ros::Duration(1.0).sleep();
 	}
 
-
-	if(state == ROBOTFINALALIGNMENT)
-	{
-		printf("Robot final: %i %f %f %f\n",msg->detected,msg->pose.pose.position.x,msg->pose.pose.position.y,angle);
-		spd.linear.x = -msg->pose.pose.position.x*3;
-		spd.angular.z = 0;
-		if (fabs(msg->pose.pose.position.x) < 0.02)
-		{
-			spd.linear.x = spd.linear.y = 0; 
-			state = ROBOTFINALALIGNMENT;
-		}
-		if (fabs(msg->pose.pose.position.x) < 0.05)
-		{
-			alignmentOK++;
-			if (alignmentOK > 20){
-				spd.linear.x = spd.linear.y = 0; 
-				state = ARMALIGNMENT;
-			}		
-		}else{
-			alignmentOK = 0;
-		}
-		setSpeed(spd);
-	}
        	if (state == ROBOTALIGNMENT_PHI)
 	{
 		printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
@@ -246,6 +233,10 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 					spd.linear.x = spd.angular.z = 0;
 					anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
 					state = ARMALIGNMENT;
+					//state = ROBOTALIGN_WITH_WALL_ODO;
+					/*mbzirc_husky_msgs::brickDetect brick_srv;
+					  brick_srv.request.activate            = false;
+					  brickDetectorClient.call(brick_srv.request, brick_srv.response);*/
 				}
 			}
 		}
@@ -261,9 +252,12 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 				spd.angular.z =  angleDiff*10;
 				spd.linear.x = 0;
 				if (fabs(angleDiff) < 0.01){
+					mbzirc_husky_msgs::brickDetect brick_srv;
+					brick_srv.request.activate            = false;
+					brickDetectorClient.call(brick_srv.request, brick_srv.response);
 					anchorPose = robotPose;
 					moveDistance = 1.2;
-					state = ROBOTMOVE_ALONG_WALL_ODO;
+					state = ROBOTMOVE_ALONG_WALL_ODO_GREEN;
 				}
 			}
 		}
@@ -331,7 +325,6 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 			if (prepareClient.call(srv)) {
 				usleep(3500000);
 				state = ROBOTALIGNMENT_PHI;
-				//state = ROBOTALIGN_WITH_WALL_ODO;//TODO
 				incomingMessageCount = 0; 
 				mbzirc_husky_msgs::brickDetect brick_srv;
 				brick_srv.request.activate            = true;
@@ -408,7 +401,8 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 
 					mbzirc_husky_msgs::Float64 srv;
 					srv.request.data = 0;
-					if (prepareClient.call(srv)){ 
+					if (prepareClient.call(srv)){
+					       	moveDistance = 0.4;	
 						state = ROBOTALIGN_WITH_WALL_ODO;
 						//active_storage = 0;
 						active_layer++;
