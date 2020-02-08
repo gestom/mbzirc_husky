@@ -11,7 +11,6 @@
 #include <opencv2/core/types.hpp>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PointStamped.h>
-
 #include <mbzirc_husky_msgs/Float64.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
@@ -100,7 +99,7 @@ PointCloud::Ptr pcl_of_interest_msg (new PointCloud);
 }
 std::vector<ransacCluster> ransacClusters(0);*/
 
-void callback(mbzirc_husky::brick_pileConfig &config, uint32_t level) {
+void dynamicReconfigureCallback(mbzirc_husky::brick_pileConfig &config, uint32_t level) {
 
         tolerance=config.tolerance;
         angleTolerance=config.angleTolerance;
@@ -527,12 +526,6 @@ void schedulerCallback(const mbzirc_husky_msgs::brickGoal::ConstPtr& msg)
         else if(msg->brickType[i] == 3)
             orangeBricksRequired++;
     }
-}
-
-void approachBricks()
-{
-    schedulerSub = pn->subscribe("/brickScheduler/goals", 1, schedulerCallback);
-    state = MOVINGTOBRICKS;
 }
 
 void positionArm()
@@ -1017,45 +1010,58 @@ void pickupRecovery()
    }
 }
 
+void findBricks()
+{
+    usleep(1000000);
+}
+
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
     mbzirc_husky::brickExploreResult result;
     
-    //goal->goal == 0 brick pickup, goal->goal == 1 stack site
-    //goal->brick == 0-4 for the current brick to handle
-	ROS_INFO("Goal received %i %i %c %c", (int)goal->goal, (int)goal->brick, goal->pickupRecovery, goal->stackRecovery);
-
     if(goal->goal == 1)
     {
-        //brick pick up
-        if(goal->brick == 0)
-        {
-            state = EXPLORINGBRICKS;
-        }
-        else
-        {
-            state = MOVINGTOBRICKS;    
-        }
+        ROS_INFO("MOVE TO BRICK PILE GOAL RECEVIED");
+        state = EXPLORINGBRICKS;
     }
     else if(goal->goal == 2)
     {
-        //stack site
+        ROS_INFO("MOVE TO BRICK STACK SITE GOAL RECEIVED");
         state = EXPLORINGSTACKSITE;
     }
-
-    if(goal->pickupRecovery)
-        pickupRecovery;
 
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
         {
             //begin lidar search for bricks
-            usleep(2000000);
-            approachBricks();
+            if(brickStackLocationKnown)
+            {
+                state = MOVINGTOBRICKS;
+            }
+            else
+            {
+                findBricks();
+            }
         }
         else if(state == MOVINGTOBRICKS)
         {
             moveToBricks(goal->brick);
+        }
+        else if(state == BRICKAPPROACH)
+        {
+             state = FINAL;
+        }
+        else if(state == EXPLORINGSTACKSITE)
+        {
+            state = MOVINGTOSTACKSITE;
+        }
+        else if(state == MOVINGTOSTACKSITE)
+        {
+            state = STACKAPPROACH;
+        }
+        else if(state == STACKAPPROACH)
+        {
+            state = FINAL;
         }
         usleep(100);
     }
@@ -1076,7 +1082,7 @@ int main(int argc, char** argv)
     debugVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/debug", 1);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
-  	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
+  	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
     scan_sub = n.subscribe("/scan",100, scanCallback);	

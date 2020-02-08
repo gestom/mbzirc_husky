@@ -23,6 +23,9 @@ int stackingFailures = 0;
 
 int main (int argc, char **argv) {
 
+    //wait for uav's to take off
+    //usleep(15000000);
+
     ros::init(argc, argv, "brickStateMachine");
     ros::NodeHandle n;
 

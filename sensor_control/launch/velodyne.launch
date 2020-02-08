@@ -3,6 +3,5 @@
     <!--LIDAR-->
     <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch"/>
 
-
     <node pkg="tf" type="static_transform_publisher" name="static_tf_base_link_to_velodyne" args="0 0 0.2 0 0 0 base_link velodyne 100"/>
 </launch>
