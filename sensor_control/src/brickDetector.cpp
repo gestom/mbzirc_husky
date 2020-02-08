@@ -22,7 +22,7 @@ ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
 image_transport::Subscriber subimDepth;
-ros::Subscriber subHeight;
+ros::Subscriber subHeight, subInfo;
 image_transport::ImageTransport *it;
 ros::NodeHandle *n;
 
@@ -32,6 +32,12 @@ CRawDepthImage *depthImage;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
+
+float cX = defaultImageWidth/2.0;
+float cY = defaultImageHeight/2.0;
+float fPix = 1.0;
+bool gotDepathInfo = false;
+
 int groundPlaneDistance = 0;
 int wantedType = 0;
 float cameraXOffset = -0.02;
@@ -39,13 +45,12 @@ float cameraYOffset = -0.02;
 float cameraXAngleOffset = 0;
 float cameraYAngleOffset = 0;
 //parameter reconfiguration
-void reconfigureCallback(mbzirc_husky::detectBrickConfig &config, uint32_t level) 
+void reconfigureCallback(mbzirc_husky::detectBrickConfig &config, uint32_t level)
 {
 	cameraXOffset = config.cameraXOffset;
 	cameraYOffset = config.cameraYOffset;
 	ROS_INFO("Reconfigure Request: %lf %lf", cameraXOffset,cameraYOffset);
 }
-
 
 void grayImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -63,8 +68,23 @@ void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 	printf("Ground plane: %i\n",groundPlaneDistance);
 }
 
+void depthInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
+{
+	gotDepathInfo = true;
+	cX = msg->K[2];
+	cY = msg->K[5];
+	fPix = msg->K[0];
+	//printf("Cam Info: cX %g, cY %g, fPix %g\n",cX, cY, fPix);
+}
+
 void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
+	if(!gotDepathInfo)
+	{
+		ROS_ERROR("No depth info received yet");
+		return;
+	}
+
 	segment.valid = 0;
 	numDetectionAttempts++;
 	if (depthImage->bpp != msg->step/msg->width || depthImage->width != msg->width || depthImage->height != msg->height)
@@ -81,8 +101,13 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	brickPose.completelyVisible = false;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
-		pX = (segment.x-307)/640.95*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		pY = (segment.y-243.12)/640.95*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+
+		//pX = (segment.x-307)/640.95*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		//pY = (segment.y-243.12)/640.95*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+
+		pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+
 		brickPose.pose.pose.position.x = pX;
 		brickPose.pose.pose.position.y = pY;
 		brickPose.pose.pose.position.z = pZ;
@@ -92,7 +117,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		brickPose.pose.pose.orientation = tf2::toMsg(quat_tf);
 		brickPose.detected = true;
 		brickPose.completelyVisible = (segment.warning == false);
-		numDetections++; 
+		numDetections++;
 	}
 	posePub.publish(brickPose);
 	if (imagePub.getNumSubscribers() != 0){
@@ -121,8 +146,10 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 
 	if (req.activate){
 		segmentation->resetTracking(depthImage,req.x,req.y);
-	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
+	  subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
 		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
+		subInfo = n->subscribe("/camera/depth/camera_info", 1, depthInfoCallback);
+
 		groundPlaneDistance = req.groundPlaneDistance;
 		numDetections = 0;
 		numDetectionAttempts = 0;
@@ -143,7 +170,7 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 			res.detected = false;
 			res.activated = true;
 		}else{
-			ROS_INFO("Depth image not incoming. Is realsense on?");	
+			ROS_INFO("Depth image not incoming. Is realsense on?");
 			res.detected = false;
 			res.activated = false;
 		}
@@ -151,8 +178,9 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 	{
 		res.detected = false;
 		res.activated = false;
-	       	subimDepth.shutdown();
+	  subimDepth.shutdown();
 		subHeight.shutdown();
+		subInfo.shutdown();
 	}
 	return true;
 }
