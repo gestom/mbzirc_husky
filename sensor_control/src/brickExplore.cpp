@@ -79,13 +79,23 @@ int orangeBricksRequired = 0;
 
 ros::Subscriber locationDebug;
 
-
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 PointCloud::Ptr pcl_msg (new PointCloud);
 PointCloud::Ptr pcl_two_line_msg (new PointCloud);
 PointCloud::Ptr pcl_of_interest_msg (new PointCloud);
+
+/*struct ransacCluster
+{
+    int observations;
+    float sumX;
+    float sumY;
+    //direction vector:
+    float totalDX;
+    float totalDY;
+}
+std::vector<ransacCluster> ransacClusters(0);*/
 
 void callback(mbzirc_husky::brick_pileConfig &config, uint32_t level) {
 
