@@ -19,6 +19,9 @@ CSegmentation::CSegmentation()
 	drawSegments = true;
 	sizeRatioTolerance=1.25;
 	segmentArray[0].valid = false;
+	camCX = 320;
+	camCY = 240;
+	focal = 380;
 }
 
 CSegmentation::~CSegmentation()
@@ -41,6 +44,13 @@ SSegment CSegmentation::getSegment(int type,int number)
 	result.x = segmentArray[number].x;
 	result.y = segmentArray[number].y;
 	return result;
+}
+
+void CSegmentation::setCameraInfo(float cx,float cy,float foc)
+{
+	camCX = cx;
+	camCY = cy;
+	focal = foc;
 }
 
 SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType,CRawImage *colorImage)
@@ -294,8 +304,8 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 
 		for (int ii = 0;ii<4;ii++){
 			pZ = segmentArray[i].z/1000;
-			segmentArray[i].cPX[ii] = (segmentArray[i].cornerX[ii]-320.81)/388.33*pZ;
-			segmentArray[i].cPY[ii] = (segmentArray[i].cornerY[ii]-243.82)/388.33*pZ;
+			segmentArray[i].cPX[ii] = (segmentArray[i].cornerX[ii]-camCX)/focal*pZ;
+			segmentArray[i].cPY[ii] = (segmentArray[i].cornerY[ii]-camCY)/focal*pZ;
 		}
 		for (int ii = 0;ii<4;ii++){
 			dX[ii] = segmentArray[i].cPX[ii]-segmentArray[i].cPX[(ii+1)%4];

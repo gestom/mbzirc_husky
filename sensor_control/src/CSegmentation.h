@@ -50,6 +50,7 @@ class CSegmentation
 		SSegment findSegment(CRawDepthImage* image,int minSegmentSize,int maxSegmentSize,int wantedType = 0,CRawImage* colorImage = NULL);
 		SSegment getSegment(int type,int number);
 		void resetTracking(CRawDepthImage* im,int iX = 0,int iY = 0);
+		void setCameraInfo(float cx,float cy,float foc);
 
 		SSegment segmentArray[MAX_SEGMENTS];
 		bool debug;
@@ -58,6 +59,7 @@ class CSegmentation
 		float sizeRatioTolerance;
 		SSegment priorPosition;
 		SSegment defaultPosition;
+		float camCX,camCY,focal;
 };
 
 #endif

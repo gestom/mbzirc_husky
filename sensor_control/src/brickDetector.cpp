@@ -22,12 +22,8 @@ ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
 image_transport::Subscriber subimDepth;
-<<<<<<< HEAD
 image_transport::Subscriber subimColor;
-ros::Subscriber subHeight;
-=======
 ros::Subscriber subHeight, subInfo;
->>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 image_transport::ImageTransport *it;
 ros::NodeHandle *n;
 
@@ -41,7 +37,7 @@ int  defaultImageHeight = 480;
 float cX = defaultImageWidth/2.0;
 float cY = defaultImageHeight/2.0;
 float fPix = 1.0;
-bool gotDepathInfo = false;
+bool gotDepthInfo = false;
 
 int groundPlaneDistance = 0;
 int wantedType = 0;
@@ -76,16 +72,15 @@ void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 
 void depthInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 {
-	gotDepathInfo = true;
+	gotDepthInfo = true;
 	cX = msg->K[2];
 	cY = msg->K[5];
 	fPix = msg->K[0];
-	//printf("Cam Info: cX %g, cY %g, fPix %g\n",cX, cY, fPix);
 }
 
 void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-	if(!gotDepathInfo)
+	if(!gotDepthInfo)
 	{
 		ROS_ERROR("No depth info received yet");
 		return;
@@ -101,24 +96,16 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	memcpy(depthImage->data,(void*)&msg->data[0],msg->step*msg->height);
 	depthImage->getClosest(groundPlaneDistance);
+	segmentation->setCameraInfo(cX,cY,fPix);
 	segment = segmentation->findSegment(depthImage,13000,10000000,wantedType,colorImage);
 	float pX,pY,pZ;
 	brickPose.detected = false;
 	brickPose.completelyVisible = false;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
-<<<<<<< HEAD
-		pX = (segment.x-320.81)/388.33*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		pY = (segment.y-243.82)/388.33*pZ+cameraYOffset+cameraXAngleOffset*pZ;
-=======
-
-		//pX = (segment.x-307)/640.95*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		//pY = (segment.y-243.12)/640.95*pZ+cameraYOffset+cameraXAngleOffset*pZ;
-
 		pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
 		pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
 
->>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 		brickPose.pose.pose.position.x = pX;
 		brickPose.pose.pose.position.y = pY;
 		brickPose.pose.pose.position.z = pZ;
@@ -157,12 +144,8 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 
 	if (req.activate){
 		segmentation->resetTracking(depthImage,req.x,req.y);
-<<<<<<< HEAD
 	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
 	       	subimColor = it->subscribe("/camera/color/image_raw", 1, colorImageCallback);
-=======
-	  subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
->>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
 		subInfo = n->subscribe("/camera/depth/camera_info", 1, depthInfoCallback);
 
@@ -194,13 +177,10 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 	{
 		res.detected = false;
 		res.activated = false;
-	  subimDepth.shutdown();
+		subimDepth.shutdown();
 		subHeight.shutdown();
-<<<<<<< HEAD
 		subimColor.shutdown();
-=======
 		subInfo.shutdown();
->>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 	}
 	return true;
 }
