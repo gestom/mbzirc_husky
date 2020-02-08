@@ -6,9 +6,9 @@
     <param name="range_max" value="100"/>
     <param name="min_height" value="-0.3"/>
     <param name="max_height" value="-0.05"/>
-<param name="angle_increment" value="0.0021816615649929098"/>
-<param name="concurrency_level" value="3"/>
+    <param name="angle_increment" value="0.004360"/>
+
   </node>
-  <node pkg="tf" type="static_transform_publisher" name="static_tf_laser_to_velodyne" args="0 0 0.4 0 0 0 base_link velodyne 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_laser_to_velodyne" args="0 0 0.45 0 0 0 base_link velodyne 100"/>
 
 </launch>

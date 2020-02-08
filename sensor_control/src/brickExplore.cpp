@@ -9,6 +9,9 @@
 #include <mbzirc_husky/brick_pileConfig.h>
 #include <vector>
 #include <opencv2/core/types.hpp>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/PointStamped.h>
+
 #include <mbzirc_husky_msgs/Float64.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
@@ -156,11 +159,9 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	ransacLines.clear();
 	for (int i = 0; i <= num_ranges; i++){
 		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
-		if(angle < 0 && angle > -(3.14/2) ){
 			x[i] = scan_msg->ranges[i]*cos(angle);
 			y[i] = scan_msg->ranges[i]*sin(angle);
 			m[i] = true;
-		}
 	}
 	int eval = 0;
 	int max_iterations = 1200;
@@ -315,7 +316,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	}
 
 	*/
-		
+			
 	//Finding the two best used for pile detection from front 
 	//if(STATUS == EXPLORINGBRICKSITE){ 	
 	int b1 = -1;
@@ -327,14 +328,14 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if (fabs(maxA[h1]-maxA[h2]) < angleTolerance && maxEval[h1] > minPoints && maxEval[h2] > minPoints ){
 				realAngle = (maxA[h1]+maxA[h2])/2.0;
 				realDist = fabs(maxB[h1]-maxB[h2])*cos(atan(realAngle));
+				if (fabs(realDist-distance)<distanceTolerance){
 							//fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
-				//if (fabs(realDist-distance)<distanceTolerance){
 					if (maxEval[h1]+maxEval[h2] > eval){
 						eval = maxEval[h1] + maxEval[h2];
 						b1 = h1;
 						b2 = h2;
 					}
-				//}
+				}
 			}
 		}
 	}
@@ -355,54 +356,79 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	pcl_two_line_msg->height = 1;
 	pcl_two_line_msg->points.clear();
 	pcl_two_line_msg->width = 0;
-	
+		
 	float red_side_x;
 	float red_side_y;
 	float ax,bx;
-	float xx,yy,xxx,yyy,xo,yo; 
+	float xf,xo,yo,xs,lxf,lxs,yf,ys,lyf,lys,xx,yy,xxx,yyy; 
 	double x4; 
 	double y4; 
-	//std::cout << b1 << std::endl;
 
 	if (b1 >= 0 && b2 >=0){
 
 		bool f = true;
 		bool ff = true;
+		bool ss = false;
 		bool s = false;
 		for ( int j = 0; j <= num_ranges; j++){
+			angle = scan_msg->angle_min+j*scan_msg->angle_increment;
+		if(angle < 0 && angle > -(3.14/2) ){ 	
 
-			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance)  {
+			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance) {
 				pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));
 				pcl_two_line_msg->width++;
-				if(f){
-					red_side_x = x[j]; 
-					red_side_y = y[j];
-					f = false;
-				}
+
+
+					if(f){
+						xf = x[j]; 
+						yf = y[j];
+						f = false;
+						s = true;
+					}
+					if(s){
+
+						lxf = x[j]; 
+						lyf = y[j];
+					}	
 
 			}else if (fabs(maxA[b2]*x[j]-y[j]+maxB[b2])<tolerance){
 				pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
 				pcl_msg->width++;
-				if(s){
-					xxx = x[j]; 
-					yyy = y[j];
-				}	
-				if(ff){
-					xx = x[j]; 
-					yy = y[j];
-					ff = false;
-					s = true;
-				}
-					xo = x[j];
-					yo = y[j];
+					if(ff){
+						xs = x[j]; 
+						ys = y[j];
+						ff = false;
+						ss = true;
+					}
 
-			}
+					if(ss){
+						lxs = x[j]; 
+						lys = y[j];
+					}	
+				}
 			
-					displacement = (maxB[b1]+maxB[b2])/2.0;
-					realAngle = (maxA[b1]+maxA[b2])/2.0;
-			//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
 		}
+		if(abs(maxB[b1]) > abs(maxB[b2])){
+			red_side_x = xf;
+			red_side_y = yf;
+			xx = xs;
+			yy = ys;
+			xxx = lxs;
+			yyy = lys;
+		}else{
+			red_side_x = xs;
+			red_side_y = ys;
+			xx = xf;
+			yy = yf;
+			xxx = lxf;
+			yyy = lyf;
+		}
+			xo = xxx;
+			yo = yyy;
+			displacement = (maxB[b1]+maxB[b2])/2.0;
+			realAngle = (maxA[b1]+maxA[b2])/2.0;
+			//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
 		//Compute edge of pile
 		//Normalized of line 
@@ -412,6 +438,30 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		dx = dx / magnitude;
 		dy = dy / magnitude;
 		double lambda = (dx * (red_side_x - xxx)) + (dy * (red_side_y - yyy));
+		x4 = (dx * lambda) + xxx;
+		y4 = (dy * lambda) + yyy;
+		brickStackLocationKnown = true;
+
+		if(dist(x4,y4,0,0) > 0.5){
+		//Lookup in the past
+		
+		brickStackOrangeX = xo;
+		brickStackOrangeY = yo;
+		/*tf::TransformListener listener;
+		tf::StampedTransform transform;
+		listener.waitForTransform("map", "base_link",
+                             ros::Time(0), ros::Duration(1));
+
+		//try{
+			listener.lookupTransform("map", "base_link",
+				ros::Time(0) ,transform);
+		//}
+		//catch (tf::TransformException &ex) {
+		//	ROS_ERROR("%s",ex.what());
+		//	ros::Duration(1.0).sleep();
+			//return;
+	//	}
+	
 		//brickStackRedX = (dx * lambda) + xxx;
 		//brickStackRedY = (dy * lambda) + yyy;
 		x4 = (dx * lambda) + xxx;
@@ -421,17 +471,30 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		//brickStackOrangeX = xo;
 		//brickStackOrangeY = yo;
 
+		brickStackRedX	 = x4 + transform.getOrigin().y();
+		brickStackRedY	 = y4 + transform.getOrigin().y();
+		brickStackOrangeX = x4 + transform.getOrigin().y();
+		brickStackOrangeX  = y4 + transform.getOrigin().y();
+
+		std::cout<< " map " << brickStackRedX << " velodyne " << x4 << std::endl;*/
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(x4,y4, 0));
+		pcl_of_interest_msg->width++;
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(xo,yo, 0));
 		pcl_of_interest_msg->width++;
-		pcl_of_interest_msg->width++;
+
+		
+		}
+		//std::cout << pcl_of_interest_msg->width << std::endl;
+		pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
+		point_of_inter_pub.publish (pcl_of_interest_msg);
+		pcl_of_interest_msg->points.clear();
+		pcl_of_interest_msg->width = 0;
+		}
 	}	
 	pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
 	point_pub.publish (pcl_msg);
 	pcl_conversions::toPCL(ros::Time::now(), pcl_two_line_msg->header.stamp);
 	point_two_pub.publish (pcl_two_line_msg);
-	pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
-	point_of_inter_pub.publish (pcl_of_interest_msg);
 	//	}*/
 }
 
