@@ -26,7 +26,7 @@ ros::NodeHandle* pn;
 bool isTerminal(ESprayState state)
 {
 	if(state == STACKING) return false;
-    if(state == FINAL) return true;
+	if(state == FINAL) return true;
 	return true;
 }
 
@@ -34,24 +34,24 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 {
 	mbzirc_husky::brickStackResult result;
 
-    state = MOVING;
+	state = MOVING;
 
-    while (isTerminal(state) == false && ros::ok()){
-        if(state == STACKING || state == MOVING)
-        {
-            ROS_INFO("Stacking bricks");
-            //handled inside of themal callback
-            usleep(3000000);
-            state = FINAL;
-        }
-        usleep(100);
-    }
+	while (isTerminal(state) == false && ros::ok()){
+		if(state == STACKING || state == MOVING)
+		{
+			ROS_INFO("Stacking bricks");
+			//handled inside of themal callback
+			usleep(3000000);
+			state = FINAL;
+		}
+		usleep(100);
+	}
 	if (state == FINAL) state = SUCCESS; else state = FAIL;
 	if (state == SUCCESS) 	server->setSucceeded(result);
 	if (state == FAIL) 	server->setAborted(result);
 	if (state == PREEMPTED) server->setPreempted(result);
 	//state = STOPPING;
-    state = IDLE;	
+	state = IDLE;	
 }
 
 int main(int argc, char** argv)

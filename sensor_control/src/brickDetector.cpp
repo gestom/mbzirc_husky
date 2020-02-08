@@ -22,16 +22,27 @@ ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
 image_transport::Subscriber subimDepth;
+<<<<<<< HEAD
+image_transport::Subscriber subimColor;
 ros::Subscriber subHeight;
+=======
+ros::Subscriber subHeight, subInfo;
+>>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 image_transport::ImageTransport *it;
 ros::NodeHandle *n;
 
 CSegmentation *segmentation;
-CRawImage *grayImage;
+CRawImage *colorImage;
 CRawDepthImage *depthImage;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
+
+float cX = defaultImageWidth/2.0;
+float cY = defaultImageHeight/2.0;
+float fPix = 1.0;
+bool gotDepathInfo = false;
+
 int groundPlaneDistance = 0;
 int wantedType = 0;
 float cameraXOffset = -0.02;
@@ -39,7 +50,7 @@ float cameraYOffset = -0.02;
 float cameraXAngleOffset = 0;
 float cameraYAngleOffset = 0;
 //parameter reconfiguration
-void reconfigureCallback(mbzirc_husky::detectBrickConfig &config, uint32_t level) 
+void reconfigureCallback(mbzirc_husky::detectBrickConfig &config, uint32_t level)
 {
 	cameraXOffset = config.cameraXOffset;
 	cameraYOffset = config.cameraYOffset;
@@ -47,14 +58,14 @@ void reconfigureCallback(mbzirc_husky::detectBrickConfig &config, uint32_t level
 }
 
 
-void grayImageCallback(const sensor_msgs::ImageConstPtr& msg)
+void colorImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-	if (grayImage->bpp != msg->step/msg->width || grayImage->width != msg->width || grayImage->height != msg->height){
-		delete grayImage;
-		ROS_DEBUG("Readjusting grayImage format from %ix%i %ibpp, to %ix%i %ibpp.",grayImage->width,grayImage->height,grayImage->bpp,msg->width,msg->height,msg->step/msg->width);
-		grayImage = new CRawImage(msg->width,msg->height,msg->step/msg->width);
+	if (colorImage->bpp != msg->step/msg->width || colorImage->width != msg->width || colorImage->height != msg->height){
+		delete colorImage;
+		ROS_DEBUG("Readjusting colorImage format from %ix%i %ibpp, to %ix%i %ibpp.",colorImage->width,colorImage->height,colorImage->bpp,msg->width,msg->height,msg->step/msg->width);
+		colorImage = new CRawImage(msg->width,msg->height,msg->step/msg->width);
 	}
-	memcpy(grayImage->data,(void*)&msg->data[0],msg->step*msg->height);
+	memcpy(colorImage->data,(void*)&msg->data[0],msg->step*msg->height);
 }
 
 void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
@@ -63,8 +74,23 @@ void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 	printf("Ground plane: %i\n",groundPlaneDistance);
 }
 
+void depthInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
+{
+	gotDepathInfo = true;
+	cX = msg->K[2];
+	cY = msg->K[5];
+	fPix = msg->K[0];
+	//printf("Cam Info: cX %g, cY %g, fPix %g\n",cX, cY, fPix);
+}
+
 void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
+	if(!gotDepathInfo)
+	{
+		ROS_ERROR("No depth info received yet");
+		return;
+	}
+
 	segment.valid = 0;
 	numDetectionAttempts++;
 	if (depthImage->bpp != msg->step/msg->width || depthImage->width != msg->width || depthImage->height != msg->height)
@@ -75,14 +101,24 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	memcpy(depthImage->data,(void*)&msg->data[0],msg->step*msg->height);
 	depthImage->getClosest(groundPlaneDistance);
-	segment = segmentation->findSegment(depthImage,13000,10000000,wantedType);
+	segment = segmentation->findSegment(depthImage,13000,10000000,wantedType,colorImage);
 	float pX,pY,pZ;
 	brickPose.detected = false;
 	brickPose.completelyVisible = false;
 	if (segment.valid == 1){
 		pZ = segment.z/1000;
-		pX = (segment.x-307)/640.95*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		pY = (segment.y-243.12)/640.95*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+<<<<<<< HEAD
+		pX = (segment.x-320.81)/388.33*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		pY = (segment.y-243.82)/388.33*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+=======
+
+		//pX = (segment.x-307)/640.95*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		//pY = (segment.y-243.12)/640.95*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+
+		pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+
+>>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 		brickPose.pose.pose.position.x = pX;
 		brickPose.pose.pose.position.y = pY;
 		brickPose.pose.pose.position.z = pZ;
@@ -92,7 +128,7 @@ void depthImageCallback(const sensor_msgs::ImageConstPtr& msg)
 		brickPose.pose.pose.orientation = tf2::toMsg(quat_tf);
 		brickPose.detected = true;
 		brickPose.completelyVisible = (segment.warning == false);
-		numDetections++; 
+		numDetections++;
 	}
 	posePub.publish(brickPose);
 	if (imagePub.getNumSubscribers() != 0){
@@ -121,8 +157,15 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 
 	if (req.activate){
 		segmentation->resetTracking(depthImage,req.x,req.y);
+<<<<<<< HEAD
 	       	subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
+	       	subimColor = it->subscribe("/camera/color/image_raw", 1, colorImageCallback);
+=======
+	  subimDepth = it->subscribe("/camera/depth/image_rect_raw", 1, depthImageCallback);
+>>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
+		subInfo = n->subscribe("/camera/depth/camera_info", 1, depthInfoCallback);
+
 		groundPlaneDistance = req.groundPlaneDistance;
 		numDetections = 0;
 		numDetectionAttempts = 0;
@@ -143,7 +186,7 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 			res.detected = false;
 			res.activated = true;
 		}else{
-			ROS_INFO("Depth image not incoming. Is realsense on?");	
+			ROS_INFO("Depth image not incoming. Is realsense on?");
 			res.detected = false;
 			res.activated = false;
 		}
@@ -151,8 +194,13 @@ bool detect(mbzirc_husky_msgs::brickDetect::Request  &req, mbzirc_husky_msgs::br
 	{
 		res.detected = false;
 		res.activated = false;
-	       	subimDepth.shutdown();
+	  subimDepth.shutdown();
 		subHeight.shutdown();
+<<<<<<< HEAD
+		subimColor.shutdown();
+=======
+		subInfo.shutdown();
+>>>>>>> b4ab89d31f5b1ddfb3250b036701723d82b3c949
 	}
 	return true;
 }
@@ -164,7 +212,7 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "brickDetector");
 	n = new ros::NodeHandle();
 	it = new image_transport::ImageTransport(*n);
-	grayImage = new CRawImage(defaultImageWidth,defaultImageHeight,4);
+	colorImage = new CRawImage(defaultImageWidth,defaultImageHeight,4);
 	depthImage = new CRawDepthImage(defaultImageWidth,defaultImageHeight,4);
 	imagePub = it->advertise("/image_with_features", 1);
 	ros::ServiceServer service = n->advertiseService("detectBricks", detect);
