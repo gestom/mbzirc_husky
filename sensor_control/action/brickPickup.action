@@ -1,5 +1,5 @@
 #goal has bearing in radians to estimated bricks
-int64 bearing
+int64 dummy
 ----
 int64 result 
 ----
