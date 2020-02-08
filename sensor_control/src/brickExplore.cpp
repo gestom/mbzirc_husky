@@ -774,13 +774,185 @@ void moveToBricks(int brick)
 	}
 }
 
+void pickupRecovery()
+{
+   if(brickStackLocationKnown)
+   {
+       ROS_INFO("ENTERING BRICK RECOVERY PROCEDURE");
+       //get front/back normals of brick stack
+       float dx = brickStackOrangeX - brickStackRedX;
+       float dy = brickStackOrangeY - brickStackRedY;
+       if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
+       printf("BRICK %i: %f %f %f %f\n",brick,brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+       tf2::Quaternion quat_tf;
+       quat_tf.setRPY(0,0,atan2(dy,dx)+0.2);
+       float orientationZ = quat_tf.z();
+       float orientationW = quat_tf.w();
+
+       float frontNormalX = -dy;
+       float frontNormalY = dx;
+
+       //normalise normals
+       float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
+       frontNormalX /= magnitude;
+       frontNormalY /= magnitude;
+       float gradientX = dx / magnitude;
+       float gradientY = dy / magnitude;
+
+       float wayPointX = 2.5;
+       float wayPointY = 0.8;
+       float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+       const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+       const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+       //add the y
+       printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
+       float mapWPX = originX + (frontNormalX * wayPointY);
+       float mapWPY = originY + (frontNormalY * wayPointY);
+       //add the x
+       mapWPX -= (gradientX * (wayPointX)); 
+       mapWPY -= (gradientY * (wayPointX));
+
+       ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
+
+       visualization_msgs::Marker marker;
+       marker.header.frame_id = "map";
+       marker.header.stamp = ros::Time::now();
+       marker.id = 0;
+       marker.type = visualization_msgs::Marker::ARROW;
+
+       marker.scale.x = 0.4;
+       marker.scale.y = 0.2;
+       marker.scale.z = 0.2;
+
+       marker.color.r = 0;
+       marker.color.g = 0;
+       marker.color.b = 0;
+       marker.color.a = 1;
+
+       marker.pose.position.x = mapWPX;
+       marker.pose.position.y = mapWPY;
+       marker.pose.position.z = 0;
+
+       marker.pose.orientation.x = 0;
+       marker.pose.orientation.y = 0;
+       marker.pose.orientation.z = orientationZ;
+       marker.pose.orientation.w = orientationW;
+
+       debugVisualiser.publish(marker);
+
+       move_base_msgs::MoveBaseGoal goal;
+       goal.target_pose.header.frame_id = "map";
+       goal.target_pose.header.stamp = ros::Time::now();
+       goal.target_pose.pose.position.x = mapWPX;
+       goal.target_pose.pose.position.y = mapWPY;
+
+       //goal orientation
+       goal.target_pose.pose.orientation.z = orientationZ;
+       goal.target_pose.pose.orientation.w = orientationW;
+
+       ROS_INFO("Moving to brick position");
+       movebaseAC->sendGoal(goal);
+       while(ros::ok())
+       {
+           usleep(15000000);
+           actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+           if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+           {
+               ROS_INFO("Approached current bricks, setting to final");
+               state = FINAL;
+               break;
+           }
+           ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+           state = FAIL;
+           break;
+       }
+
+       quat_tf.setRPY(0,0,atan2(dy,dx)-(PI/2));
+       float orientationZ = quat_tf.z();
+       float orientationW = quat_tf.w();
+
+       float wayPointX = -1;
+       float wayPointY = 1;
+       float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+       const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+       const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+       //add the y
+       printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
+       float mapWPX = originX + (frontNormalX * wayPointY);
+       float mapWPY = originY + (frontNormalY * wayPointY);
+       //add the x
+       mapWPX -= (gradientX * (wayPointX)); 
+       mapWPY -= (gradientY * (wayPointX));
+
+       ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
+
+       visualization_msgs::Marker marker;
+       marker.header.frame_id = "map";
+       marker.header.stamp = ros::Time::now();
+       marker.id = 0;
+       marker.type = visualization_msgs::Marker::ARROW;
+
+       marker.scale.x = 0.4;
+       marker.scale.y = 0.2;
+       marker.scale.z = 0.2;
+
+       marker.color.r = 0;
+       marker.color.g = 0;
+       marker.color.b = 0;
+       marker.color.a = 1;
+
+       marker.pose.position.x = mapWPX;
+       marker.pose.position.y = mapWPY;
+       marker.pose.position.z = 0;
+
+       marker.pose.orientation.x = 0;
+       marker.pose.orientation.y = 0;
+       marker.pose.orientation.z = orientationZ;
+       marker.pose.orientation.w = orientationW;
+
+       debugVisualiser.publish(marker);
+
+       move_base_msgs::MoveBaseGoal goal;
+       goal.target_pose.header.frame_id = "map";
+       goal.target_pose.header.stamp = ros::Time::now();
+       goal.target_pose.pose.position.x = mapWPX;
+       goal.target_pose.pose.position.y = mapWPY;
+
+       //goal orientation
+       goal.target_pose.pose.orientation.z = orientationZ;
+       goal.target_pose.pose.orientation.w = orientationW;
+
+       ROS_INFO("Moving to brick position");
+       movebaseAC->sendGoal(goal);
+       while(ros::ok())
+       {
+           usleep(15000000);
+           actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+           if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+           {
+               ROS_INFO("Approached current bricks, setting to final");
+               state = FINAL;
+               break;
+           }
+           ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+           state = FAIL;
+           break;
+       }
+
+   }
+   else
+   {
+        state = EXPLORINGBRICKS;
+   }
+}
+
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
     mbzirc_husky::brickExploreResult result;
     
     //goal->goal == 0 brick pickup, goal->goal == 1 stack site
     //goal->brick == 0-4 for the current brick to handle
-	ROS_INFO("Goal received %i %i", goal->goal, goal->brick);
+	ROS_INFO("Goal received %i %i %b %b", goal->goal, goal->brick, goal->pickupRecovery, goal->stackRecovery);
 
     if(goal->goal == 1)
     {
@@ -799,6 +971,9 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         //stack site
         state = EXPLORINGSTACKSITE;
     }
+
+    if(goal->pickupRecovery)
+        pickupRecovery;
 
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)

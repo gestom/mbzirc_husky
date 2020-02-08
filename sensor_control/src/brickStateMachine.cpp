@@ -20,6 +20,8 @@ bool currentlyRearranging = false;
 
 //0/1 first two red bricks 2/3 equals green bricks 4 blue
 int currentBrick = 0;
+bool brickPickupRecovery = false;
+bool brickStackRecovery = false;
 ros::ServiceClient armHomeClient;
 
 int main (int argc, char **argv) {
@@ -54,6 +56,9 @@ int main (int argc, char **argv) {
             mbzirc_husky::brickExploreGoal exploreGoal;
             exploreGoal.goal = 1;//find brick stack
             exploreGoal.brick = currentBrick;
+            exploreGoal.pickupRecovery = brickPickupRecovery;
+            exploreGoal.stackRecovery = brickStackRecovery;
+            brickPickupRecovery = false;
             actionlib::SimpleClientGoalState exploreState = exploreAC.sendGoalAndWait(exploreGoal, ros::Duration(0,0), ros::Duration(0,0));
 
             if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -70,7 +75,7 @@ int main (int argc, char **argv) {
         else if(state == PICKINGUP)
         {
             //bricks found and approached, switch to brick pickup, which only has t seconds to run, then t seconds to recover before going back to exploration
-            ros::Duration totalMaxDuration = ros::Duration(300, 0);
+            ros::Duration totalMaxDuration = ros::Duration(120, 0);
             ros::Duration recoveryTime = ros::Duration(15, 0);
 
             mbzirc_husky::brickPickupGoal pickupGoal;
@@ -84,6 +89,7 @@ int main (int argc, char **argv) {
                 //TODO maybe try same again before going back to explore
                 //TODO, recovery behavious. Perhaps try again from alternative angle, and/or mark area as difficult but can return eventually
                 state = FINDINGBRICKS;
+                brickPickupRecovery = true;
                 continue;
             }
             if(currentBrick == 4)
@@ -94,7 +100,7 @@ int main (int argc, char **argv) {
             }
             else
             {
-		state = FINDINGBRICKS;
+        		state = FINDINGBRICKS;
                 currentBrick++;
                 ROS_INFO("Picked up brick, going to the next (%i)", currentBrick);
             }

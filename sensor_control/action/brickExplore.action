@@ -2,6 +2,8 @@
 int64 goal
 #what brick to find 0 = smallest, 3 = biggest (red/green/blue/orange)
 int64 brick
+bool pickupRecovery
+bool stackRecovery
 ----
 int64 result 
 ----
