@@ -1,0 +1,68 @@
+name: simulation
+root: ./
+
+startup_window: dbg 
+pre_window: export ARM_TYPE=j2n6s300
+windows:
+  - roscore:
+      layout: even-vertical
+      panes:
+        - roscore
+  # - kinova_bringup:
+  #     layout: even-vertical
+  #     panes:
+  #       - sleep 3; roslaunch kinova_gazebo robot_launch.launch kinova_robotType:=$ARM_TYPE
+  - virtual_robot:
+      layout: even-vertical
+      panes:
+        - sleep 4; roslaunch j2n6s300_moveit_config j2n6s300_virtual_robot_demo.launch
+  - arm_manager:
+      layout: even-vertical
+      panes:
+        - sleep 5; 
+          roslaunch kinova_control_manager control_manager.launch
+  # - dbg:
+  #     layout: even-vertical
+  #     panes:
+  #       - 'history -s rosservice call /kinova/arm_manager/random_noise'
+  #       - 'history -s rosservice call /kinova/arm_manager/ramp'
+  - vision:
+      layout: even-vertical
+      panes:
+        - sleep 8; roslaunch realsense2_camera rs_aligned_depth.launch
+        - sleep 9; rosrun mbzirc_husky brickDetector
+  - home_arm:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/home_arm'
+        - 'history -s rosservice call /kinova/arm_manager/soft_home_arm'
+  - prepare_gripping:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/prepare_gripping'
+  - align_arm:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/align_arm'
+  - pickup_brick:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/pickup_brick'
+  - goto:
+      layout: even-vertical
+      panes:
+        - sleep 5; rostopic echo /kinova/arm_manager/status
+        - 'history -s rosservice call /kinova/arm_manager/goto \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
+  - goto_relative:
+      layout: even-vertical
+      panes:
+        - sleep 5; rostopic echo /kinova/arm_manager/status
+        - 'history -s rosservice call /kinova/arm_manager/goto_relative \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
+  - cartesian_velocity:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/set_velocity \"pose: \[0.0, 0.0, 0.1\]\"'
+  - rviz:
+      layout: even-vertical
+      panes:
+        - sleep 5; rviz

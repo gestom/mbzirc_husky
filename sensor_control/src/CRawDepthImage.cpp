@@ -26,6 +26,7 @@ CRawDepthImage::CRawDepthImage(int wi,int he,int bppi)
 	header[10] = 122;
 	numSaved = 0;
 	ownData = true;
+	heightLimit = height;
 }
 
 CRawDepthImage::CRawDepthImage(short *datai,int wi,int he,int bppi)
@@ -114,6 +115,7 @@ int CRawDepthImage::getClosest(int groundPlaneDistance)
 		if (dat - 1*brickSize < brickTolerance && dat-1*brickSize > -brickTolerance) continue;
 	       	data[i] = 0;
 	}
+	//for (int i=size/width*heightLimit;i<size;i++) data[i] = 0;
 }
 
 int CRawDepthImage::getSaveNumber()

@@ -33,6 +33,7 @@ public:
 	  
   int width;
   int height;
+  int heightLimit;
   int palette;
   int size;
   int bpp;

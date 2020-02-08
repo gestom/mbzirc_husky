@@ -8,6 +8,7 @@
 #define __CSEGMENATION_H__
 
 #include "CRawDepthImage.h"
+#include "CRawImage.h"
 #include <math.h>
 #include <stdio.h>
 #define MAX_SEGMENTS 1000
@@ -24,12 +25,14 @@ typedef struct{
 	int minX,minY,maxX,maxY;
 	int cornerX[4];
 	int cornerY[4];
+	float cPX[4];
+	float cPY[4];
 	int contourX[MAX_CONTOUR_POINTS];
 	int contourY[MAX_CONTOUR_POINTS];
 	int contourPoints;
 	int id;
 	int size;
-	int crit;
+	float crit;
 	int type;
 	int warning;
 	int valid;
@@ -44,9 +47,10 @@ class CSegmentation
 	public:
 		CSegmentation();
 		~CSegmentation();
-		SSegment findSegment(CRawDepthImage* image,int minSegmentSize,int maxSegmentSize,int wantedType = 0);
+		SSegment findSegment(CRawDepthImage* image,int minSegmentSize,int maxSegmentSize,int wantedType = 0,CRawImage* colorImage = NULL);
 		SSegment getSegment(int type,int number);
 		void resetTracking(CRawDepthImage* im,int iX = 0,int iY = 0);
+		void setCameraInfo(float cx,float cy,float foc);
 
 		SSegment segmentArray[MAX_SEGMENTS];
 		bool debug;
@@ -55,6 +59,7 @@ class CSegmentation
 		float sizeRatioTolerance;
 		SSegment priorPosition;
 		SSegment defaultPosition;
+		float camCX,camCY,focal;
 };
 
 #endif

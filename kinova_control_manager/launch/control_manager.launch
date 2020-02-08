@@ -41,6 +41,7 @@
     <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
     <remap from="~goto_storage_in" to="kinova/arm_manager/goto_storage" />
     <remap from="~store_brick_in" to="kinova/arm_manager/store_brick" />
+    <remap from="~unload_brick_in" to="kinova/arm_manager/unload_brick" />
     <!-- <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" /> -->
     
     

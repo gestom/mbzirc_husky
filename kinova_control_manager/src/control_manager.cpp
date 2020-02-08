@@ -14,6 +14,7 @@
 #include <mbzirc_husky_msgs/ArmStatus.h>
 #include <mbzirc_husky_msgs/EndEffectorPose.h>
 #include <mbzirc_husky_msgs/Vector3.h>
+#include <mbzirc_husky_msgs/Float64.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
@@ -123,6 +124,7 @@ private:
   bool brick_attached              = false;
   bool gripper_engaged             = false;
   bool getting_joint_angles        = false;
+  bool getting_tool_pose           = false;
   bool getting_gripper_diagnostics = false;
 
   bool getting_realsense_brick = false;
@@ -152,13 +154,6 @@ private:
   Pose3d default_firefighting_pose;
   Pose3d wrist_offset;
 
-  // brick storage
-  //  ||===========||
-  //  ||     2     ||
-  //  ||-----------||
-  //  ||  0  |  1  ||
-  //  ||===========||
-  //  ||ARM        ||
   // pose of the end effector when reaching for the N-th brick
   std::vector<Pose3d> storage_pose;
 
@@ -167,7 +162,7 @@ private:
   double no_move_error_timeout;
   double gripper_timeout;
   double arm_base_to_ground;
-  double linear_vel_modifier;
+  /* double linear_vel_modifier; */
   double move_down_speed_faster;
   double move_down_speed_slower;
   double move_down_speed_mega_slow;
@@ -185,18 +180,19 @@ private:
   // advertised services
   ros::ServiceServer service_server_homing;
   ros::ServiceServer service_server_prepare_gripping;
+  ros::ServiceServer service_server_lift_brick;
   ros::ServiceServer service_server_raise_camera;
   ros::ServiceServer service_server_align_arm;
   ros::ServiceServer service_server_goto;
   ros::ServiceServer service_server_goto_relative;
   ros::ServiceServer service_server_pickup_brick;
-  ros::ServiceServer service_server_lift_brick;
   ros::ServiceServer service_server_goto_storage;
   ros::ServiceServer service_server_store_brick;
+  ros::ServiceServer service_server_unload_brick;
 
   // called services
   ros::ServiceClient service_client_homing;
-  ros::ServiceClient service_client_brick_detector;
+  // ros::ServiceClient service_client_brick_detector;
   ros::ServiceClient service_client_grip;
   ros::ServiceClient service_client_ungrip;
 
@@ -215,15 +211,16 @@ private:
 
   // service callbacks
   bool callbackHomingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackPrepareGrippingService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64::Request &req, mbzirc_husky_msgs::Float64::Response &res);
+  bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res);
   bool callbackRaiseCameraService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackAlignArmService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+  bool callbackAlignArmService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res);
   bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res);
   bool callbackPickupBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-  bool callbackLiftBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
   bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
+  bool callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
 
   // topic callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
@@ -284,7 +281,7 @@ void kinova_control_manager::onInit() {
   nh_.getParam("husky_base_frame_id", husky_base_frame_id);
   nh_.getParam("kinova_base_frame_id", kinova_base_frame_id);
   nh_.getParam("arm_base_to_ground", arm_base_to_ground);
-  nh_.getParam("linear_vel_modifier", linear_vel_modifier);
+  /* nh_.getParam("linear_vel_modifier", linear_vel_modifier); */
   nh_.getParam("move_down_speed_faster", move_down_speed_faster);
   nh_.getParam("move_down_speed_slower", move_down_speed_slower);
   nh_.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
@@ -369,16 +366,16 @@ void kinova_control_manager::onInit() {
   service_server_raise_camera     = nh_.advertiseService("raise_camera_in", &kinova_control_manager::callbackRaiseCameraService, this);
   service_server_align_arm        = nh_.advertiseService("align_arm_in", &kinova_control_manager::callbackAlignArmService, this);
   service_server_goto             = nh_.advertiseService("goto_in", &kinova_control_manager::callbackGoToService, this);
+  service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
   service_server_goto_storage     = nh_.advertiseService("goto_storage_in", &kinova_control_manager::callbackGoToStorageService, this);
   service_server_store_brick      = nh_.advertiseService("store_brick_in", &kinova_control_manager::callbackStoreBrickService, this);
-  service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
+  service_server_unload_brick     = nh_.advertiseService("unload_brick_in", &kinova_control_manager::callbackUnloadBrickService, this);
   service_server_pickup_brick     = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
 
   // service clients
-  service_client_homing         = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
-  service_client_brick_detector = nh_.serviceClient<mbzirc_husky_msgs::brickDetect>("brick_detect");
-  service_client_grip           = nh_.serviceClient<std_srvs::Trigger>("grip_out");
-  service_client_ungrip         = nh_.serviceClient<std_srvs::Trigger>("ungrip_out");
+  service_client_homing = nh_.serviceClient<kinova_msgs::HomeArm>("home_out");
+  service_client_grip   = nh_.serviceClient<std_srvs::Trigger>("grip_out");
+  service_client_ungrip = nh_.serviceClient<std_srvs::Trigger>("ungrip_out");
 
   // publishers
   publisher_arm_status         = nh_.advertise<mbzirc_husky_msgs::ArmStatus>("arm_status_out", 1);
@@ -406,7 +403,7 @@ void kinova_control_manager::onInit() {
 
   ROS_INFO("[kinova_control_manager]: Waiting for arm feedback...");
 
-  while (!getting_joint_angles) {
+  while (!getting_joint_angles || !getting_tool_pose) {
     ros::spinOnce();
     ros::Duration(0.1).sleep();
   }
@@ -435,13 +432,18 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   ungrip();
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
+  while (status != IDLE) {
+    ros::spinOnce();
+    ros::Duration(0.05).sleep();
+  }
   res.success = true;
   return true;
 }
 //}
 
 /* callbackPrepareGrippingService //{ */
-bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+// input value is offset in Z axis relative to the default gripping position
+bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::Float64::Request &req, mbzirc_husky_msgs::Float64::Response &res) {
 
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot move, internal arm feedback missing!");
@@ -450,47 +452,41 @@ bool kinova_control_manager::callbackPrepareGrippingService([[maybe_unused]] std
   }
 
   if (status != IDLE) {
+    Pose3d goal_pose = default_gripping_pose;
+    goal_pose.pos.z() += req.data;
+
+    if (nearbyPose(end_effector_pose_compensated, goal_pose)) {
+      ROS_INFO("[kinova_control_manager]: Assumed a default gripping pose");
+      status      = IDLE;
+      res.success = true;
+      return true;
+    }
+
     ROS_ERROR("[kinova_control_manager]: Cannot move, arm is not IDLE");
     res.success = false;
     return false;
   }
 
-  bool have_brick = brick_attached;
-
   ROS_INFO("[kinova_control_manager]: Assuming a default gripping pose");
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
   last_goal           = default_gripping_pose;
-  bool goal_reached   = goTo(default_gripping_pose);
 
-  if (have_brick != brick_attached) {
-    ROS_ERROR("[kinova_control_manager]: Brick lost during ascent!");
-    res.success = false;
-    return false;
-  }
+  Pose3d goal_pose = default_gripping_pose;
+  goal_pose.pos.z() += req.data;
+  last_goal = goal_pose;
 
-  mbzirc_husky_msgs::brickDetect brick_srv;
-  brick_srv.request.activate            = true;
-  brick_srv.request.groundPlaneDistance = end_effector_pose_raw.pos[2] + arm_base_to_ground;
-  brick_srv.request.x                   = 640;
-  brick_srv.request.y                   = 480;
-  service_client_brick_detector.call(brick_srv.request, brick_srv.response);
+  // bool goal_reached = goTo(goal_pose);
+  goToNonBlocking(goal_pose);
 
-  detected_brick.pose.pos.x() = brick_srv.response.brickPose.pose.position.x;
-  detected_brick.pose.pos.y() = brick_srv.response.brickPose.pose.position.y;
-  detected_brick.pose.pos.z() = brick_srv.response.brickPose.pose.position.z;
-  detected_brick.pose.rot.w() = brick_srv.response.brickPose.pose.orientation.w;
-  detected_brick.pose.rot.x() = brick_srv.response.brickPose.pose.orientation.x;
-  detected_brick.pose.rot.y() = brick_srv.response.brickPose.pose.orientation.y;
-  detected_brick.pose.rot.z() = brick_srv.response.brickPose.pose.orientation.z;
-
-  res.success = goal_reached;
-  return goal_reached;
+  res.success = true;
+  return true;
 }
 //}
 
 /* callbackLiftBrickService //{ */
-bool kinova_control_manager::callbackLiftBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+// input value is offset in Z axis relative to the default gripping position
+bool kinova_control_manager::callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot move, internal arm feedback missing!");
@@ -498,14 +494,23 @@ bool kinova_control_manager::callbackLiftBrickService([[maybe_unused]] std_srvs:
     return false;
   }
 
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot move, arm is not IDLE!");
+    res.success = false;
+    return false;
+  }
 
-  bool have_brick = brick_attached;
-
-  ROS_INFO("[kinova_control_manager]: Lifting brick up");
+  ROS_INFO("[kinova_control_manager]: Assuming a default gripping pose");
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
   last_goal           = default_gripping_pose;
-  bool goal_reached   = goTo(default_gripping_pose);
+
+  Pose3d goal_pose = default_gripping_pose;
+  goal_pose.pos.z() += req.data;
+  last_goal = goal_pose;
+
+  bool have_brick   = brick_attached;
+  bool goal_reached = goTo(goal_pose);
 
   if (have_brick != brick_attached) {
     ROS_ERROR("[kinova_control_manager]: Brick lost during ascent!");
@@ -527,6 +532,12 @@ bool kinova_control_manager::callbackRaiseCameraService([[maybe_unused]] std_srv
     return false;
   }
 
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot move, arm is not IDLE!");
+    res.success = false;
+    return false;
+  }
+
   ROS_INFO("[kinova_control_manager]: Assuming a raised camera pose");
   status              = MotionStatus_t::MOVING;
   time_of_last_motion = ros::Time::now();
@@ -544,7 +555,7 @@ bool kinova_control_manager::callbackRaiseCameraService([[maybe_unused]] std_srv
 //}
 
 /* callbackAlignArmService //{ */
-bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+bool kinova_control_manager::callbackAlignArmService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[kinova_control_manager]: Cannot align_arm, not initialized!");
@@ -559,49 +570,14 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     return false;
   }
 
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot align arm, arm is not IDLE!");
+    res.success = false;
+    return false;
+  }
+
   status = ALIGNING;
-  /*
-    ROS_WARN("[kinova_arm_manager]: Waiting for brick detection...");
-    ros::Time t_start = ros::Time::now();
-    while (!brick_srv.response.activated) {
-      ros::Duration(0.1).sleep();
-      if ((ros::Time::now().sec - t_start.sec) > 4.0) {
-        std::stringstream ss;
-        ss << "Failed to launch brick detection!";
-        ROS_FATAL("[kinova_arm_manager]: %s", ss.str().c_str());
-        status      = IDLE;
-        res.success = false;
-        res.message = ss.str().c_str();
-        return false;
-      }
-    }
 
-    Eigen::Quaterniond brick_orientation_msg;
-    brick_orientation_msg.w()   = brick_srv.response.brickPose.pose.orientation.w;
-    brick_orientation_msg.x()   = brick_srv.response.brickPose.pose.orientation.x;
-    brick_orientation_msg.y()   = brick_srv.response.brickPose.pose.orientation.y;
-    brick_orientation_msg.z()   = brick_srv.response.brickPose.pose.orientation.z;
-    Eigen::Vector3d brick_euler = quaternionToEuler(brick_orientation_msg);
-
-    ROS_INFO("[kinova_arm_manager]: Got brick pose: [%.2f, %.2f, %.2f]", brick_srv.response.brickPose.pose.position.x,
-             brick_srv.response.brickPose.pose.position.y, brick_euler.z());
-
-    Eigen::Vector3d align(-brick_srv.response.brickPose.pose.position.x, brick_srv.response.brickPose.pose.position.y, brick_euler.z());
-
-    Eigen::Vector3d align_euler = quaternionToEuler(default_gripping_pose.rot);
-    Eigen::Vector3d ee_euler    = quaternionToEuler(end_effector_pose_raw.rot);
-    align_euler.z()             = ee_euler.z() + brick_euler.z() + M_PI;
-
-    ROS_INFO("[kinova_arm_manager]: Suggested alignment: [%.2f, %.2f, %.2f]", align[0], align[1], align[2]);
-
-    Pose3d new_pose;
-    new_pose.pos.x() = end_effector_pose_raw.pos.x() + align.x();
-    new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
-    new_pose.pos.z() = default_gripping_pose.pos.z();
-    new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
-    goTo(new_pose);
-    ros::Duration(2.0).sleep();
-  */
   if (!getting_realsense_brick) {
     ROS_FATAL("[kinova_arm_manager]: Brick pose topic did not open!");
     status      = IDLE;
@@ -635,26 +611,28 @@ bool kinova_control_manager::callbackAlignArmService([[maybe_unused]] std_srvs::
     Pose3d new_pose;
     new_pose.pos.x() = end_effector_pose_raw.pos.x() + align.x();
     new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
-    new_pose.pos.z() = default_gripping_pose.pos.z();
+    new_pose.pos.z() = default_gripping_pose.pos.z() + req.data;
     new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
     goToNonBlocking(new_pose);
+    ros::Duration(0.7).sleep();
+
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
   }
-  if (end_effector_pose_compensated.pos.y() > -0.42 || end_effector_pose_compensated.pos.y() < -0.58) {
+  if (end_effector_pose_compensated.pos.y() > -0.41 || end_effector_pose_compensated.pos.y() < -0.59) {
     ROS_ERROR("[kinova_control_manager]: Alignment in Y axis failed.");
+    status = IDLE;
     ros::spinOnce();
-    ros::Duration(1.0);
+    ros::Duration(1.5).sleep();  // try removing this sleep
     ros::spinOnce();
-    status      = IDLE;
     res.success = false;
     return false;
   }
+  status = IDLE;
   ros::spinOnce();
-  ros::Duration(1.0);
+  ros::Duration(1.5).sleep();  // try removing this sleep
   ros::spinOnce();
-  status      = IDLE;
-  res.success = true;
-  return true;
+  res.success = aligned;
+  return aligned;
 }
 //}
 
@@ -672,6 +650,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
     res.success = false;
     return false;
   }
+
   status              = PICKING;
   time_of_last_motion = ros::Time::now();
 
@@ -698,8 +677,8 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
       return false;
     }
 
-    msg.twist_linear_x = -detected_brick.pose.pos.x() * linear_vel_modifier;
-    msg.twist_linear_y = detected_brick.pose.pos.y() * linear_vel_modifier;
+    msg.twist_linear_x = -detected_brick.pose.pos.x();
+    msg.twist_linear_y = detected_brick.pose.pos.y();
     msg.twist_linear_z = -move_down_speed_faster;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
@@ -711,7 +690,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   while (!brick_attached && end_effector_pose_compensated.pos.z() > stopping_height) {
 
     if ((ros::Time::now() - time_of_last_motion).toSec() > no_move_error_timeout) {
-      ROS_ERROR("[kinova_control_manager]: Arm is not moving! Pickup failed");
+      ROS_ERROR("[kinova_control_manager]: Arm is not moving! Pickup failed. Homing may be required");
       flushVelocityTopic(msg);
       status      = IDLE;
       res.success = false;
@@ -729,11 +708,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   }
 
   grip();
-  ROS_INFO("[kinova_control_manager]: Deactivating brick detector");
-  mbzirc_husky_msgs::brickDetect stop_brick_detection;
-  stop_brick_detection.request.activate = false;
-  service_client_brick_detector.call(stop_brick_detection.request, stop_brick_detection.response);
-  ROS_WARN("[kinova_control_manager]: Velocity reduced significantly");
+  ROS_WARN("[kinova_control_manager]:MEGA slow now");
 
   while (!brick_attached) {
     if ((end_effector_pose_compensated.pos.z() + arm_base_to_ground) < ((detected_brick.brick_layer * 0.2) - 0.06)) {
@@ -859,7 +834,22 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
   bool have_brick     = brick_attached;
   status              = MOVING;
   time_of_last_motion = ros::Time::now();
-  Pose3d pose         = storage_pose[req.position];
+
+  // this is some high level collision avoidance stuff
+  ROS_INFO("[kinova_control_manager]: High level collision avoidance stuff");
+  Pose3d waypoint = default_gripping_pose;
+  waypoint.pos.x() -= 0.2;
+  waypoint.pos.y() += 0.15;
+  waypoint.pos.z() = end_effector_pose_compensated.pos.z();
+  Eigen::Vector3d waypoint_euler = quaternionToEuler(waypoint.rot);
+  waypoint_euler.z() += 0.7;
+  waypoint.rot = eulerToQuaternion(waypoint_euler);
+  goTo(waypoint);
+
+  ROS_INFO("[kinova_control_manager]: Waypoint reached, returning to original goal");
+  status              = MOVING;
+  time_of_last_motion = ros::Time::now();
+  Pose3d pose = storage_pose[req.position];
   pose.pos.z() += 0.2 * req.layer;
   bool goal_reached = goTo(pose);
 
@@ -903,12 +893,72 @@ bool kinova_control_manager::callbackStoreBrickService(mbzirc_husky_msgs::Storag
   new_goal.pos.z() += (0.2 * req.layer) - 0.3;
   bool goal_reached = goTo(new_goal);
   ungrip();
-  if (goal_reached && !brick_attached) {
-    res.success = true;
-    return true;
+  ros::Duration(0.2).sleep();
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
+/* callbackUnloadBrickService //{ */
+bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+  if (!is_initialized) {
+    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, not initialized!");
+    res.success = false;
+    res.message = "Cannot unload brick from storage, not initialized!";
+    return false;
   }
-  res.success = false;
-  return false;
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, arm is not IDLE!");
+    res.success = false;
+    res.message = "Cannot unload brick, arm is not IDLE!";
+    return false;
+  }
+
+  status              = PICKING;
+  time_of_last_motion = ros::Time::now();
+
+  kinova_msgs::PoseVelocity msg;
+  ROS_INFO("[kinova_control_manager]: Moving down");
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.2)) {
+    msg.twist_linear_x  = 0.0;
+    msg.twist_linear_y  = 0.0;
+    msg.twist_linear_z  = -move_down_speed_slower;
+    msg.twist_angular_x = 0.0;
+    msg.twist_angular_y = 0.0;
+    msg.twist_angular_z = 0.0;
+    publisher_cartesian_velocity.publish(msg);
+    ros::Duration(0.01).sleep();
+  }
+  grip();
+  ROS_INFO("[kinova_control_manager]: MEGA slow now");
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.34)) {
+    msg.twist_linear_x  = 0.0;
+    msg.twist_linear_y  = 0.0;
+    msg.twist_linear_z  = -move_down_speed_mega_slow;
+    msg.twist_angular_x = 0.0;
+    msg.twist_angular_y = 0.0;
+    msg.twist_angular_z = 0.0;
+    publisher_cartesian_velocity.publish(msg);
+    ros::Duration(0.01).sleep();
+  }
+  if (!brick_attached) {
+    ROS_ERROR("[kinova_control_manager]: Failed to attach brick!");
+    flushVelocityTopic(msg);
+    status      = IDLE;
+    res.success = false;
+    return false;
+  }
+  flushVelocityTopic(msg);
+  status      = IDLE;
+  res.success = true;
+  return true;
 }
 //}
 
@@ -1152,7 +1202,7 @@ void kinova_control_manager::goToNonBlocking(Pose3d pose) {
   publisher_end_effector_pose.publish(msg);
 
   ros::spinOnce();
-  ros::Duration(1.0).sleep();
+  ros::Duration(1.2).sleep();
   ros::spinOnce();
 }
 //}
@@ -1315,6 +1365,7 @@ void kinova_control_manager::publishTF() {
 
 /* callbackToolPoseTopic //{ */
 void kinova_control_manager::callbackToolPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg) {
+  getting_tool_pose             = true;
   end_effector_pose_raw.rot.w() = msg->pose.orientation.w;
   end_effector_pose_raw.rot.x() = msg->pose.orientation.x;
   end_effector_pose_raw.rot.y() = msg->pose.orientation.y;

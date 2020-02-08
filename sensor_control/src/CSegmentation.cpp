@@ -17,8 +17,11 @@ CSegmentation::CSegmentation()
 {
 	debug = true;
 	drawSegments = true;
-	sizeRatioTolerance=0.25;
+	sizeRatioTolerance=1.25;
 	segmentArray[0].valid = false;
+	camCX = 320;
+	camCY = 240;
+	focal = 380;
 }
 
 CSegmentation::~CSegmentation()
@@ -43,7 +46,14 @@ SSegment CSegmentation::getSegment(int type,int number)
 	return result;
 }
 
-SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType)
+void CSegmentation::setCameraInfo(float cx,float cy,float foc)
+{
+	camCX = cx;
+	camCY = cy;
+	focal = foc;
+}
+
+SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSize,int wantedType,CRawImage *colorImage)
 {
 	//if (segmentArray[0].valid && numSegments > 0) priorPosition =  segmentArray[0]; else priorPosition = defaultPosition;
 
@@ -127,6 +137,8 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				//is this a border point?
 				if (nncount != 4) contour[contourPoints++] = position;
 			}
+
+			
 			if (queueEnd > minSize && queueEnd < maxSize){
 				long long int cx,cy,cz,sx,sy,sz;
 				long long int cxx,cxy,cyy; 
@@ -138,7 +150,6 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 					pos = contour[s];
 					buffer[pos] = 1000000+numSegments;	
 				}
-
 				//bounding box
 				for (int s = 0;s<queueEnd;s++){
 					pos = stack[s];
@@ -149,6 +160,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 					sz += image->data[pos]; 
 				}
 				
+
 				float fsx = (float)sx/queueEnd; 
 				float fsy = (float)sy/queueEnd;
 				float fsz = (float)sz/queueEnd;
@@ -171,7 +183,6 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 				segmentArray[numSegments-1].m1 = eigvl1;
                                 //std::cout << queueEnd<< " cxx " << cxx<<" cxy "<<cxy<<" cyy " << cyy<<" fcxx " <<fcxx<<" fcyy "<< fcyy<< " fcxy "<<fcxy<< " det "<<det<<" type "<<segmentArray[numSegments].type<<std::endl;
 				segmentArray[numSegments-1].size = queueEnd; 
-				//printf("%i %f %f %f\n",numSegments-1,fsx,fsy,fsz);
 				segmentArray[numSegments-1].x = fsx;
 				segmentArray[numSegments-1].y = fsy;
 				segmentArray[numSegments-1].z = fsz;
@@ -232,22 +243,75 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 					segmentArray[numSegments-1].cornerX[ii] = cX[ii];
 					segmentArray[numSegments-1].cornerY[ii] = cY[ii];
 				}
+				//TODO will not work under direct sunlight
+				if (false){
+					int srr[256];
+					int srg[256];
+					int srb[256];
+					int sr,sg,sb;
+					sr=sg=sb=0;
+					int pr,pg,pb,ph,ps,pv;
+					for (int i = 0;i<256;i++) srr[i] = srg[i] = srb[i] = 0;
+					int pos;
+					for (int s = 0;s<queueEnd;s++){
+						pos = stack[s];
+						pr = colorImage->data[3*pos+0];
+						pg = colorImage->data[3*pos+1];
+						pb = colorImage->data[3*pos+2];
+						pv = (pr+pg+pb)/3; 
+						ps = max(pr,pg); 
+						ps = max(ps,pb); 
+						sr+=ps;
+						sg+=pv;
+						srr[ps]++;
+						srg[pv]++;
+						srb[pb]++;
+					}
+
+					float fsr = (float)sr/queueEnd; 
+					float fsg = (float)sg/queueEnd;
+					float fsb = (float)sb/queueEnd;
+					printf("%i %f %f %f\n",numSegments-1,fsr,fsg,fsg);
+					for (int i = 0;i<256;i++) printf("HIST %i %i %i %i %i\n",numSegments-1,i,srr[i],srg[i],srb[i]);
+					printf("OLALA %i %i %i %i %i\n",numSegments-1,i,sr/queueEnd,sg/queueEnd,sb/queueEnd);
+					for (int s = 0;s<queueEnd;s++){
+						pos = stack[s];
+						pr = colorImage->data[3*pos+0];
+						pg = colorImage->data[3*pos+1];
+						pb = colorImage->data[3*pos+2];
+						pv = (pr+pg+pb)/3; 
+						ps = max(pr,pg); 
+						ps = max(ps,pb); 
+						if (ps > sr/queueEnd) image->data[pos] = -segmentArray[numSegments-1].type;
+					}
+				}
+
+
 			}else{
 				numSegments--;
 			}
 		}
 	}
+
+	//use the corners to determine orientation and type
 	for (int i = 0;i<numSegments;i++)
 	{
 		float dist[4];
 		float dX[4];
 		float dY[4];
-		float pX,pY;
+		float pX,pY,pZ;
 		float angle;
+
 		for (int ii = 0;ii<4;ii++){
-			dX[ii] = segmentArray[i].cornerX[ii]-segmentArray[i].cornerX[(ii+1)%4];
-			dY[ii] = segmentArray[i].cornerY[ii]-segmentArray[i].cornerY[(ii+1)%4];
+			pZ = segmentArray[i].z/1000;
+			segmentArray[i].cPX[ii] = (segmentArray[i].cornerX[ii]-camCX)/focal*pZ;
+			segmentArray[i].cPY[ii] = (segmentArray[i].cornerY[ii]-camCY)/focal*pZ;
+		}
+		for (int ii = 0;ii<4;ii++){
+			dX[ii] = segmentArray[i].cPX[ii]-segmentArray[i].cPX[(ii+1)%4];
+			dY[ii] = segmentArray[i].cPY[ii]-segmentArray[i].cPY[(ii+1)%4];
 			dist[ii] = sqrt(dX[ii]*dX[ii]+dY[ii]*dY[ii]);
+			printf("DIST: %f\n",dist[ii]);
 		}
 		if (dist[0] > dist[1])
 		{
@@ -301,9 +365,12 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 		float dX = (segmentArray[i].x-priorPosition.x);
 		float dY = (segmentArray[i].y-priorPosition.y);
 		segmentArray[i].crit = 10000-sqrt(dX*dX+dY*dY);
-		printf("Segment %i: %f %f %f %f\n",i,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
+		//segmentArray[i].crit = segmentArray[i].x;
+		printf("Segment %i %f: %f %f %f %f\n",i,segmentArray[i].crit,segmentArray[i].x,segmentArray[i].y,priorPosition.x, priorPosition.y);
 	}
-	
+	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
+
+	/*draw the results*/	
 	int XX,YY;
 	for (int i = 0;i<numSegments;i++){
 		for (int cn = 0;cn<4;cn++){
