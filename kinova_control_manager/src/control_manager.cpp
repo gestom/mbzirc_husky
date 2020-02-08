@@ -162,7 +162,7 @@ private:
   double no_move_error_timeout;
   double gripper_timeout;
   double arm_base_to_ground;
-  double linear_vel_modifier;
+  /* double linear_vel_modifier; */
   double move_down_speed_faster;
   double move_down_speed_slower;
   double move_down_speed_mega_slow;
@@ -188,6 +188,7 @@ private:
   ros::ServiceServer service_server_pickup_brick;
   ros::ServiceServer service_server_goto_storage;
   ros::ServiceServer service_server_store_brick;
+  ros::ServiceServer service_server_unload_brick;
 
   // called services
   ros::ServiceClient service_client_homing;
@@ -219,6 +220,7 @@ private:
   bool callbackPickupBrickService(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
   bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
   bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
+  bool callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res);
 
   // topic callbacks
   void callbackJointAnglesTopic(const kinova_msgs::JointAnglesConstPtr &msg);
@@ -279,7 +281,7 @@ void kinova_control_manager::onInit() {
   nh_.getParam("husky_base_frame_id", husky_base_frame_id);
   nh_.getParam("kinova_base_frame_id", kinova_base_frame_id);
   nh_.getParam("arm_base_to_ground", arm_base_to_ground);
-  nh_.getParam("linear_vel_modifier", linear_vel_modifier);
+  /* nh_.getParam("linear_vel_modifier", linear_vel_modifier); */
   nh_.getParam("move_down_speed_faster", move_down_speed_faster);
   nh_.getParam("move_down_speed_slower", move_down_speed_slower);
   nh_.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
@@ -367,6 +369,7 @@ void kinova_control_manager::onInit() {
   service_server_goto_relative    = nh_.advertiseService("goto_relative_in", &kinova_control_manager::callbackGoToRelativeService, this);
   service_server_goto_storage     = nh_.advertiseService("goto_storage_in", &kinova_control_manager::callbackGoToStorageService, this);
   service_server_store_brick      = nh_.advertiseService("store_brick_in", &kinova_control_manager::callbackStoreBrickService, this);
+  service_server_unload_brick     = nh_.advertiseService("unload_brick_in", &kinova_control_manager::callbackUnloadBrickService, this);
   service_server_pickup_brick     = nh_.advertiseService("pickup_in", &kinova_control_manager::callbackPickupBrickService, this);
 
   // service clients
@@ -672,8 +675,8 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
       return false;
     }
 
-    msg.twist_linear_x = -detected_brick.pose.pos.x() * linear_vel_modifier;
-    msg.twist_linear_y = detected_brick.pose.pos.y() * linear_vel_modifier;
+    msg.twist_linear_x = -detected_brick.pose.pos.x();
+    msg.twist_linear_y = detected_brick.pose.pos.y();
     msg.twist_linear_z = -move_down_speed_faster;
     publisher_cartesian_velocity.publish(msg);
     ros::Duration(0.01).sleep();
@@ -883,6 +886,39 @@ bool kinova_control_manager::callbackStoreBrickService(mbzirc_husky_msgs::Storag
   ros::Duration(0.2).sleep();
   res.success = goal_reached;
   return goal_reached;
+}
+//}
+
+/* callbackUnloadBrickService //{ */
+bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+  if (!is_initialized) {
+    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, not initialized!");
+    res.success = false;
+    res.message = "Cannot unload brick from storage, not initialized!";
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, arm is not IDLE!");
+    res.success = false;
+    res.message = "Cannot unload brick, arm is not IDLE!";
+    return false;
+  }
+
+  status              = PICKING;
+  time_of_last_motion = ros::Time::now();
+
+  kinova_msgs::PoseVelocity msg;
+  ROS_INFO("[kinova_control_manager]: Moving down");
+
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.34)) {
+  }
 }
 //}
 
