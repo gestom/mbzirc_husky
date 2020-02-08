@@ -13,8 +13,8 @@ typedef enum{
     STACKING
 }EState;
 
-EState state = FINDINGBRICKS;
-//EState state = PICKINGUP;
+//EState state = FINDINGBRICKS;
+EState state = PICKINGUP;
 
 bool currentlyRearranging = false;
 
@@ -75,7 +75,7 @@ int main (int argc, char **argv) {
         else if(state == PICKINGUP)
         {
             //bricks found and approached, switch to brick pickup, which only has t seconds to run, then t seconds to recover before going back to exploration
-            ros::Duration totalMaxDuration = ros::Duration(120, 0);
+            ros::Duration totalMaxDuration = ros::Duration(240, 0);
             ros::Duration recoveryTime = ros::Duration(15, 0);
 
             mbzirc_husky::brickPickupGoal pickupGoal;
