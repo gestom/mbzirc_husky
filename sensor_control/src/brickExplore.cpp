@@ -173,8 +173,8 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		}
 	}
 	int eval = 0;
-	int max_iterations = 1000;
-	int numHypotheses = 10;
+	int max_iterations = 1200;
+	int numHypotheses = 15;
 	float a,b;
 	float maxA[numHypotheses];
 	float maxB[numHypotheses];
@@ -595,10 +595,10 @@ void moveToApproachWP()
     if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
     printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0,0,atan2(dy,dx)-0.4);
+    quat_tf.setRPY(0,0,atan2(dy,dx)-0.0);
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
-    quat_tf.setRPY(0,0,atan2(dy,dx)+0.05);
+    quat_tf.setRPY(0,0,atan2(dy,dx)+0.0);
     float finalOrientationZ = quat_tf.z();
     float finalOrientationW = quat_tf.w();
 
@@ -620,7 +620,7 @@ void moveToApproachWP()
     //basically just as in the spec book
     //all in map frame
     float wayPointX = 2.f;
-    float wayPointY = 0.45f;
+    float wayPointY = 0.65f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
@@ -678,7 +678,7 @@ void moveToApproachWP()
     movebaseAC->sendGoal(goal);
     while(ros::ok())
     {
-        usleep(15000000);
+        usleep(8000000);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
         if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
         {
@@ -721,7 +721,7 @@ void moveToApproachWP()
     movebaseAC->sendGoal(goal);
     while(ros::ok())
     {
-        usleep(15000000);
+        sleep(205);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
         if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
         {
@@ -731,7 +731,7 @@ void moveToApproachWP()
         }
         ROS_INFO("Long move base action for first brick, current state: %s", mbState.getText());
         state = FAIL;
-        break;
+        return;
     }
 
     //ROS_INFO(movebaseAC.getState());
@@ -793,7 +793,7 @@ void pickupRecovery()
        float dx = brickStackOrangeX - brickStackRedX;
        float dy = brickStackOrangeY - brickStackRedY;
        if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
-       printf("BRICK %i: %f %f %f %f\n",brick,brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+       printf("BRICK %i: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
        tf2::Quaternion quat_tf;
        quat_tf.setRPY(0,0,atan2(dy,dx)+0.2);
        float orientationZ = quat_tf.z();
@@ -812,8 +812,8 @@ void pickupRecovery()
        float wayPointX = 2.5;
        float wayPointY = 0.8;
        float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
-       const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
-       const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+       float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+       float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
        //add the y
        printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
        float mapWPX = originX + (frontNormalX * wayPointY);
@@ -878,25 +878,24 @@ void pickupRecovery()
        }
 
        quat_tf.setRPY(0,0,atan2(dy,dx)-(PI/2));
-       float orientationZ = quat_tf.z();
-       float orientationW = quat_tf.w();
+       orientationZ = quat_tf.z();
+       orientationW = quat_tf.w();
 
-       float wayPointX = -1;
-       float wayPointY = 1;
-       float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
-       const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
-       const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+       wayPointX = -1;
+       wayPointY = 1;
+       stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+       originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+       originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
        //add the y
        printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
-       float mapWPX = originX + (frontNormalX * wayPointY);
-       float mapWPY = originY + (frontNormalY * wayPointY);
+       mapWPX = originX + (frontNormalX * wayPointY);
+       mapWPY = originY + (frontNormalY * wayPointY);
        //add the x
        mapWPX -= (gradientX * (wayPointX)); 
        mapWPY -= (gradientY * (wayPointX));
 
        ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
 
-       visualization_msgs::Marker marker;
        marker.header.frame_id = "map";
        marker.header.stamp = ros::Time::now();
        marker.id = 0;
@@ -922,7 +921,6 @@ void pickupRecovery()
 
        debugVisualiser.publish(marker);
 
-       move_base_msgs::MoveBaseGoal goal;
        goal.target_pose.header.frame_id = "map";
        goal.target_pose.header.stamp = ros::Time::now();
        goal.target_pose.pose.position.x = mapWPX;
@@ -962,7 +960,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     
     //goal->goal == 0 brick pickup, goal->goal == 1 stack site
     //goal->brick == 0-4 for the current brick to handle
-	ROS_INFO("Goal received %i %i %b %b", goal->goal, goal->brick, goal->pickupRecovery, goal->stackRecovery);
+	ROS_INFO("Goal received %i %i %c %c", (int)goal->goal, (int)goal->brick, goal->pickupRecovery, goal->stackRecovery);
 
     if(goal->goal == 1)
     {

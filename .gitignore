@@ -4,3 +4,4 @@ rosbags/*
 *.swo
 *.pyc
 sensor_control/datasets/*
+*~
