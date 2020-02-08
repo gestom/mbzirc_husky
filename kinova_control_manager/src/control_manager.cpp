@@ -124,6 +124,7 @@ private:
   bool brick_attached              = false;
   bool gripper_engaged             = false;
   bool getting_joint_angles        = false;
+  bool getting_tool_pose           = false;
   bool getting_gripper_diagnostics = false;
 
   bool getting_realsense_brick = false;
@@ -153,13 +154,6 @@ private:
   Pose3d default_firefighting_pose;
   Pose3d wrist_offset;
 
-  // brick storage
-  //  ||===========||
-  //  ||     2     ||
-  //  ||-----------||
-  //  ||  1  |  0  ||
-  //  ||===========||
-  //  ||ARM        ||
   // pose of the end effector when reaching for the N-th brick
   std::vector<Pose3d> storage_pose;
 
@@ -406,7 +400,7 @@ void kinova_control_manager::onInit() {
 
   ROS_INFO("[kinova_control_manager]: Waiting for arm feedback...");
 
-  while (!getting_joint_angles) {
+  while (!getting_joint_angles || !getting_tool_pose) {
     ros::spinOnce();
     ros::Duration(0.1).sleep();
   }
@@ -435,12 +429,10 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   ungrip();
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
-  /*
-  while(status != IDLE){
-	ros::spinOnce();
-	ros::Duration(0.05).sleep();
+  while (status != IDLE) {
+    ros::spinOnce();
+    ros::Duration(0.05).sleep();
   }
-  */
   res.success = true;
   return true;
 }
@@ -457,6 +449,16 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
   }
 
   if (status != IDLE) {
+    Pose3d goal_pose = default_gripping_pose;
+    goal_pose.pos.z() += req.data;
+
+    if (nearbyPose(end_effector_pose_compensated, goal_pose)) {
+      ROS_INFO("[kinova_control_manager]: Assumed a default gripping pose");
+      status      = IDLE;
+      res.success = true;
+      return true;
+    }
+
     ROS_ERROR("[kinova_control_manager]: Cannot move, arm is not IDLE");
     res.success = false;
     return false;
@@ -471,7 +473,7 @@ bool kinova_control_manager::callbackPrepareGrippingService(mbzirc_husky_msgs::F
   goal_pose.pos.z() += req.data;
   last_goal = goal_pose;
 
-  //bool goal_reached = goTo(goal_pose);
+  // bool goal_reached = goTo(goal_pose);
   goToNonBlocking(goal_pose);
 
   res.success = true;
@@ -523,6 +525,12 @@ bool kinova_control_manager::callbackRaiseCameraService([[maybe_unused]] std_srv
 
   if (!getting_joint_angles) {
     ROS_ERROR("[kinova_control_manager]: Cannot move, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot move, arm is not IDLE!");
     res.success = false;
     return false;
   }
@@ -602,22 +610,22 @@ bool kinova_control_manager::callbackAlignArmService(mbzirc_husky_msgs::Float64R
     new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
     new_pose.pos.z() = default_gripping_pose.pos.z() + req.data;
     new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
-    goToNonBlocking(new_pose);
+    goTo(new_pose);
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
   }
   if (end_effector_pose_compensated.pos.y() > -0.41 || end_effector_pose_compensated.pos.y() < -0.59) {
     ROS_ERROR("[kinova_control_manager]: Alignment in Y axis failed.");
+    status = IDLE;
     ros::spinOnce();
-    ros::Duration(1.0);
+    ros::Duration(0.2).sleep();  // try removing this sleep
     ros::spinOnce();
-    status      = IDLE;
     res.success = false;
     return false;
   }
+  status = IDLE;
   ros::spinOnce();
-  ros::Duration(1.0);
+  ros::Duration(0.2).sleep();  // try removing this sleep
   ros::spinOnce();
-  status      = IDLE;
   res.success = aligned;
   return aligned;
 }
@@ -821,7 +829,14 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
   bool have_brick     = brick_attached;
   status              = MOVING;
   time_of_last_motion = ros::Time::now();
-  Pose3d pose         = storage_pose[req.position];
+
+  // this is some high level collision avoidance stuff
+  Pose3d waypoint = end_effector_pose_compensated;
+  waypoint.pos.x() -= 0.2;
+  waypoint.rot = Eigen::AngleAxisd(-0.6, Eigen::Vector3d::UnitZ()) * waypoint.rot;
+  goTo(waypoint);
+
+  Pose3d pose = storage_pose[req.position];
   pose.pos.z() += 0.2 * req.layer;
   bool goal_reached = goTo(pose);
 
@@ -1274,6 +1289,7 @@ void kinova_control_manager::publishTF() {
 
 /* callbackToolPoseTopic //{ */
 void kinova_control_manager::callbackToolPoseTopic(const geometry_msgs::PoseStampedConstPtr &msg) {
+  getting_tool_pose             = true;
   end_effector_pose_raw.rot.w() = msg->pose.orientation.w;
   end_effector_pose_raw.rot.x() = msg->pose.orientation.x;
   end_effector_pose_raw.rot.y() = msg->pose.orientation.y;
