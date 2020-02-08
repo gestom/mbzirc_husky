@@ -916,9 +916,39 @@ bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::Stora
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
-
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.34)) {
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.2)) {
+    msg.twist_linear_x  = 0.0;
+    msg.twist_linear_y  = 0.0;
+    msg.twist_linear_z  = -move_down_speed_slower;
+    msg.twist_angular_x = 0.0;
+    msg.twist_angular_y = 0.0;
+    msg.twist_angular_z = 0.0;
+    publisher_cartesian_velocity.publish(msg);
+    ros::Duration(0.01).sleep();
   }
+  grip();
+  ROS_INFO("[kinova_control_manager]: MEGA slow now");
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.34)) {
+    msg.twist_linear_x  = 0.0;
+    msg.twist_linear_y  = 0.0;
+    msg.twist_linear_z  = -move_down_speed_mega_slow;
+    msg.twist_angular_x = 0.0;
+    msg.twist_angular_y = 0.0;
+    msg.twist_angular_z = 0.0;
+    publisher_cartesian_velocity.publish(msg);
+    ros::Duration(0.01).sleep();
+  }
+  if (!brick_attached) {
+    ROS_ERROR("[kinova_control_manager]: Failed to attach brick!");
+    flushVelocityTopic(msg);
+    status      = IDLE;
+    res.success = false;
+    return false;
+  }
+  flushVelocityTopic(msg);
+  status      = IDLE;
+  res.success = true;
+  return true;
 }
 //}
 
