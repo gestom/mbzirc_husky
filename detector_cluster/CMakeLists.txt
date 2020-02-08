@@ -11,13 +11,6 @@ find_package(
   pcl_ros REQUIRED
 )
 
-find_package(Eigen 3 QUIET)
-if(NOT Eigen_FOUND)
-  include(${PROJ_SOURCE_DIR}/cfg/FindEigen3.cmake)
-  set(Eigen_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR})
-endif()
-include_directories(${Eigen_INCLUDE_DIR})
-
 catkin_package()
 
 ###########
@@ -28,7 +21,6 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  ${Eigen_INCLUDE_DIRS}
 )
 
 message(STATUS "addding detector")
@@ -37,5 +29,4 @@ add_executable(detector src/detector.cpp)
 target_link_libraries(detector 
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
-  ${Eigen_LIBRARIES}
 )

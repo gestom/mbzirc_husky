@@ -2,8 +2,6 @@
 #define __DETECTOR_H__
 
 #include "ros/ros.h"
-#include <Eigen/Core>
-#include <Eigen/Dense>
 #include <cmath>
 #include <geometry_msgs/Point32.h>
 #include <iostream>
@@ -75,8 +73,6 @@ private:
     void fetch_parameters();
 
     double fetch_pointcloud(sensor_msgs::PointCloud2 &ptcl, std::vector<MyPoint> *ret);
-
-    std::vector<double> get_plane(float min_z, std::vector<MyPoint> *point_rows);
 
     void
     filter_ground(std::vector<double> ground, std::vector<MyPoint> *point_rows, std::vector<MyPoint> *ret);

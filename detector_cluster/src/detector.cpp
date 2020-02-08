@@ -90,31 +90,29 @@ array<vector<BrickLine>, 4> BrickDetector::match_detections(array<vector<BrickLi
     for (int clr_idx = 0; clr_idx < 4; clr_idx++){
 
         std::sort(lines[clr_idx].begin(), lines[clr_idx].end(), [](const BrickLine &l1, const BrickLine &l2) {
-            return l1[0].z < l2[1].z;
+            return l1[0].z < l2[0].z;
         });
 
         for (int i = 0; i < lines[clr_idx].size(); i++){
             MyPoint curr_center = GET_CENTER(lines[clr_idx][i][0], lines[clr_idx][i][1]);
             int hits = 0;
-            double curr_yaw = atan2(curr_center.y, curr_center.x) * 180 / M_PI;
+            double curr_yaw = atan2(curr_center.y, curr_center.x);
             double curr_dist = norm(curr_center);
             double expected_z_dist = curr_dist*LEN_MULTIPLIER;
             int expected_hits = int((0.4/expected_z_dist) - 1);                                  // should be 40 heigh
-            double expected_yaw = abs(acos((0.3*0.3) / (2*curr_dist*curr_dist) - 1));     // 20 cm is ok yaw diff
+            double expected_yaw = abs(acos((0.3*0.3) / (2*curr_dist*curr_dist) - 1));     // 30 cm is ok yaw diff
             if (expected_hits > 1) {
                 for (int j = 0; j < lines[clr_idx].size(); j++) {
                     if (i != j) {
                         MyPoint new_center = GET_CENTER(lines[clr_idx][j][0], lines[clr_idx][j][1]);
-                        double new_yaw = atan2(new_center.y, new_center.x) * 180 / M_PI;
-                        double yaw_diff = abs(diff_angle(curr_yaw, new_yaw));
-                        if (yaw_diff < expected_yaw) {
+                        double new_yaw = atan2(new_center.y, new_center.x);
+                        double yaw_diff = abs(diff_angle(curr_yaw, new_yaw)) * 180 / M_PI;
+                        if (yaw_diff < expected_yaw) {      // filter using yaw
                             double new_dist = norm(new_center);
-                            if (abs(new_dist - curr_dist) < 0.5) {
-                                if (abs(curr_center.z - new_center.z) > expected_z_dist * 0.7) {
-                                    hits++;
-                                    if (curr_center.z + LIDAR_HEIGHT > 0.45) {        // 45cm is too high
-                                        hits = 0;
-                                    }
+                            if (abs(new_dist - curr_dist) < 0.5) {      // filter using distance
+                                hits++;
+                                if (new_center.z + LIDAR_HEIGHT > 0.45) {        // 45cm is too high - filter using height
+                                    hits = 0;
                                 }
                             }
                         }
@@ -320,54 +318,6 @@ BrickDetector::filter_ground(vector<double> ground, vector<MyPoint> *point_rows,
     }
 }
 
-
-vector<double> BrickDetector::get_plane(float min_z, vector<MyPoint> *point_rows) {
-
-    // filter
-    vector<MyPoint> ground_points;
-    for (int row = 0; row < 2; row++) { // only four bottom rows
-        for (int i = 0; i < point_rows[row].size(); i++) {
-            if (point_rows[row][i].z <
-                min_z + HEIGHT_TOLERANCE) { // height filter
-                ground_points.push_back(point_rows[0][i]);
-            }
-        }
-    }
-
-    // sometimes occurs measurement with nothing inside
-    if (ground_points.size() > 10) {
-
-        // cast to eigen matrix
-        Eigen::MatrixXf points_vec(3, ground_points.size());
-        for (int i = 0; i < ground_points.size(); i++) {
-            points_vec(0, i) = ground_points[i].x;
-            points_vec(1, i) = ground_points[i].y;
-            points_vec(2, i) = ground_points[i].z;
-        }
-
-        Eigen::Matrix<float, 3, 1> mean = points_vec.rowwise().mean();
-        const Eigen::Matrix3Xf centered_points = points_vec.colwise() - mean;
-        int setting = Eigen::ComputeFullU | Eigen::ComputeThinV;
-        Eigen::JacobiSVD<Eigen::Matrix3Xf> svd =
-                centered_points.jacobiSvd(setting);
-        Eigen::Vector3f normal = svd.matrixU().col(2);
-
-
-        double d = -(normal[0] * mean[0] + normal[1] * mean[1] + normal[2] * mean[2]);
-        vector<double> ret;
-        if (normal[2] > 0) {    // set c value of plane aways positive
-            ret.insert(ret.end(), {normal[0], normal[1], normal[2], d});
-        } else {
-            ret.insert(ret.end(), {-normal[0], -normal[1], -normal[2], -d});
-        }
-        return ret;
-    }
-
-    vector<double> ret;
-    return ret;
-}
-
-
 double BrickDetector::fetch_pointcloud(sensor_msgs::PointCloud2 &ptcl, vector<MyPoint> *ret) {
     double min_z = numeric_limits<double>::infinity(); // some really high number
 
@@ -426,7 +376,7 @@ array<vector<BrickLine>, 4> BrickDetector::find_bricks(sensor_msgs::PointCloud2 
     // fill the row buffers and find point with the lowest height
     vector<MyPoint> point_rows[LIDAR_ROWS];
     double min_z = fetch_pointcloud(ptcl, point_rows);
-    // vector<double> ground = get_plane(min_z, point_rows);    // get ground plane
+
     std::vector<double> ground = {0, 0, 1, LIDAR_HEIGHT};
 
     // if (not ground.empty()) { // did we manage to obtain ground in this measurement?
