@@ -297,28 +297,31 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	}
 }
 
+int resetArm()
+{
+	ROS_INFO("RESETTING ARM INTO POSITION");
+	std_srvs::Trigger srv;
+	if (homeClient.call(srv)){
+		ROS_INFO("ARM RESET");
+		return 0;
+	}
+	ROS_INFO("ARM RESET FAILED");
+	return -1;
+}
+
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
 
 	state = ARMPOSITIONING;
 
-	while (isTerminal(state) == false && ros::ok()) {
-		if (state == ARMRESET) {
-			ROS_INFO("RESETTING ARM INTO POSITION");
-			std_srvs::Trigger srv;
-			if (homeClient.call(srv)) {
-				state = ARMPOSITIONING;
-				ROS_INFO("ARM RESET");
-			} else {
-				// unsafe
-
-				// state = ROBOTALIGNMENT;
-				state = ARMALIGNMENT;
-				ROS_INFO("ARM RESET FAILED");
-			}
-
-		} else if (state == ARMPOSITIONING) {
+	while (isTerminal(state) == false && ros::ok()) 
+	{
+		switch (state)
+		case ARMRESET: 
+			if (resetArm() == 0) state = ARMPOSITIONING; else state = ARMALIGNMENT; break;
+		
+		if (state == ARMPOSITIONING) {
 			ROS_INFO("MOVING ARM INTO POSITION");
 			mbzirc_husky_msgs::Float64 srv;
 			srv.request.data = 0;

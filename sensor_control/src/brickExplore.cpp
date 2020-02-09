@@ -637,7 +637,7 @@ void moveToBrick(int brick)
             state = FINAL;
             break;
         }
-        ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+        ROS_INFO("Long time for move base, current state: %s", mbState.getText().c_str());
         state = FAIL;
         break;
     }
@@ -741,7 +741,7 @@ void moveToApproachWP()
             ROS_INFO("Approached outer wp, moving to bricks");
             break;
         }
-        ROS_INFO("Long move base action for outer wp, current state: %s", mbState.getText());
+        ROS_INFO("Long move base action for outer wp, current state: %s", mbState.getText().c_str());
         state = FAIL;
         break;
     }
@@ -785,7 +785,7 @@ void moveToApproachWP()
             state = FINAL;
             break;
         }
-        ROS_INFO("Long move base action for first brick, current state: %s", mbState.getText());
+        ROS_INFO("Long move base action for first brick, current state: %s", mbState.getText().c_str());
         state = FAIL;
         return;
     }
@@ -849,7 +849,7 @@ void pickupRecovery()
        float dx = brickStackOrangeX - brickStackRedX;
        float dy = brickStackOrangeY - brickStackRedY;
        if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
-       printf("BRICK %i: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+       printf("BRICK %f: %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
        tf2::Quaternion quat_tf;
        quat_tf.setRPY(0,0,atan2(dy,dx)+0.2);
        float orientationZ = quat_tf.z();
@@ -928,7 +928,7 @@ void pickupRecovery()
                state = FINAL;
                break;
            }
-           ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+           ROS_INFO("Long time for move base, current state: %s", mbState.getText().c_str());
            state = FAIL;
            break;
        }
@@ -998,7 +998,7 @@ void pickupRecovery()
                state = FINAL;
                break;
            }
-           ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+           ROS_INFO("Long time for move base, current state: %s", mbState.getText().c_str());
            state = FAIL;
            break;
        }
@@ -1045,7 +1045,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         }
         else if(state == MOVINGTOBRICKS)
         {
-            moveToBricks(goal->brick);
+            //TODO moveToBricks(goal->brick);
         }
         else if(state == BRICKAPPROACH)
         {
