@@ -144,25 +144,6 @@ int incomingMessageCount = 0;
 bool isTerminal(EState state)
 {
 	if (state < TERMINALSTATE) return false;
-       /*	
-	if(state == ROBOTALIGNMENT_X) return false;
-	if(state == ROBOTALIGNMENT_Y) return false;
-	if(state == ROBOTALIGNMENT_PHI) return false;
-	if(state == ROBOTFINALALIGNMENT) return false;
-	if(state == ARMRESET) return false;
-	if(state == ARMPOSITIONING) return false;
-	if(state == ARMALIGNMENT) return false;
-	if(state == ARMLOWPOSITIONING) return false;
-	if(state == ARMLOWALIGNMENT) return false;
-	if(state == ARMDESCENT) return false;
-	if(state == ARMPICKUP) return false;
-	if(state == ARMSTORAGE) return false;
-	if(state == BRICKSTORE) return false;
-	if (state == ROBOTALIGN_WITH_WALL_ODO) return false;
-	if (state == ROBOTMOVE_ALONG_WALL_ODO_RED) return false;
-	if (state == ROBOTMOVE_ALONG_WALL_ODO_GREEN) return false;
-	if (state == ROBOTALIGN_ALONG_WALL_BRICK) return false;
-	if (state == ROBOTMOVE_BY) return false;*/
 	if(state == FINAL) return true;
 	return true;
 }
@@ -293,10 +274,6 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
 				behaviour = NONE;
 				return 0;
-				//state = ROBOTALIGN_WITH_WALL_ODO;
-				/*mbzirc_husky_msgs::brickDetect brick_srv;
-				  brick_srv.request.activate            = false;
-				  brickDetectorClient.call(brick_srv.request, brick_srv.response);*/
 			}
 			if (fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02){
 				anchorPose = robotPose;
@@ -315,50 +292,6 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
 	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
 	return;
-	/*if (state == ROBOTALIGN_WITH_WALL_ODO)
-	{
-		spd.linear.x = spd.angular.z = 0;
-		float angleDiff = anchorAngle-tf::getYaw(robotPose.pose.orientation);
-		spd.angular.z =  angleDiff*10;
-		printf("Aligning with wall: %f %f %f\n",angleDiff,anchorAngle,tf::getYaw(robotPose.pose.orientation));
-		if (isnormal(angleDiff)){
-			if (fabs(angleDiff) < 0.01){
-				state = ROBOTMOVE_ALONG_WALL_ODO_RED;
-				moveDistance = 0.4;
-				spd.linear.x = spd.angular.z = 0;
-				anchorPose = robotPose;
-			}
-			setSpeed(spd);
-		}else{
-			state = ROBOTMOVE_ALONG_WALL_ODO_RED;
-		}
-	}
-	if (state == ROBOTMOVE_ALONG_WALL_ODO_RED ||state == ROBOTMOVE_ALONG_WALL_ODO_GREEN)
-	{
-		spd.linear.x = spd.angular.z = 0;
-		float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
-		float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
-		float dist = sqrt(dx*dx+dy*dy);
-		spd.linear.x = (moveDistance - dist + 0.1);
-		if (state == ROBOTMOVE_ALONG_WALL_ODO_RED) printf("Moving along to red wall: %f %f\n",dist,spd.linear.x);
-		if (state == ROBOTMOVE_ALONG_WALL_ODO_GREEN) printf("Moving along to green wall: %f %f\n",dist,spd.linear.x);
-		if (dist > moveDistance) {
-			mbzirc_husky_msgs::brickDetect brick_srv;
-			brick_srv.request.activate            = true;
-			brick_srv.request.groundPlaneDistance = 0;
-			brick_srv.request.x                   = 640;
-			brick_srv.request.y                   = 480;
-			brickDetectorClient.call(brick_srv.request, brick_srv.response);
-			incomingMessageCount = 0;
-			if (state == ROBOTMOVE_ALONG_WALL_ODO_RED) state = ROBOTALIGN_ALONG_WALL_BRICK;
-			if (state == ROBOTMOVE_ALONG_WALL_ODO_GREEN) state = ARMPOSITIONING;
-			incomingMessageCount = 0;
-			spd.linear.x = spd.angular.z = 0;
-			anchorPose = robotPose;
-		}
-		setSpeed(spd);
-	}*/
-
 }
 
 
@@ -402,40 +335,6 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
 	if (behaviour == ROBOT_ALIGN_PHI) behaviourResult = robotAlignPhi(msg);
 	return;
-
- 	
-	/*if (state == ROBOTALIGNMENT_Y)
-	{
-		spd.linear.x = spd.angular.z = 0;
-		float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
-		float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
-		float dist = sqrt(dx*dx+dy*dy);
-		spd.linear.x = 0.4 - dist;
-		if (dist > 0.3) {
-			spd.linear.x = 0;
-			float angleDiff = anchorAngle-tf::getYaw(robotPose.pose.orientation);
-			spd.angular.z =  angleDiff*10;
-			if (fabs(angleDiff) < 0.01){
-				state = ROBOTALIGNMENT_X;	
-				spd.linear.x = spd.angular.z = 0;
-				anchorPose = robotPose;
-			}
-		}
-		setSpeed(spd);
-	}
-	if (state == ROBOTALIGNMENT_X){
-		spd.linear.x = spd.angular.z = 0;
-		float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
-		float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
-		float dist = sqrt(dx*dx+dy*dy);
-		spd.linear.x = -(0.4 - dist);
-		if (dist > 0.3) {
-			state = ROBOTALIGNMENT_PHI;	
-			spd.linear.x = spd.angular.z = 0;
-			anchorPose = robotPose;
-		}
-		setSpeed(spd);
-	}*/
 }
 
 int resetArm()
