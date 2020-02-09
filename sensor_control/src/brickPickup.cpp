@@ -19,6 +19,14 @@ typedef actionlib::SimpleActionServer<mbzirc_husky::brickPickupAction> Server;
 Server *server;
 
 float moveDistance = 0.4;
+typedef enum{
+	NONE,
+	ROBOT_ALIGN_X_PHI,
+	NUMBER
+}EBehaviour;
+
+EBehaviour behaviour = NONE;
+int behaviourResult = 0;
 
 typedef enum{
 	IDLE = 0,
@@ -53,6 +61,8 @@ ros::Publisher twistPub;
 
 tf::TransformListener *listener;
 geometry_msgs::PoseStamped anchorPose;
+geometry_msgs::PoseStamped robotPose;
+geometry_msgs::Twist spd;
 float anchorAngle = 0;
 
 //service clients for the arm
@@ -100,24 +110,23 @@ float stateMove = -1;
 int alignmentOK = 0;
 
 
-void setSpeed(geometry_msgs::Twist spd)
+void setSpeed(geometry_msgs::Twist speed)
 {
 	float maxX = 0.10;
 	float maxZ = 0.15;
-	if (spd.linear.x > +maxX) spd.linear.x = +maxX;
-	if (spd.linear.x < -maxX) spd.linear.x = -maxX;
-	if (spd.angular.z > +maxZ) spd.angular.z = +maxZ;
-	if (spd.angular.z < -maxZ) spd.angular.z = -maxZ;
-	twistPub.publish(spd);
+	if (speed.linear.x > +maxX) speed.linear.x = +maxX;
+	if (speed.linear.x < -maxX) speed.linear.x = -maxX;
+	if (speed.angular.z > +maxZ) speed.angular.z = +maxZ;
+	if (speed.angular.z < -maxZ) speed.angular.z = -maxZ;
+	twistPub.publish(speed);
 }
 
-void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
+
+int updateRobotPosition()
 {
 	int inc = 0;
-	geometry_msgs::Twist spd;
 	geometry_msgs::PoseStamped pose;
 	geometry_msgs::PoseStamped tf_pose;
-	geometry_msgs::PoseStamped robotPose;
 	float az = 0;
 	try {
 		pose.header.frame_id = "base_link";
@@ -129,20 +138,25 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 		pose.pose.orientation.y = 0;
 		pose.pose.orientation.z = 0;
 		pose.pose.orientation.w = 1;
-		listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.1));
+		listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.2));
 		listener->transformPose("/map",pose,robotPose);
+		return 0;
 	}
 	catch (tf::TransformException &ex) {
 		ROS_ERROR("%s",ex.what());
-		//ros::Duration(1.0).sleep();
+		return -1;
 	}
+}
 
+void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
+{
+	updateRobotPosition();
 	if (state == ROBOTALIGN_WITH_WALL_ODO)
 	{
 		spd.linear.x = spd.angular.z = 0;
 		float angleDiff = anchorAngle-tf::getYaw(robotPose.pose.orientation);
 		spd.angular.z =  angleDiff*10;
-		printf("Aligning with wall: %f %f\n",angleDiff,anchorAngle,tf::getYaw(robotPose.pose.orientation));
+		printf("Aligning with wall: %f %f %f\n",angleDiff,anchorAngle,tf::getYaw(robotPose.pose.orientation));
 		if (isnormal(angleDiff)){
 			if (fabs(angleDiff) < 0.01){
 				state = ROBOTMOVE_ALONG_WALL_ODO_RED;
@@ -183,86 +197,77 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 
 }
 
+
+int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
+{
+	float angle = tf::getYaw(msg->pose.pose.orientation);
+	geometry_msgs::Twist spd;
+	printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
+	spd.linear.x = spd.angular.z = 0;
+	if (msg->detected){
+		if (incomingMessageCount++ > 90) {
+			float angleDiff = (msg->pose.pose.position.y*3-angle);
+			spd.angular.z =  angleDiff*10;
+			spd.linear.x = -msg->pose.pose.position.x;
+
+			if (fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02){
+				anchorPose = robotPose;
+				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
+				behaviour = NONE;
+				return 1;
+			}
+			if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(msg->pose.pose.position.x) < 0.02){
+				spd.linear.x = spd.angular.z = 0;
+				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
+				behaviour = NONE;
+				return 0;
+				//state = ROBOTALIGN_WITH_WALL_ODO;
+				/*mbzirc_husky_msgs::brickDetect brick_srv;
+				  brick_srv.request.activate            = false;
+				  brickDetectorClient.call(brick_srv.request, brick_srv.response);*/
+			}
+		}
+	}
+	setSpeed(spd);
+}
+
+void robotAlignPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
+{
+	float angle = tf::getYaw(msg->pose.pose.orientation);
+	printf("Robot align to the wall: %f\n", angle);
+	spd.linear.x = spd.angular.z = 0;
+	if (msg->detected){
+		if (incomingMessageCount++ > 90) {
+			float angleDiff = -angle;
+			spd.angular.z =  angleDiff*10;
+			spd.linear.x = 0;
+			if (fabs(angleDiff) < 0.01){
+				mbzirc_husky_msgs::brickDetect brick_srv;
+				brick_srv.request.activate            = false;
+				brickDetectorClient.call(brick_srv.request, brick_srv.response);
+				anchorPose = robotPose;
+				moveDistance = 1.2;
+				state = ROBOTMOVE_ALONG_WALL_ODO_GREEN;
+			}
+		}
+	}
+	setSpeed(spd);
+}
+
+
+
 void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
 {
 	int inc = 0;
 	float maxX = 0.10;
 	float maxZ = 0.15;
 	float angle = tf::getYaw(msg->pose.pose.orientation);
-	geometry_msgs::Twist spd;
+	if (updateRobotPosition() < 0) return -1;
+	if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
+	if (behaviour == ROBOT_ALIGN_PHI) robotAlignPhi(msg);
+	return;
 
-
-	geometry_msgs::PoseStamped pose;
-	geometry_msgs::PoseStamped tf_pose;
-	geometry_msgs::PoseStamped robotPose;
-	float az = 0;
-	try {
-		pose.header.frame_id = "base_link";
-		pose.header.stamp = ros::Time::now();
-		pose.pose.position.x = 0;
-		pose.pose.position.y = 0;
-		pose.pose.position.z = 0;
-		pose.pose.orientation.x = 0;
-		pose.pose.orientation.y = 0;
-		pose.pose.orientation.z = 0;
-		pose.pose.orientation.w = 1;
-		listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.1));
-		listener->transformPose("/map",pose,robotPose);
-	}
-	catch (tf::TransformException &ex) {
-		ROS_ERROR("%s",ex.what());
-		//ros::Duration(1.0).sleep();
-	}
-
-       	if (state == ROBOTALIGNMENT_PHI)
-	{
-		printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
-		spd.linear.x = spd.angular.z = 0;
-		if (msg->detected){
-			if (incomingMessageCount++ > 90) {
-				float angleDiff = (msg->pose.pose.position.y*3-angle);
-				spd.angular.z =  angleDiff*10;
-				spd.linear.x = -msg->pose.pose.position.x;
-				//first, determine drone altitude, which is needed to check the expected size of objects
-				if (fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02){
-					anchorPose = robotPose;
-					anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
-					state = ROBOTALIGNMENT_Y;
-				}
-				if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(msg->pose.pose.position.x) < 0.02){
-					spd.linear.x = spd.angular.z = 0;
-					anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
-					state = ARMALIGNMENT;
-					//state = ROBOTALIGN_WITH_WALL_ODO;
-					/*mbzirc_husky_msgs::brickDetect brick_srv;
-					  brick_srv.request.activate            = false;
-					  brickDetectorClient.call(brick_srv.request, brick_srv.response);*/
-				}
-			}
-		}
-		setSpeed(spd);
-	}
- 	if (state == ROBOTALIGN_ALONG_WALL_BRICK)
-	{
-		printf("Robot align to the wall: %f\n", angle);
-		spd.linear.x = spd.angular.z = 0;
-		if (msg->detected){
-			if (incomingMessageCount++ > 90) {
-				float angleDiff = -angle;
-				spd.angular.z =  angleDiff*10;
-				spd.linear.x = 0;
-				if (fabs(angleDiff) < 0.01){
-					mbzirc_husky_msgs::brickDetect brick_srv;
-					brick_srv.request.activate            = false;
-					brickDetectorClient.call(brick_srv.request, brick_srv.response);
-					anchorPose = robotPose;
-					moveDistance = 1.2;
-					state = ROBOTMOVE_ALONG_WALL_ODO_GREEN;
-				}
-			}
-		}
-		setSpeed(spd);
-	}
+ 	
 	if (state == ROBOTALIGNMENT_Y)
 	{
 		spd.linear.x = spd.angular.z = 0;
@@ -309,41 +314,47 @@ int resetArm()
 	return -1;
 }
 
+int positionArm(bool high = true)
+{
+	ROS_INFO("MOVING ARM INTO POSITION");
+	mbzirc_husky_msgs::Float64 srv;
+	srv.request.data = 0;
+	if (prepareClient.call(srv)) {
+		usleep(3500000);	//TODO this is unsafe
+		ROS_INFO("ARM POSITIONED");
+		return 0;
+	}
+	ROS_INFO("ARM POSITION FAILED");
+	return -1;
+}
+
+
+int switchDetection(bool on)
+{
+	incomingMessageCount = 0; 
+	mbzirc_husky_msgs::brickDetect brick_srv;
+	brick_srv.request.activate            = on;
+	brick_srv.request.groundPlaneDistance = 0;
+	brick_srv.request.x                   = 640;
+	brick_srv.request.y                   = 480;
+	brickDetectorClient.call(brick_srv.request, brick_srv.response);
+	return 0;
+}
+
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
 
-	state = ARMPOSITIONING;
+	state = ARMRESET;//TODO
 
 	while (isTerminal(state) == false && ros::ok()) 
 	{
-		switch (state)
-		case ARMRESET: 
-			if (resetArm() == 0) state = ARMPOSITIONING; else state = ARMALIGNMENT; break;
-		
-		if (state == ARMPOSITIONING) {
-			ROS_INFO("MOVING ARM INTO POSITION");
-			mbzirc_husky_msgs::Float64 srv;
-			srv.request.data = 0;
-			if (prepareClient.call(srv)) {
-				usleep(3500000);
-				state = ROBOTALIGNMENT_PHI;
-				incomingMessageCount = 0; 
-				mbzirc_husky_msgs::brickDetect brick_srv;
-				brick_srv.request.activate            = true;
-				brick_srv.request.groundPlaneDistance = 0;
-				brick_srv.request.x                   = 640;
-				brick_srv.request.y                   = 480;
-				brickDetectorClient.call(brick_srv.request, brick_srv.response);
-				// state = ARMALIGNMENT;
-				ROS_INFO("ARM POSITIONED");
-			} else {
-				// unsafe
-				state = ARMPOSITIONING;
-				// state = ARMALIGNMENT;
-				ROS_INFO("ARM POSITION FAILED");
-			}
-		} else if (state == ARMALIGNMENT) {
+		switch (state){
+			case ARMRESET: if (resetArm() == 0) 	{state = ARMPOSITIONING;} else state = ARMALIGNMENT; break;
+			case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);state = ROBOTALIGNMENT_PHI;} else state = ARMPOSITIONING; break;
+		}
+	} 
+	if (state == ARMALIGNMENT) {
 			ROS_INFO("ALIGNING ARM");
 			mbzirc_husky_msgs::Float64 srv;
 			srv.request.data = 0.0;
@@ -419,7 +430,8 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 				ROS_INFO("FAILED TO STORE THE BRICK SUCCESSFULLY");
 				state = ARMLOWPOSITIONING;
 			}
-		} else if (state == ARMLOWPOSITIONING) {
+		} else 
+		if (state == ARMLOWPOSITIONING) {
 			ROS_INFO("MOVING ARM INTO LOW BRICK POSITION");
 			mbzirc_husky_msgs::Float64 srv;
 			srv.request.data = -0.3;
@@ -455,7 +467,6 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 			}
 		}
 		usleep(1200000);
-	}
 
 	if (state == FINAL)
 		state = SUCCESS;
