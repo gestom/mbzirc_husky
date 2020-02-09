@@ -16,16 +16,19 @@ typedef enum{
 //EState state = FINDINGBRICKS;
 EState state = PICKINGUP;
 
-bool currentlyRearranging = false;
-
-//0/1 first two red bricks 2/3 equals green bricks 4 blue
-int currentBrick = 0;
 ros::ServiceClient armHomeClient;
 
-int main (int argc, char **argv) {
-    ros::init(argc, argv, "brickStateMachine");
+int pickupFailures = 0;
+int stackingFailures = 0;
 
+int main (int argc, char **argv) {
+
+    //wait for uav's to take off
+    //usleep(15000000);
+
+    ros::init(argc, argv, "brickStateMachine");
     ros::NodeHandle n;
+
     armHomeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm"); 
     std_srvs::Trigger srv;
     if(!armHomeClient.call(srv))
@@ -44,16 +47,13 @@ int main (int argc, char **argv) {
     stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
-
     while(ros::ok())
     {
         if(state == FINDINGBRICKS)
         {
-		ROS_INFO("FINDING BRICKS");
             //permanently explore until a goal is found
             mbzirc_husky::brickExploreGoal exploreGoal;
-            exploreGoal.goal = 1;//find brick stack
-            exploreGoal.brick = currentBrick;
+            exploreGoal.goal = 1;//1 = goto brick stack, 2 = goto build site
             actionlib::SimpleClientGoalState exploreState = exploreAC.sendGoalAndWait(exploreGoal, ros::Duration(0,0), ros::Duration(0,0));
 
             if(exploreState != actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -61,42 +61,45 @@ int main (int argc, char **argv) {
                 ROS_INFO("Explore server didn't complete. Trying again.");
                 armHomeClient.call(srv);
                 //TODO, clearly something fucked up, add some recovery behaviour here
-                continue;
             }
-            state = PICKINGUP;
-	    usleep(2500000);
-  	    ROS_INFO("Bricks found and approached, switching to pickup");
+            else
+            {
+  	            ROS_INFO("Bricks found and approached, switching to pickup state");
+                state = PICKINGUP;
+            }
         }
         else if(state == PICKINGUP)
         {
             //bricks found and approached, switch to brick pickup, which only has t seconds to run, then t seconds to recover before going back to exploration
-            ros::Duration totalMaxDuration = ros::Duration(300, 0);
-            ros::Duration recoveryTime = ros::Duration(15, 0);
+            ros::Duration totalMaxDuration = ros::Duration(500, 0);
+            ros::Duration recoveryTime = ros::Duration(10, 0);
 
             mbzirc_husky::brickPickupGoal pickupGoal;
-            pickupGoal.bearing = 0;
             actionlib::SimpleClientGoalState pickupState = pickupAC.sendGoalAndWait(pickupGoal, totalMaxDuration, recoveryTime);
 
             if(pickupState != actionlib::SimpleClientGoalState::SUCCEEDED)
             {
-                ROS_INFO("Pickup failed, going back to explore");
+                pickupFailures++;
+                int maxAttempts = 3;
+                if(pickupFailures <= maxAttempts)
+                {
+                    ROS_INFO("Pickup attempt %i/%i failed, trying again", pickupFailures, maxAttempts);
+                    state = FINDINGBRICKS;
+                }
+                else
+                {
+                    ROS_INFO("Pickup attempt %i/%i failed, going to build", pickupFailures, maxAttempts);
+                    state = FINDINGSTACKSITE;
+                    pickupFailures = 0;
+                }
+                ROS_INFO("Resetting arm");
                 armHomeClient.call(srv);
-                //TODO maybe try same again before going back to explore
-                //TODO, recovery behavious. Perhaps try again from alternative angle, and/or mark area as difficult but can return eventually
-                state = FINDINGBRICKS;
-                continue;
-            }
-            if(currentBrick == 4)
-            {
-                currentBrick = 0;
-                state = FINDINGSTACKSITE;
-                ROS_INFO("All bricks pickup up successfully, moving to stack area and rearranging");
             }
             else
             {
-		state = FINDINGBRICKS;
-                currentBrick++;
-                ROS_INFO("Picked up brick, going to the next (%i)", currentBrick);
+                state = FINDINGSTACKSITE;
+                pickupFailures = 0;
+                ROS_INFO("Bricks pickup up successfully, moving to stack area and rearranging");
             }
         }
         else if(state == FINDINGSTACKSITE)
@@ -111,29 +114,46 @@ int main (int argc, char **argv) {
                 ROS_INFO("Failed to find stack area.");
                 armHomeClient.call(srv);
                 //TODO add recovery behaviour
-                continue;
             }
-
-            state = STACKING;
-            ROS_INFO("Finished, stacking bricks");
+            else
+            {
+                ROS_INFO("Finished finding stack site, stacking bricks");
+                state = STACKING;
+            }
         }
         else if(state == STACKING)
         {
+            ros::Duration totalMaxDuration = ros::Duration(600, 0);
+            ros::Duration recoveryTime = ros::Duration(10, 0);
+
             mbzirc_husky::brickStackGoal stackGoal;
-            actionlib::SimpleClientGoalState stackState = stackAC.sendGoalAndWait(stackGoal, ros::Duration(0,0), ros::Duration(0,0));
+            actionlib::SimpleClientGoalState stackState = stackAC.sendGoalAndWait(stackGoal, totalMaxDuration, recoveryTime);
             
             if(stackState != actionlib::SimpleClientGoalState::SUCCEEDED)
             {
-                ROS_INFO("Stack server didn't complete. Trying again.");
+                stackingFailures++;
+                int maxAttempts = 3;
+                if(stackingFailures <= maxAttempts)
+                {
+                    ROS_INFO("Stacking attempt %i/%i failed, trying again", stackingFailures, maxAttempts);
+                }
+                else
+                {
+                    ROS_INFO("Stacking attempt %i/%i failed, going to loop", stackingFailures, maxAttempts);
+                    state = FINDINGSTACKSITE;
+                    stackingFailures = 0;
+                }
+                ROS_INFO("Resetting arm");
                 armHomeClient.call(srv);
-                //TODO, clearly something fucked up, add some recovery behaviour here
-                //TODO if fail multiple times, go back to explore anyway
-                continue;
             }
-            state = FINDINGBRICKS;
-            ROS_INFO("Bricks stacked, finding more bricks");
+            else
+            {
+                ROS_INFO("Bricks built up successfully, moving to brick area and picking up");
+                state = FINDINGBRICKS;
+                stackingFailures = 0;
+            }
         }
-        usleep(100);
+        usleep(2000000);
     }
     return 0;
 }

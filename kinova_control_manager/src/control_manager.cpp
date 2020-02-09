@@ -613,21 +613,23 @@ bool kinova_control_manager::callbackAlignArmService(mbzirc_husky_msgs::Float64R
     new_pose.pos.y() = end_effector_pose_raw.pos.y() + align.y();
     new_pose.pos.z() = default_gripping_pose.pos.z() + req.data;
     new_pose.rot     = eulerToQuaternion(align_euler) * wrist_offset.rot.inverse();
-    goTo(new_pose);
+    goToNonBlocking(new_pose);
+    ros::Duration(0.7).sleep();
+
     aligned = (align.x() < 0.05 && align.y() < 0.05 && align.z() < 0.05);
   }
   if (end_effector_pose_compensated.pos.y() > -0.41 || end_effector_pose_compensated.pos.y() < -0.59) {
     ROS_ERROR("[kinova_control_manager]: Alignment in Y axis failed.");
     status = IDLE;
     ros::spinOnce();
-    ros::Duration(0.2).sleep();  // try removing this sleep
+    ros::Duration(1.5).sleep();  // try removing this sleep
     ros::spinOnce();
     res.success = false;
     return false;
   }
   status = IDLE;
   ros::spinOnce();
-  ros::Duration(0.2).sleep();  // try removing this sleep
+  ros::Duration(1.5).sleep();  // try removing this sleep
   ros::spinOnce();
   res.success = aligned;
   return aligned;
@@ -834,11 +836,19 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
   time_of_last_motion = ros::Time::now();
 
   // this is some high level collision avoidance stuff
-  Pose3d waypoint = end_effector_pose_compensated;
+  ROS_INFO("[kinova_control_manager]: High level collision avoidance stuff");
+  Pose3d waypoint = default_gripping_pose;
   waypoint.pos.x() -= 0.2;
-  waypoint.rot = Eigen::AngleAxisd(-0.6, Eigen::Vector3d::UnitZ()) * waypoint.rot;
+  waypoint.pos.y() += 0.15;
+  waypoint.pos.z() = end_effector_pose_compensated.pos.z();
+  Eigen::Vector3d waypoint_euler = quaternionToEuler(waypoint.rot);
+  waypoint_euler.z() += 0.7;
+  waypoint.rot = eulerToQuaternion(waypoint_euler);
   goTo(waypoint);
 
+  ROS_INFO("[kinova_control_manager]: Waypoint reached, returning to original goal");
+  status              = MOVING;
+  time_of_last_motion = ros::Time::now();
   Pose3d pose = storage_pose[req.position];
   pose.pos.z() += 0.2 * req.layer;
   bool goal_reached = goTo(pose);

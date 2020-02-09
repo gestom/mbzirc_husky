@@ -9,6 +9,8 @@
 #include <mbzirc_husky/brick_pileConfig.h>
 #include <vector>
 #include <opencv2/core/types.hpp>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/PointStamped.h>
 #include <mbzirc_husky_msgs/Float64.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
@@ -79,7 +81,6 @@ int orangeBricksRequired = 0;
 
 ros::Subscriber locationDebug;
 
-
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -87,7 +88,18 @@ PointCloud::Ptr pcl_msg (new PointCloud);
 PointCloud::Ptr pcl_two_line_msg (new PointCloud);
 PointCloud::Ptr pcl_of_interest_msg (new PointCloud);
 
-void callback(mbzirc_husky::brick_pileConfig &config, uint32_t level) {
+/*struct ransacCluster
+{
+    int observations;
+    float sumX;
+    float sumY;
+    //direction vector:
+    float totalDX;
+    float totalDY;
+}
+std::vector<ransacCluster> ransacClusters(0);*/
+
+void dynamicReconfigureCallback(mbzirc_husky::brick_pileConfig &config, uint32_t level) {
 
         tolerance=config.tolerance;
         angleTolerance=config.angleTolerance;
@@ -156,15 +168,13 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	ransacLines.clear();
 	for (int i = 0; i <= num_ranges; i++){
 		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
-		if(angle < 0 && angle > -(3.14/2) ){
 			x[i] = scan_msg->ranges[i]*cos(angle);
 			y[i] = scan_msg->ranges[i]*sin(angle);
 			m[i] = true;
-		}
 	}
 	int eval = 0;
-	int max_iterations = 1000;
-	int numHypotheses = 10;
+	int max_iterations = 1200;
+	int numHypotheses = 15;
 	float a,b;
 	float maxA[numHypotheses];
 	float maxB[numHypotheses];
@@ -315,7 +325,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	}
 
 	*/
-		
+			
 	//Finding the two best used for pile detection from front 
 	//if(STATUS == EXPLORINGBRICKSITE){ 	
 	int b1 = -1;
@@ -327,14 +337,14 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 			if (fabs(maxA[h1]-maxA[h2]) < angleTolerance && maxEval[h1] > minPoints && maxEval[h2] > minPoints ){
 				realAngle = (maxA[h1]+maxA[h2])/2.0;
 				realDist = fabs(maxB[h1]-maxB[h2])*cos(atan(realAngle));
+				if (fabs(realDist-distance)<distanceTolerance){
 							//fprintf(stdout,"Brick hypothesis: %i %i %f %f %i %i\n",h1,h2,realDist,fabs(maxA[h1]-maxA[h2]),maxEval[h1],maxEval[h2]);
-				//if (fabs(realDist-distance)<distanceTolerance){
 					if (maxEval[h1]+maxEval[h2] > eval){
 						eval = maxEval[h1] + maxEval[h2];
 						b1 = h1;
 						b2 = h2;
 					}
-				//}
+				}
 			}
 		}
 	}
@@ -355,54 +365,79 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	pcl_two_line_msg->height = 1;
 	pcl_two_line_msg->points.clear();
 	pcl_two_line_msg->width = 0;
-	
+		
 	float red_side_x;
 	float red_side_y;
 	float ax,bx;
-	float xx,yy,xxx,yyy,xo,yo; 
+	float xf,xo,yo,xs,lxf,lxs,yf,ys,lyf,lys,xx,yy,xxx,yyy; 
 	double x4; 
 	double y4; 
-	//std::cout << b1 << std::endl;
 
 	if (b1 >= 0 && b2 >=0){
 
 		bool f = true;
 		bool ff = true;
+		bool ss = false;
 		bool s = false;
 		for ( int j = 0; j <= num_ranges; j++){
+			angle = scan_msg->angle_min+j*scan_msg->angle_increment;
+		if(angle < 0 && angle > -(3.14/2) ){ 	
 
-			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance)  {
+			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance) {
 				pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));
 				pcl_two_line_msg->width++;
-				if(f){
-					red_side_x = x[j]; 
-					red_side_y = y[j];
-					f = false;
-				}
+
+
+					if(f){
+						xf = x[j]; 
+						yf = y[j];
+						f = false;
+						s = true;
+					}
+					if(s){
+
+						lxf = x[j]; 
+						lyf = y[j];
+					}	
 
 			}else if (fabs(maxA[b2]*x[j]-y[j]+maxB[b2])<tolerance){
 				pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
 				pcl_msg->width++;
-				if(s){
-					xxx = x[j]; 
-					yyy = y[j];
-				}	
-				if(ff){
-					xx = x[j]; 
-					yy = y[j];
-					ff = false;
-					s = true;
-				}
-					xo = x[j];
-					yo = y[j];
+					if(ff){
+						xs = x[j]; 
+						ys = y[j];
+						ff = false;
+						ss = true;
+					}
 
-			}
+					if(ss){
+						lxs = x[j]; 
+						lys = y[j];
+					}	
+				}
 			
-					displacement = (maxB[b1]+maxB[b2])/2.0;
-					realAngle = (maxA[b1]+maxA[b2])/2.0;
-			//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
 		}
+		if(abs(maxB[b1]) > abs(maxB[b2])){
+			red_side_x = xf;
+			red_side_y = yf;
+			xx = xs;
+			yy = ys;
+			xxx = lxs;
+			yyy = lys;
+		}else{
+			red_side_x = xs;
+			red_side_y = ys;
+			xx = xf;
+			yy = yf;
+			xxx = lxf;
+			yyy = lyf;
+		}
+			xo = xxx;
+			yo = yyy;
+			displacement = (maxB[b1]+maxB[b2])/2.0;
+			realAngle = (maxA[b1]+maxA[b2])/2.0;
+			//fprintf(stdout,"Ramp found: %i %i %f %f %f %i %i\n",b1,b2,displacement,realAngle,fabs(maxA[b1]-maxA[b2]),maxEval[b1],maxEval[b2]);
 
 		//Compute edge of pile
 		//Normalized of line 
@@ -412,6 +447,30 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		dx = dx / magnitude;
 		dy = dy / magnitude;
 		double lambda = (dx * (red_side_x - xxx)) + (dy * (red_side_y - yyy));
+		x4 = (dx * lambda) + xxx;
+		y4 = (dy * lambda) + yyy;
+		brickStackLocationKnown = true;
+
+		if(dist(x4,y4,0,0) > 0.5){
+		//Lookup in the past
+		
+		brickStackOrangeX = xo;
+		brickStackOrangeY = yo;
+		/*tf::TransformListener listener;
+		tf::StampedTransform transform;
+		listener.waitForTransform("map", "base_link",
+                             ros::Time(0), ros::Duration(1));
+
+		//try{
+			listener.lookupTransform("map", "base_link",
+				ros::Time(0) ,transform);
+		//}
+		//catch (tf::TransformException &ex) {
+		//	ROS_ERROR("%s",ex.what());
+		//	ros::Duration(1.0).sleep();
+			//return;
+	//	}
+	
 		//brickStackRedX = (dx * lambda) + xxx;
 		//brickStackRedY = (dy * lambda) + yyy;
 		x4 = (dx * lambda) + xxx;
@@ -421,17 +480,30 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		//brickStackOrangeX = xo;
 		//brickStackOrangeY = yo;
 
+		brickStackRedX	 = x4 + transform.getOrigin().y();
+		brickStackRedY	 = y4 + transform.getOrigin().y();
+		brickStackOrangeX = x4 + transform.getOrigin().y();
+		brickStackOrangeX  = y4 + transform.getOrigin().y();
+
+		std::cout<< " map " << brickStackRedX << " velodyne " << x4 << std::endl;*/
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(x4,y4, 0));
+		pcl_of_interest_msg->width++;
 		pcl_of_interest_msg->points.push_back (pcl::PointXYZ(xo,yo, 0));
 		pcl_of_interest_msg->width++;
-		pcl_of_interest_msg->width++;
+
+		
+		}
+		//std::cout << pcl_of_interest_msg->width << std::endl;
+		pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
+		point_of_inter_pub.publish (pcl_of_interest_msg);
+		pcl_of_interest_msg->points.clear();
+		pcl_of_interest_msg->width = 0;
+		}
 	}	
 	pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
 	point_pub.publish (pcl_msg);
 	pcl_conversions::toPCL(ros::Time::now(), pcl_two_line_msg->header.stamp);
 	point_two_pub.publish (pcl_two_line_msg);
-	pcl_conversions::toPCL(ros::Time::now(), pcl_of_interest_msg->header.stamp);
-	point_of_inter_pub.publish (pcl_of_interest_msg);
 	//	}*/
 }
 
@@ -454,12 +526,6 @@ void schedulerCallback(const mbzirc_husky_msgs::brickGoal::ConstPtr& msg)
         else if(msg->brickType[i] == 3)
             orangeBricksRequired++;
     }
-}
-
-void approachBricks()
-{
-    schedulerSub = pn->subscribe("/brickScheduler/goals", 1, schedulerCallback);
-    state = MOVINGTOBRICKS;
 }
 
 void positionArm()
@@ -585,10 +651,10 @@ void moveToApproachWP()
     if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
     printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0,0,atan2(dy,dx)-0.4);
+    quat_tf.setRPY(0,0,atan2(dy,dx)-0.0);
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
-    quat_tf.setRPY(0,0,atan2(dy,dx)+0.05);
+    quat_tf.setRPY(0,0,atan2(dy,dx)+0.0);
     float finalOrientationZ = quat_tf.z();
     float finalOrientationW = quat_tf.w();
 
@@ -610,7 +676,7 @@ void moveToApproachWP()
     //basically just as in the spec book
     //all in map frame
     float wayPointX = 2.f;
-    float wayPointY = 0.45f;
+    float wayPointY = 0.65f;
     float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
     const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
     const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
@@ -668,7 +734,7 @@ void moveToApproachWP()
     movebaseAC->sendGoal(goal);
     while(ros::ok())
     {
-        usleep(15000000);
+        usleep(8000000);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
         if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
         {
@@ -711,7 +777,7 @@ void moveToApproachWP()
     movebaseAC->sendGoal(goal);
     while(ros::ok())
     {
-        usleep(15000000);
+        sleep(205);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
         if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
         {
@@ -721,7 +787,7 @@ void moveToApproachWP()
         }
         ROS_INFO("Long move base action for first brick, current state: %s", mbState.getText());
         state = FAIL;
-        break;
+        return;
     }
 
     //ROS_INFO(movebaseAC.getState());
@@ -774,29 +840,193 @@ void moveToBricks(int brick)
 	}
 }
 
+void pickupRecovery()
+{
+   if(brickStackLocationKnown)
+   {
+       ROS_INFO("ENTERING BRICK RECOVERY PROCEDURE");
+       //get front/back normals of brick stack
+       float dx = brickStackOrangeX - brickStackRedX;
+       float dy = brickStackOrangeY - brickStackRedY;
+       if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
+       printf("BRICK %i: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+       tf2::Quaternion quat_tf;
+       quat_tf.setRPY(0,0,atan2(dy,dx)+0.2);
+       float orientationZ = quat_tf.z();
+       float orientationW = quat_tf.w();
+
+       float frontNormalX = -dy;
+       float frontNormalY = dx;
+
+       //normalise normals
+       float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
+       frontNormalX /= magnitude;
+       frontNormalY /= magnitude;
+       float gradientX = dx / magnitude;
+       float gradientY = dy / magnitude;
+
+       float wayPointX = 2.5;
+       float wayPointY = 0.8;
+       float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+       float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+       float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+       //add the y
+       printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
+       float mapWPX = originX + (frontNormalX * wayPointY);
+       float mapWPY = originY + (frontNormalY * wayPointY);
+       //add the x
+       mapWPX -= (gradientX * (wayPointX)); 
+       mapWPY -= (gradientY * (wayPointX));
+
+       ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
+
+       visualization_msgs::Marker marker;
+       marker.header.frame_id = "map";
+       marker.header.stamp = ros::Time::now();
+       marker.id = 0;
+       marker.type = visualization_msgs::Marker::ARROW;
+
+       marker.scale.x = 0.4;
+       marker.scale.y = 0.2;
+       marker.scale.z = 0.2;
+
+       marker.color.r = 0;
+       marker.color.g = 0;
+       marker.color.b = 0;
+       marker.color.a = 1;
+
+       marker.pose.position.x = mapWPX;
+       marker.pose.position.y = mapWPY;
+       marker.pose.position.z = 0;
+
+       marker.pose.orientation.x = 0;
+       marker.pose.orientation.y = 0;
+       marker.pose.orientation.z = orientationZ;
+       marker.pose.orientation.w = orientationW;
+
+       debugVisualiser.publish(marker);
+
+       move_base_msgs::MoveBaseGoal goal;
+       goal.target_pose.header.frame_id = "map";
+       goal.target_pose.header.stamp = ros::Time::now();
+       goal.target_pose.pose.position.x = mapWPX;
+       goal.target_pose.pose.position.y = mapWPY;
+
+       //goal orientation
+       goal.target_pose.pose.orientation.z = orientationZ;
+       goal.target_pose.pose.orientation.w = orientationW;
+
+       ROS_INFO("Moving to brick position");
+       movebaseAC->sendGoal(goal);
+       while(ros::ok())
+       {
+           usleep(15000000);
+           actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+           if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+           {
+               ROS_INFO("Approached current bricks, setting to final");
+               state = FINAL;
+               break;
+           }
+           ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+           state = FAIL;
+           break;
+       }
+
+       quat_tf.setRPY(0,0,atan2(dy,dx)-(PI/2));
+       orientationZ = quat_tf.z();
+       orientationW = quat_tf.w();
+
+       wayPointX = -1;
+       wayPointY = 1;
+       stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
+       originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
+       originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
+       //add the y
+       printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
+       mapWPX = originX + (frontNormalX * wayPointY);
+       mapWPY = originY + (frontNormalY * wayPointY);
+       //add the x
+       mapWPX -= (gradientX * (wayPointX)); 
+       mapWPY -= (gradientY * (wayPointX));
+
+       ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
+
+       marker.header.frame_id = "map";
+       marker.header.stamp = ros::Time::now();
+       marker.id = 0;
+       marker.type = visualization_msgs::Marker::ARROW;
+
+       marker.scale.x = 0.4;
+       marker.scale.y = 0.2;
+       marker.scale.z = 0.2;
+
+       marker.color.r = 0;
+       marker.color.g = 0;
+       marker.color.b = 0;
+       marker.color.a = 1;
+
+       marker.pose.position.x = mapWPX;
+       marker.pose.position.y = mapWPY;
+       marker.pose.position.z = 0;
+
+       marker.pose.orientation.x = 0;
+       marker.pose.orientation.y = 0;
+       marker.pose.orientation.z = orientationZ;
+       marker.pose.orientation.w = orientationW;
+
+       debugVisualiser.publish(marker);
+
+       goal.target_pose.header.frame_id = "map";
+       goal.target_pose.header.stamp = ros::Time::now();
+       goal.target_pose.pose.position.x = mapWPX;
+       goal.target_pose.pose.position.y = mapWPY;
+
+       //goal orientation
+       goal.target_pose.pose.orientation.z = orientationZ;
+       goal.target_pose.pose.orientation.w = orientationW;
+
+       ROS_INFO("Moving to brick position");
+       movebaseAC->sendGoal(goal);
+       while(ros::ok())
+       {
+           usleep(15000000);
+           actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+           if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+           {
+               ROS_INFO("Approached current bricks, setting to final");
+               state = FINAL;
+               break;
+           }
+           ROS_INFO("Long time for move base, current state: %s", mbState.getText());
+           state = FAIL;
+           break;
+       }
+
+   }
+   else
+   {
+        state = EXPLORINGBRICKS;
+   }
+}
+
+void findBricks()
+{
+    usleep(1000000);
+}
+
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
     mbzirc_husky::brickExploreResult result;
     
-    //goal->goal == 0 brick pickup, goal->goal == 1 stack site
-    //goal->brick == 0-4 for the current brick to handle
-	ROS_INFO("Goal received %i %i", goal->goal, goal->brick);
-
     if(goal->goal == 1)
     {
-        //brick pick up
-        if(goal->brick == 0)
-        {
-            state = EXPLORINGBRICKS;
-        }
-        else
-        {
-            state = MOVINGTOBRICKS;    
-        }
+        ROS_INFO("MOVE TO BRICK PILE GOAL RECEVIED");
+        state = EXPLORINGBRICKS;
     }
     else if(goal->goal == 2)
     {
-        //stack site
+        ROS_INFO("MOVE TO BRICK STACK SITE GOAL RECEIVED");
         state = EXPLORINGSTACKSITE;
     }
 
@@ -804,12 +1034,34 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         if(state == EXPLORINGBRICKS)
         {
             //begin lidar search for bricks
-            usleep(2000000);
-            approachBricks();
+            if(brickStackLocationKnown)
+            {
+                state = MOVINGTOBRICKS;
+            }
+            else
+            {
+                findBricks();
+            }
         }
         else if(state == MOVINGTOBRICKS)
         {
             moveToBricks(goal->brick);
+        }
+        else if(state == BRICKAPPROACH)
+        {
+             state = FINAL;
+        }
+        else if(state == EXPLORINGSTACKSITE)
+        {
+            state = MOVINGTOSTACKSITE;
+        }
+        else if(state == MOVINGTOSTACKSITE)
+        {
+            state = STACKAPPROACH;
+        }
+        else if(state == STACKAPPROACH)
+        {
+            state = FINAL;
         }
         usleep(100);
     }
@@ -830,7 +1082,7 @@ int main(int argc, char** argv)
     debugVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/debug", 1);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
-  	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&callback, _1, _2);
+  	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
     scan_sub = n.subscribe("/scan",100, scanCallback);	

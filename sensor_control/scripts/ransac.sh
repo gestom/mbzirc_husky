@@ -1,1 +1,1 @@
-rostopic pub /locationDebug std_msgs/String "data: '3.61 -1.34 8.55 -1.54'" --rate=5
+rostopic pub /locationDebug std_msgs/String "data: '-1.27 -0.65 5.21 -0.64'" --rate=5
