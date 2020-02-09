@@ -32,7 +32,9 @@ array<array<double, 2>, 4> BrickDetector::get_piles(array<vector<BrickLine>, 4> 
 
     double var = 1.4;
     for(int clr_idx = 0; clr_idx < 4; clr_idx++){
-        if (lines[clr_idx].size() > 1) {
+        if ((clr_idx == 0 and lines[clr_idx].size() > 5) or         // need 6 <= of red detection to detect red pile
+            (clr_idx == 1 and lines[clr_idx].size() > 3) or
+            (clr_idx > 1 and lines[clr_idx].size() > 1)) {
 
             vector<array<double, 2>> probs;
             for (int i = 0; i < lines[clr_idx].size(); i++){
@@ -99,8 +101,8 @@ array<vector<BrickLine>, 4> BrickDetector::match_detections(array<vector<BrickLi
             double curr_yaw = atan2(curr_center.y, curr_center.x);
             double curr_dist = norm(curr_center);
             double expected_z_dist = curr_dist*LEN_MULTIPLIER;
-            int expected_hits = int((0.4/expected_z_dist) - 1);                                  // should be 40 heigh
-            double expected_yaw = abs(acos((0.3*0.3) / (2*curr_dist*curr_dist) - 1));     // 30 cm is ok yaw diff
+            int expected_hits = min(int((0.4/expected_z_dist) - 1), 4);                            // should be 40 tall
+            double expected_yaw = abs(acos((0.35*0.35) / (2*curr_dist*curr_dist) - 1));     // 30 cm is ok yaw diff
             if (expected_hits > 1) {
                 for (int j = 0; j < lines[clr_idx].size(); j++) {
                     if (i != j) {
@@ -416,6 +418,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 {
 
     array<vector<BrickLine>, 4> all_lines = find_bricks(ptcl);
+    // array<vector<BrickLine>, 4> matched_lines = find_bricks(ptcl);
 
     // MyPoint my_pt1(2.37, -2.45, 0.0);
     // MyPoint my_pt2(4.1, 1.89, 0);
