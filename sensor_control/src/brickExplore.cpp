@@ -381,7 +381,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		bool s = false;
 		for ( int j = 0; j <= num_ranges; j++){
 			angle = scan_msg->angle_min+j*scan_msg->angle_increment;
-		if(angle < 0 && angle > -(3.14/2) ){ 	
+		if(angle < (3.1415/4) && angle > -(3.14/2) ){ 	
 
 			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance) {
 				pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));

@@ -88,6 +88,7 @@ typedef enum{
 	ROBOT_MOVE_NEXT_BRICK,	 //
 	ROBOT_ALIGN_WITH_WALL,	 //
 	MOVE_TO_GREEN_BRICK_1,	 //
+	MOVE_TO_GREEN_BRICK_2,	 //
 	ARMLOWPOSITIONING,	//usused atm
 	ARMLOWALIGNMENT,	//unused atm
 	TERMINALSTATE,	 //marks terminal state
@@ -275,7 +276,7 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 				behaviour = NONE;
 				return 0;
 			}
-			if (fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02){
+			if ((fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02) || (angle*msg->pose.pose.position.y > 0 && fabs(angle) > 0.2)){
 				anchorPose = robotPose;
 				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
 				moveTurnMove(0.3,ROBOT_ALIGN_X_PHI);
@@ -436,8 +437,8 @@ int storeBrick()
 {
 	ROS_INFO("STORING BRICK IN POSITION %d, LAYER %d", active_storage, active_layer);
 	mbzirc_husky_msgs::StoragePosition srv;
-	srv.request.position = active_storage;
-	srv.request.layer    = active_layer;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_layer/3;
 	if (brickStoreClient.call(srv)) {
 		ROS_INFO("BRICK STORED IN POSITION %d", active_storage);
 		active_storage++;
@@ -495,9 +496,11 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 				case BRICKSTORE: if (storeBrick() == 0){
 							 if (active_storage == 1)  nextState = ARMPOSITIONING_NOMOVE;
 							 if (active_storage == 2)  nextState = ROBOT_MOVE_NEXT_BRICK;
+							 if (active_storage == 3)  nextState = MOVE_TO_GREEN_BRICK_2;
 						  }else { nextState = ARMRESET;} break;
 				case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
 				case ROBOT_ALIGN_WITH_WALL: switchDetection(true); alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
+				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.6); nextState = ARMRESET; break;
 				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); nextState = ARMPOSITIONING; break;
 			}
 		}

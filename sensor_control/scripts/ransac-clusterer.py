@@ -3,6 +3,7 @@ import rospy
 from visualization_msgs import msg as msgTemplate
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
+from std_msgs.msg import String
 from geometry_msgs.msg import Point
 import numpy as np
 
@@ -35,6 +36,10 @@ def appendToCluster(clusIdx, x, y, distX, distY):
 
     existingClusters[clusIdx] = cluster
 
+def resetCallback(msg):
+    global existingClusters
+    existingClusters = []
+
 def ransacCallback(msg):
    global existingClusters, frame, ts
 
@@ -60,7 +65,7 @@ def ransacCallback(msg):
    #tf lookup
    transform = None
    try:
-       transform = tfListener.lookupTransform('velodyne', 'map', rospy.Time(0))
+       transform = tfListener.lookupTransform('map', 'velodyne', rospy.Time(0))
    except:
        print("Aborting ransac, unable to get tf transform")
        return
@@ -68,8 +73,8 @@ def ransacCallback(msg):
    rotationMat = tf.transformations.quaternion_matrix(transform[1])
    mat = np.dot(transformMat, rotationMat)
    
-   #points[0] = np.dot(mat, np.append(points[0][:2], [1.0, 1.0]))
-   #points[1] = np.dot(mat, np.append(points[0][:2], [1.0, 1.0])) 
+   points[0] = np.dot(mat, np.append(points[0][:2], [1.0, 1.0]))
+   points[1] = np.dot(mat, np.append(points[0][:2], [1.0, 1.0])) 
 
    #naively use closest as close point
    distToA = abs(((points[0][0]**2) + (points[0][1]**2)**0.5))
@@ -127,6 +132,7 @@ if __name__ == "__main__":
     rospy.init_node("ransacClusterer")
     tfListener = tf.TransformListener()
     pub = rospy.Publisher("/ransac/clusterer", msgTemplate.Marker, queue_size=5)
+    rospy.Subscriber("/ransac/clusterer_reset", String, resetCallback)
     rospy.Subscriber("/ransac/poi", PointCloud2, ransacCallback)
     rate = rospy.Rate(2)
     while not rospy.is_shutdown():
