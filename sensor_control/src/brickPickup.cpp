@@ -358,6 +358,7 @@ int positionArm(bool high = true)
 	if (active_storage == 1) srv.request.data = -0.3;
 	if (prepareClient.call(srv)) {
 		usleep(3500000);	//TODO this is unsafe
+		if (active_storage == 1) usleep(1700000); 
 		ROS_INFO("ARM POSITIONED");
 		return 0;
 	}
@@ -421,10 +422,10 @@ int pickupBrick()
 
 int prepareStorage()
 {
-	ROS_INFO("MOVING ARM INTO STORAGE POSITION %d, LAYER %d", active_storage, active_layer);
 	mbzirc_husky_msgs::StoragePosition srv;
-	srv.request.position = active_storage;
-	srv.request.layer    = active_layer;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_storage/3;
+	ROS_INFO("STORING BRICK IN POSITION %d, LAYER %d", srv.request.position , srv.request.layer);
 	if (armStorageClient.call(srv)) {
 		ROS_INFO("BRICK READY FOR STORAGE");
 		return 0;
@@ -435,10 +436,10 @@ int prepareStorage()
 
 int storeBrick()
 {
-	ROS_INFO("STORING BRICK IN POSITION %d, LAYER %d", active_storage, active_layer);
 	mbzirc_husky_msgs::StoragePosition srv;
 	srv.request.position = active_storage%3;
-	srv.request.layer    = active_layer/3;
+	srv.request.layer    = active_storage/3;
+	ROS_INFO("STORING BRICK IN POSITION %d, LAYER %d", srv.request.position , srv.request.layer);
 	if (brickStoreClient.call(srv)) {
 		ROS_INFO("BRICK STORED IN POSITION %d", active_storage);
 		active_storage++;
@@ -496,12 +497,13 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 				case BRICKSTORE: if (storeBrick() == 0){
 							 if (active_storage == 1)  nextState = ARMPOSITIONING_NOMOVE;
 							 if (active_storage == 2)  nextState = ROBOT_MOVE_NEXT_BRICK;
-							 if (active_storage == 3)  nextState = MOVE_TO_GREEN_BRICK_2;
+							 if (active_storage == 3)  nextState = MOVE_TO_RED_BRICK_2;
 						  }else { nextState = ARMRESET;} break;
 				case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
 				case ROBOT_ALIGN_WITH_WALL: switchDetection(true); alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.6); nextState = ARMRESET; break;
-				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); nextState = ARMPOSITIONING_NOMOVE; break;
+				case MOVE_TO_RED_BRICK_1: switchDetection(false); moveRobot(-1.2); nextState = ARMPOSITIONING_NOMOVE; break;
 			}
 		}
 		usleep(1200000);

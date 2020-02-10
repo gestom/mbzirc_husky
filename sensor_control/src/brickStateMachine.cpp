@@ -13,8 +13,8 @@ typedef enum{
     STACKING
 }EState;
 
-//EState state = FINDINGBRICKS;
-EState state = PICKINGUP;
+EState state = FINDINGBRICKS;
+//EState state = PICKINGUP;
 
 ros::ServiceClient armHomeClient;
 

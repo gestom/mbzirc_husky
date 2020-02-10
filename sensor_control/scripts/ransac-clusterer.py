@@ -8,8 +8,10 @@ from geometry_msgs.msg import Point
 import numpy as np
 
 distanceFromCluster = 0.5
+requiredObvs = 200
 
 pub = None
+pub_str = nNone
 frame = None
 ts = None
 existingClusters = []
@@ -19,6 +21,11 @@ def createNewCluster(x, y, distX, distY):
     global existingClusters
     cluster = {'x': x, 'y': y, 'distX': distX, 'distY': distY, 'totalX': x, 'totalY': y, 'observations': 1, 'totalDistX': distX, 'totalDistY': distY}
     existingClusters.append(cluster)
+
+def resetCallback():
+    global existingClusters
+    print("Resetting ransac clusters")
+    existingClusters = []
 
 def appendToCluster(clusIdx, x, y, distX, distY):
     global existingClusters
@@ -122,10 +129,14 @@ def publishBestCluster():
             bestCluster = i
     points = []
     print(bestCluster)
+    if bestCluster["observations"] < requiredObvs:
+        print("Not enough observations yet")
+        return
     points.append(Point(x=bestCluster["x"], y=bestCluster["y"], z=0.3))
     points.append(Point(x=bestCluster["distX"], y=bestCluster["distY"], z=0.3))
     msg.points = points
     pub.publish(msg)
+    pub_str.publish("%f %f %f %f", bestCluster["x"], bestCluster["y"], bestCluster["distX"], bestCluster["distY"])
 
 if __name__ == "__main__":
 
@@ -133,7 +144,9 @@ if __name__ == "__main__":
     tfListener = tf.TransformListener()
     pub = rospy.Publisher("/ransac/clusterer", msgTemplate.Marker, queue_size=5)
     rospy.Subscriber("/ransac/clusterer_reset", String, resetCallback)
+    pub_str = rospy.Publisher("/ransac/clusterer_str", String, queue_size=5)
     rospy.Subscriber("/ransac/poi", PointCloud2, ransacCallback)
+    rospy.Subscriber("/ransac/clusterer_reset", String, resetCallback)
     rate = rospy.Rate(2)
     while not rospy.is_shutdown():
         publishBestCluster()
