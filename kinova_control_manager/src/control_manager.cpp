@@ -25,6 +25,7 @@
 #include <visualization_msgs/Marker.h>
 
 #define DOF 6
+#define ALLOWED_NUM_OF_ERRORS 200
 
 namespace kinova_control_manager
 {
@@ -156,6 +157,7 @@ private:
 
   // pose of the end effector when reaching for the N-th brick
   std::vector<Pose3d> storage_pose;
+  std::vector<Pose3d> waypoints;
 
   double nearby_position_threshold;
   double nearby_rotation_threshold;
@@ -243,6 +245,9 @@ private:
 
   void publishTF();
   void flushVelocityTopic(kinova_msgs::PoseVelocity msg);
+
+  int picking_error_counter = 0;
+
 };
 //}
 
@@ -262,6 +267,7 @@ void kinova_control_manager::onInit() {
   std::vector<double> husky_to_arm_base_transform;
   std::vector<double> wrist_offset_raw;
   std::vector<double> brick_storage_raw;
+  std::vector<double> waypoints_raw;
 
   /* load params //{ */
   nh_.getParam("arm_type", arm_type);
@@ -287,6 +293,7 @@ void kinova_control_manager::onInit() {
   nh_.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
 
   nh_.getParam("brick_storage", brick_storage_raw);
+  nh_.getParam("waypoints", waypoints_raw);
   //}
 
   /* parse params //{ */
@@ -356,7 +363,18 @@ void kinova_control_manager::onInit() {
       storage_pose.push_back(pose);
     }
   }
-
+  if (waypoints_raw.size() % 6 == 0) {
+    int num_waypoints = (int)(waypoints_raw.size() / 6);
+    for (int i = 0; i < num_waypoints; i++) {
+      Pose3d pose;
+      pose.pos.x() = waypoints_raw[i * 6];
+      pose.pos.y() = waypoints_raw[(i * 6) + 1];
+      pose.pos.z() = waypoints_raw[(i * 6) + 2];
+      Eigen::Vector3d angles(waypoints_raw[(i * 6) + 3], waypoints_raw[(i * 6) + 4], waypoints_raw[(i * 6) + 5]);
+      pose.rot = eulerToQuaternion(angles);
+      waypoints.push_back(pose);
+    }
+  }
   //}
 
   // service servers
@@ -425,11 +443,13 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   }
 
   ROS_INFO("[kinova_control_manager]: Reset last arm goal. Homing...");
+  
   status              = HOMING;
   time_of_last_motion = ros::Time::now();
   last_goal           = home_pose;
 
   ungrip();
+
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
   while (status != IDLE) {
@@ -651,6 +671,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
     return false;
   }
 
+  picking_error_counter = 0;
   status              = PICKING;
   time_of_last_motion = ros::Time::now();
 
@@ -661,6 +682,13 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
   std::cout << "Slow down at Z: " << stopping_height << "\n";
 
   while (!brick_attached && brick_reliable) {
+
+	  if(picking_error_counter > ALLOWED_NUM_OF_ERRORS){
+	  	ROS_ERROR("[kinova_control_manager]: Arm is probably stuck. Consider homing");
+		flushVelocityTopic(msg);
+		res.success = false;
+		return false;
+	  }
 
     if (!getting_realsense_brick) {
       ROS_ERROR("[kinova_control_manager]: Brick lost, aborting pickup");
@@ -836,17 +864,15 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
   time_of_last_motion = ros::Time::now();
 
   // this is some high level collision avoidance stuff
-  ROS_INFO("[kinova_control_manager]: High level collision avoidance stuff");
-  Pose3d waypoint = default_gripping_pose;
-  waypoint.pos.x() -= 0.25;
-  waypoint.pos.y() += 0.15;
-  waypoint.pos.z() = end_effector_pose_compensated.pos.z();
-  Eigen::Vector3d waypoint_euler = quaternionToEuler(waypoint.rot);
-  waypoint_euler.z() += 0.9;
-  waypoint.rot = eulerToQuaternion(waypoint_euler);
-  goTo(waypoint);
-
-  ROS_INFO("[kinova_control_manager]: Waypoint reached, returning to original goal");
+  if(req.num_of_waypoints > 0 && req.num_of_waypoints < 3){
+  	for(int i = 0; i < req.num_of_waypoints; i++){
+  		ROS_INFO("[kinova_control_manager]: Performing collision avoidance. Going to waypoint %d", i);
+  		Pose3d waypoint = waypoints[i];
+  		goTo(waypoint);
+  	}
+  	ROS_INFO("[kinova_control_manager]: All waypoints reached, returning to original goal");
+  }
+  
   status              = MOVING;
   time_of_last_motion = ros::Time::now();
   Pose3d pose = storage_pose[req.position];
@@ -921,41 +947,22 @@ bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::Stora
     return false;
   }
 
-  status              = PICKING;
+  status              = MOVING;
   time_of_last_motion = ros::Time::now();
 
-  kinova_msgs::PoseVelocity msg;
-  ROS_INFO("[kinova_control_manager]: Moving down");
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > ((storage_pose[req.position].pos.z() + 0.2 * req.layer) - 0.2)) {
-    msg.twist_linear_x  = 0.0;
-    msg.twist_linear_y  = 0.0;
-    msg.twist_linear_z  = -move_down_speed_slower;
-    msg.twist_angular_x = 0.0;
-    msg.twist_angular_y = 0.0;
-    msg.twist_angular_z = 0.0;
-    publisher_cartesian_velocity.publish(msg);
-    ros::Duration(0.01).sleep();
-  }
+  Pose3d new_goal = storage_pose[req.position];
+  new_goal.pos.z() += (0.2 * req.layer) - 0.25;
+  goTo(new_goal);
   grip();
-  ROS_INFO("[kinova_control_manager]: MEGA slow now");
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > ((storage_pose[req.position].pos.z() + 0.2 * req.layer) - 0.34)) {
-    msg.twist_linear_x  = 0.0;
-    msg.twist_linear_y  = 0.0;
-    msg.twist_linear_z  = -move_down_speed_mega_slow;
-    msg.twist_angular_x = 0.0;
-    msg.twist_angular_y = 0.0;
-    msg.twist_angular_z = 0.0;
-    publisher_cartesian_velocity.publish(msg);
-    ros::Duration(0.01).sleep();
-  }
+  new_goal.pos.z() -= 0.07;
+  goTo(new_goal);
+
   if (!brick_attached) {
     ROS_ERROR("[kinova_control_manager]: Failed to attach brick!");
-    flushVelocityTopic(msg);
     status      = IDLE;
     res.success = false;
     return false;
   }
-  flushVelocityTopic(msg);
   status      = IDLE;
   res.success = true;
   return true;
@@ -982,6 +989,9 @@ void kinova_control_manager::callbackJointAnglesTopic(const kinova_msgs::JointAn
       time_of_last_motion = ros::Time::now();
       return;
     }
+  }
+  if (status == PICKING){
+  	picking_error_counter++;
   }
 
   /* idle handler //{ */
@@ -1162,6 +1172,26 @@ bool kinova_control_manager::goTo(Pose3d pose) {
   publisher_end_effector_pose.publish(msg);
 
   while (status != MotionStatus_t::IDLE) {
+	if(brick_attached){
+  		msg.goal.pose.pose.position.x = end_effector_pose_compensated.pos.x();
+  		msg.goal.pose.pose.position.y = end_effector_pose_compensated.pos.y();
+  		msg.goal.pose.pose.position.z = end_effector_pose_compensated.pos.z();
+
+  		msg.goal.pose.pose.orientation.x = end_effector_pose_compensated.rot.x();
+  		msg.goal.pose.pose.orientation.y = end_effector_pose_compensated.rot.y();
+  		msg.goal.pose.pose.orientation.z = end_effector_pose_compensated.rot.z();
+  		msg.goal.pose.pose.orientation.w = end_effector_pose_compensated.rot.w();
+
+  		std::stringstream ss;
+  		ss << arm_type << "_link_base";
+  		msg.goal.pose.header.frame_id = ss.str().c_str();
+  		msg.header.frame_id           = ss.str().c_str();
+
+  		publisher_end_effector_pose.publish(msg);
+		
+		status = IDLE;
+	  	return true;
+	}
     ros::Duration(0.01).sleep();
     ros::spinOnce();
   }

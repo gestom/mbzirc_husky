@@ -138,6 +138,7 @@ ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
 ros::ServiceClient brickStoreClient;
 ros::ServiceClient brickDetectorClient;
+ros::ServiceClient storageUnloadClient;
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 
@@ -424,6 +425,7 @@ int prepareStorage()
 	mbzirc_husky_msgs::StoragePosition srv;
 	srv.request.position = active_storage%3;
 	srv.request.layer    = active_storage/3;
+	srv.request.num_of_waypoints = 1;
 	ROS_INFO("STORING BRICK IN POSITION %d, LAYER %d", srv.request.position , srv.request.layer);
 	if (armStorageClient.call(srv)) {
 		ROS_INFO("BRICK READY FOR STORAGE");
@@ -466,6 +468,33 @@ int storeBrick()
 	return -1;
 } 
 
+int descendStorage()
+{
+	mbzirc_husky_msgs::StoragePosition srv;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_storage/3;
+	ROS_INFO("REACHING FOR BRICK IN POSITION %d, LAYER %d", srv.request.position , srv.request.layer);
+	if (armStorageClient.call(srv)) {
+		ROS_INFO("BRICK ATTACHED");
+		return 0;
+	}
+	return -1;
+}
+
+int pickupStorage()
+{
+	mbzirc_husky_msgs::StoragePosition srv;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_storage/3;
+	srv.request.num_of_waypoints = 0;
+	ROS_INFO("UNLOADING FROM POSITION %d, LAYER %d", srv.request.position , srv.request.layer);
+	if (armStorageClient.call(srv)) {
+		ROS_INFO("BRICK PICKED UP FROM STORAGE");
+		return 0;
+	}
+	return -1;
+}
+
 int alignRobotWithBrick()
 {
 	behaviour = ROBOT_ALIGN_X_PHI; 
@@ -478,7 +507,6 @@ int alignRobot()
 //	if (robotXYMove > 0) alignRobotWithWall(0.05); 
 //	if (robotXYMove < 0) alignRobotWithWall(-0.05); 
 }
-
 
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
@@ -510,65 +538,65 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 							 if (active_storage == 4)  {nextState = ARMPOSITIONING;}
 							 if (active_storage == 5)  {nextState = MOVE_TO_GREEN_BRICK_2;}
 							 if (active_storage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
-							 }else { nextState = ARMRESET;} break;
-							 case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
-							 case ROBOT_ALIGN_WITH_WALL: switchDetection(true); robotXYMove = +1; alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
-							 case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); robotXYMove = -1; nextState = ARMPOSITIONING; break;
-							 case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-1.2); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
-							 case MOVE_TO_GREEN_BRICK_2: moveRobot(1.9); robotXYMove = +1; nextState = ARMPOSITIONING; break;
-						 }
-			}
-			usleep(1200000);
-		} 
-		/*if (state == ARMLOWPOSITIONING) {
-			ROS_INFO("MOVING ARM INTO LOW BRICK POSITION");
-			mbzirc_husky_msgs::Float64 srv;
-			srv.request.data = -0.3;
-			if (prepareClient.call(srv)) {
-				usleep(3500000);
-				state = ARMLOWALIGNMENT;
-				mbzirc_husky_msgs::brickDetect brick_srv;
-				brick_srv.request.activate            = true;
-				brick_srv.request.groundPlaneDistance = 0;
-				brick_srv.request.x                   = 640;
-				brick_srv.request.y                   = 480;
-				brickDetectorClient.call(brick_srv.request, brick_srv.response);
-
-			} else {
-				// unsafe
-				//state = ROBOTALIGNMENT_PHI;
-				// state = ARMALIGNMENT;
-				ROS_INFO("ARM POSITION FAILED");
-				usleep(3500000);
-			}
-
-		} else if (state == ARMLOWALIGNMENT) {
-			usleep(5000000);
-			mbzirc_husky_msgs::Float64 srv;
-			srv.request.data = -0.3;
-			if (alignClient.call(srv)) {
-				state = ARMDESCENT;
-				ROS_INFO("ARM ALIGNED");
-			} else {
-				usleep(500000);
-				state = ARMLOWALIGNMENT;
-				ROS_INFO("FAILED: FAILED TO ALIGN ARM (LOW)");
+						 }else { nextState = ARMRESET;} break;
+				case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
+				case ROBOT_ALIGN_WITH_WALL: switchDetection(true); robotXYMove = +1; alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); robotXYMove = -1; nextState = ARMPOSITIONING; break;
+				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-1.2); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_2: moveRobot(1.9); robotXYMove = +1; nextState = ARMPOSITIONING; break;
 			}
 		}
-		usleep(1200000);*/
+		usleep(1200000);
+	} 
+	/*if (state == ARMLOWPOSITIONING) {
+	  ROS_INFO("MOVING ARM INTO LOW BRICK POSITION");
+	  mbzirc_husky_msgs::Float64 srv;
+	  srv.request.data = -0.3;
+	  if (prepareClient.call(srv)) {
+	  usleep(3500000);
+	  state = ARMLOWALIGNMENT;
+	  mbzirc_husky_msgs::brickDetect brick_srv;
+	  brick_srv.request.activate            = true;
+	  brick_srv.request.groundPlaneDistance = 0;
+	  brick_srv.request.x                   = 640;
+	  brick_srv.request.y                   = 480;
+	  brickDetectorClient.call(brick_srv.request, brick_srv.response);
 
-		if (state == FINAL)
-			state = SUCCESS;
-		else
-			state = FAIL;
-		if (state == SUCCESS)
-			server->setSucceeded(result);
-		if (state == FAIL)
-			server->setAborted(result);
-		if (state == PREEMPTED)
-			server->setPreempted(result);
-		state = IDLE;
+	  } else {
+	// unsafe
+	//state = ROBOTALIGNMENT_PHI;
+	// state = ARMALIGNMENT;
+	ROS_INFO("ARM POSITION FAILED");
+	usleep(3500000);
 	}
+
+	} else if (state == ARMLOWALIGNMENT) {
+	usleep(5000000);
+	mbzirc_husky_msgs::Float64 srv;
+	srv.request.data = -0.3;
+	if (alignClient.call(srv)) {
+	state = ARMDESCENT;
+	ROS_INFO("ARM ALIGNED");
+	} else {
+	usleep(500000);
+	state = ARMLOWALIGNMENT;
+	ROS_INFO("FAILED: FAILED TO ALIGN ARM (LOW)");
+	}
+	}
+	usleep(1200000);*/
+
+	if (state == FINAL)
+		state = SUCCESS;
+	else
+		state = FAIL;
+	if (state == SUCCESS)
+		server->setSucceeded(result);
+	if (state == FAIL)
+		server->setAborted(result);
+	if (state == PREEMPTED)
+		server->setPreempted(result);
+	state = IDLE;
+}
 
 int main(int argc, char** argv)
 {
@@ -586,6 +614,7 @@ int main(int argc, char** argv)
 	homeClient          = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
 	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
+	storageUnloadClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/unload_brick");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
 	listener = new tf::TransformListener();
