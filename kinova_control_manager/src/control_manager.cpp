@@ -838,11 +838,11 @@ bool kinova_control_manager::callbackGoToStorageService(mbzirc_husky_msgs::Stora
   // this is some high level collision avoidance stuff
   ROS_INFO("[kinova_control_manager]: High level collision avoidance stuff");
   Pose3d waypoint = default_gripping_pose;
-  waypoint.pos.x() -= 0.2;
+  waypoint.pos.x() -= 0.25;
   waypoint.pos.y() += 0.15;
   waypoint.pos.z() = end_effector_pose_compensated.pos.z();
   Eigen::Vector3d waypoint_euler = quaternionToEuler(waypoint.rot);
-  waypoint_euler.z() += 0.7;
+  waypoint_euler.z() += 0.9;
   waypoint.rot = eulerToQuaternion(waypoint_euler);
   goTo(waypoint);
 
@@ -926,7 +926,7 @@ bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::Stora
 
   kinova_msgs::PoseVelocity msg;
   ROS_INFO("[kinova_control_manager]: Moving down");
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.2)) {
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > ((storage_pose[req.position].pos.z() + 0.2 * req.layer) - 0.2)) {
     msg.twist_linear_x  = 0.0;
     msg.twist_linear_y  = 0.0;
     msg.twist_linear_z  = -move_down_speed_slower;
@@ -938,7 +938,7 @@ bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::Stora
   }
   grip();
   ROS_INFO("[kinova_control_manager]: MEGA slow now");
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > (req.position + 0.2 * req.layer - 0.34)) {
+  while (!brick_attached && end_effector_pose_compensated.pos.z() > ((storage_pose[req.position].pos.z() + 0.2 * req.layer) - 0.34)) {
     msg.twist_linear_x  = 0.0;
     msg.twist_linear_y  = 0.0;
     msg.twist_linear_z  = -move_down_speed_mega_slow;

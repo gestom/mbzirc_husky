@@ -343,6 +343,7 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 	       	segmentArray[i].crit = segmentArray[i].y;
 	       	segmentArray[i].crit = segmentArray[i].crit*segmentArray[i].valid;
 	       	if (wantedType != 0) segmentArray[i].crit = segmentArray[i].crit*(segmentArray[i].type == wantedType);
+	       	if (segmentArray[i].y > 400) segmentArray[i].crit = 0; 
 	}
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	for (int i = 0;i<numSegments;i++)
