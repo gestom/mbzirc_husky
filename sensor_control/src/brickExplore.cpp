@@ -120,6 +120,7 @@ bool isTerminal(ESprayState state)
 {
 	if(state == EXPLORINGBRICKS) return false;
 	if(state == MOVINGTOBRICKS) return false;
+	if(state == PRECISEBRICKFIND) return false;
 	if(state == BRICKAPPROACH) return false;
     if(state == EXPLORINGSTACKSITE) return false;
 	if(state == MOVINGTOSTACKSITE) return false;
@@ -384,7 +385,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		bool s = false;
 		for ( int j = 0; j <= num_ranges; j++){
 			angle = scan_msg->angle_min+j*scan_msg->angle_increment;
-		if(angle < (3.1415/4) && angle > -(3.14/2) ){ 	
+		if(angle < (3.1415/10) && angle > -(3.14/2) ){ 	
 
 			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance) {
 				pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));
@@ -799,9 +800,18 @@ void moveToApproachWP()
 
 void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
 {
+	if(state != PRECISEBRICKFIND)
+	{
+		ROS_INFO("cb ignored, not currently searching");
+		return;
+	}
     if(precisePositionFound)
+    {
+	    ROS_INFO("already found, ignoring");
         return; 
-	ROS_INFO("RECEIVED POS");
+    }
+	ROS_INFO("RECEIVED RANSAC POS");
+	usleep(5000000);
 	char* ch;
 	ch = strtok(strdup(msg->data.c_str()), " ");
 	int varIdx = 0;
@@ -827,7 +837,7 @@ void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
     {
         geometry_msgs::PoseStamped pose;
         pose.header.frame_id = "base_link";
-        pose.header.stamp = ros::Time::now();
+        pose.header.stamp = ros::Time(0);
         pose.pose.position.x = OX;
         pose.pose.position.y = OY;
         pose.pose.position.z = 0;
@@ -835,7 +845,7 @@ void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
         pose.pose.orientation.y = 0;
         pose.pose.orientation.z = 0;
         pose.pose.orientation.w = 1;
-        listener.waitForTransform("/base_link", "map", ros::Time::now(), ros::Duration(1.0));
+        listener.waitForTransform("/base_link", "map", ros::Time(0), ros::Duration(1.0));
         geometry_msgs::PoseStamped newPose;
         listener.transformPose("/map", pose, newPose);
         brickStackOrangeX = newPose.pose.position.x;
@@ -1055,7 +1065,7 @@ void findBricks()
 
 void moveToBrickPile()
 {
-    ROS_INFO("Moving to bricks");
+    ROS_INFO("Moving to brick pile");
     //get front/back normals of brick stack
     float dx = brickStackOrangeX - brickStackRedX;
     float dy = brickStackOrangeY - brickStackRedY;
@@ -1064,9 +1074,9 @@ void moveToBrickPile()
         brickStackLocationKnown = false;
         return;
     }
-    printf("BRICK %f: %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+    printf("BRICK pile pos %f: %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0,0,atan2(dy,dx));
+    quat_tf.setRPY(0,0,atan2(dy,dx)+0.1);
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
 
@@ -1080,18 +1090,18 @@ void moveToBrickPile()
     float gradientX = dx / magnitude;
     float gradientY = dy / magnitude;
 
-    float wayPointX = 2.5;
-    float wayPointY = 1;
+    float wayPointX = 2.;
+    float wayPointY = 1.2;
     float originX = brickStackRedX;
     float originY = brickStackRedY;
     //add the y
-    printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
     float mapWPX = originX + (frontNormalX * wayPointY);
     float mapWPY = originY + (frontNormalY * wayPointY);
     //add the x
     mapWPX -= (gradientX * (wayPointX)); 
     mapWPY -= (gradientY * (wayPointX));
 
+    printf("markers: %f %f %f %f %f %f\n",originX,originY,frontNormalX,frontNormalY,wayPointX,wayPointY);
     ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
 
     visualization_msgs::Marker marker;
@@ -1136,9 +1146,10 @@ void moveToBrickPile()
     {
         usleep(15000000);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+	ROS_INFO("Move base state %s", mbState.getText());
         if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
         {
-            ROS_INFO("Approached current bricks, setting to final");
+            ROS_INFO("Approached current bricks, setting to precise");
            
             //yeah this is copied from online, but it only needs to trigger it
             std_msgs::String msg;
@@ -1151,9 +1162,12 @@ void moveToBrickPile()
             state = PRECISEBRICKFIND;
             break;
         }
-        ROS_INFO("Long time for move base, current state: %s", mbState.getText().c_str());
-        state = FAIL;
-        break;
+	else
+	{
+        	ROS_INFO("Long time for move base, current state: %s", mbState.getText().c_str());
+        	state = FAIL;
+        	break;
+	}
     }
 }
 
@@ -1165,7 +1179,8 @@ void preciseBrickFind()
    }
    else
    {
-        usleep(1000000);
+        ROS_INFO("Waiting for ransac...");
+	   usleep(1000000);
    }
 }
 
@@ -1203,7 +1218,8 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         }
         else if(state == PRECISEBRICKFIND)
         {
-            preciseBrickFind();
+		ROS_INFO("Precise brick find");
+    		preciseBrickFind();
         }
         else if(state == BRICKAPPROACH)
         {
@@ -1221,6 +1237,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         {
             state = FINAL;
         }
+	ROS_INFO("explore AS looped");
         usleep(100);
     }
 	if (state == FINAL) state = SUCCESS; else state = FAIL;
@@ -1247,7 +1264,7 @@ int main(int argc, char** argv)
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
-	preciseLocation = n.subscribe("/ransac/clusterer_sub", 1, preciseLocationCallback);
+	preciseLocation = n.subscribe("/ransac/clusterer_str", 1, preciseLocationCallback);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);
 	server = new Server(n, "brickExploreServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();

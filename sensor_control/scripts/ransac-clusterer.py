@@ -8,10 +8,10 @@ from geometry_msgs.msg import Point
 import numpy as np
 
 distanceFromCluster = 0.5
-requiredObvs = 200
+requiredObvs = 50
 
 pub = None
-pub_str = nNone
+pub_str = None
 frame = None
 ts = None
 existingClusters = []
@@ -22,9 +22,9 @@ def createNewCluster(x, y, distX, distY):
     cluster = {'x': x, 'y': y, 'distX': distX, 'distY': distY, 'totalX': x, 'totalY': y, 'observations': 1, 'totalDistX': distX, 'totalDistY': distY}
     existingClusters.append(cluster)
 
-def resetCallback():
+def resetCallback(msg):
     global existingClusters
-    print("Resetting ransac clusters")
+    print("resetting clusters")
     existingClusters = []
 
 def appendToCluster(clusIdx, x, y, distX, distY):
@@ -66,22 +66,11 @@ def ransacCallback(msg):
    #    print(points)
    #    return
    if points[0][0] > 999 or points[0][1] > 999 or points[1][0] > 999 or points[1][1] > 999:
-       print("Bullshit values in ransac, ignoring")
+       #print("Bullshit values in ransac, ignoring")
        return
-
-   #tf lookup
-   transform = None
-   try:
-       transform = tfListener.lookupTransform('map', 'velodyne', rospy.Time(0))
-   except:
-       print("Aborting ransac, unable to get tf transform")
+   if points[0][0] < -999 or points[0][1] < -999 or points[1][0] < -999 or points[1][1] < -999:
+       #print("Bullshit values in ransac, ignoring")
        return
-   transformMat = tf.transformations.translation_matrix(transform[0])
-   rotationMat = tf.transformations.quaternion_matrix(transform[1])
-   mat = np.dot(transformMat, rotationMat)
-   
-   points[0] = np.dot(mat, np.append(points[0][:2], [1.0, 1.0]))
-   points[1] = np.dot(mat, np.append(points[0][:2], [1.0, 1.0])) 
 
    #naively use closest as close point
    distToA = abs(((points[0][0]**2) + (points[0][1]**2)**0.5))
@@ -95,8 +84,11 @@ def ransacCallback(msg):
    
    addedToCluster = False 
    for clusIdx in range(len(existingClusters)):
-       distX = points[first][0] - existingClusters[clusIdx]["x"]
-       distY = points[first][1] - existingClusters[clusIdx]["y"]
+       try:
+           distX = points[first][0] - existingClusters[clusIdx]["x"]
+           distY = points[first][1] - existingClusters[clusIdx]["y"]
+       except IndexError:
+           return
        distToClust = (distX**2 + distY**2)**0.5
 
        if distToClust < distanceFromCluster:
@@ -128,15 +120,15 @@ def publishBestCluster():
             bestClusterObvs = i["observations"]
             bestCluster = i
     points = []
-    print(bestCluster)
+    #print(bestCluster)
     if bestCluster["observations"] < requiredObvs:
-        print("Not enough observations yet")
+        print("Not enough observations yet, %i/%i", bestCluster["observations"], requiredObvs)
         return
     points.append(Point(x=bestCluster["x"], y=bestCluster["y"], z=0.3))
     points.append(Point(x=bestCluster["distX"], y=bestCluster["distY"], z=0.3))
     msg.points = points
     pub.publish(msg)
-    pub_str.publish("%f %f %f %f", bestCluster["x"], bestCluster["y"], bestCluster["distX"], bestCluster["distY"])
+    pub_str.publish(str(bestCluster["x"]) + " " + str(bestCluster["y"]) + " " + str(bestCluster["distX"]) + " " + str(bestCluster["distY"]))
 
 if __name__ == "__main__":
 
@@ -146,7 +138,6 @@ if __name__ == "__main__":
     rospy.Subscriber("/ransac/clusterer_reset", String, resetCallback)
     pub_str = rospy.Publisher("/ransac/clusterer_str", String, queue_size=5)
     rospy.Subscriber("/ransac/poi", PointCloud2, ransacCallback)
-    rospy.Subscriber("/ransac/clusterer_reset", String, resetCallback)
     rate = rospy.Rate(2)
     while not rospy.is_shutdown():
         publishBestCluster()

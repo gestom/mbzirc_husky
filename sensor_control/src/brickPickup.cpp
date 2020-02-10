@@ -33,8 +33,10 @@ typedef enum{
 const char *behStr[] = { 
 	"None",
 	"aligning x and phi",
-	"aligning phi",
-	"move straight",
+	"moving and turning to align y",
+	"aligining phi",
+	"moving y",
+	"moving fw/bw",
 	"number"
 };
 
@@ -43,25 +45,27 @@ EBehaviour nextBehaviour = NONE;
 EBehaviour recoveryBehaviour = NONE;
 
 int behaviourResult = 0;
+int robotXYMove = 1;
+int alignMessageDelayCount = 210;
 
 const char *stateStr[] = { 
 	"Idle",
 	"TEST1",
 	"TEST2",
-	"ARMRESET",		
-	"ARMPOSITIONING", 	
+	"resetting arm",		
+	"positioning arm", 	
 	"aligning robot to a brick",	
-	"ARMPOSITIONING to the second brick", 	
-	"ARMALIGNMENT",	
-	"ARMDESCENT",
-	"ARMPICKUP",
-	"ARMSTORAGE",
-	"BRICKSTORE",
-	"move to the next brick",
+	"aligning arm", 	
+	"descending arm",
+	"picking up",
+	"preparing to store",
+	"storing",
+	"move to red brick pile 2 for align",
 	"align with the wall",
-	"move to the green brick",
-	"ARMLOWPOSITIONING",
-	"ARMLOWALIGNMENT",
+	"move to the green brick 1",
+	"move to the green brick 2",
+	"move to the blue brick",
+	"move to the red brick 2 for pickup",
 	"TERMINALSTATE",
 	"FINAL",
 	"STOPPING",
@@ -78,7 +82,6 @@ typedef enum{
 	TEST2,
 	ARMRESET,		//arm goes to dock position
 	ARMPOSITIONING, 	//arm goes to overview positions
-	ARMPOSITIONING_NOMOVE, 	//arm goes to overview positions
 	ROBOT_ALIGNMENT, 	//arm goes to overview positions
 	ARMALIGNMENT,		 //arm makes fine alignment
 	ARMDESCENT,		 //arm does down and detects the magnet feedback
@@ -89,8 +92,8 @@ typedef enum{
 	ROBOT_ALIGN_WITH_WALL,	 //
 	MOVE_TO_GREEN_BRICK_1,	 //
 	MOVE_TO_GREEN_BRICK_2,	 //
-	ARMLOWPOSITIONING,	//usused atm
-	ARMLOWALIGNMENT,	//unused atm
+	MOVE_TO_BLUE_BRICK,	 //
+	MOVE_TO_RED_BRICK_2,	 //
 	TERMINALSTATE,	 //marks terminal state
 	FINAL,
 	STOPPING,
@@ -197,10 +200,9 @@ int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg)
 	float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
 	float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
 	float dist = sqrt(dx*dx+dy*dy);
-	printf("Moving fw: %.3f %.3f\n",dist,moveDistance); 
 	spd.linear.x = (fabs(moveDistance) - dist + 0.1);
 	if (moveDistance < 0) spd.linear.x = -spd.linear.x;
-	if (dist > moveDistance) {
+	if (dist > fabs(moveDistance)) {
 		spd.linear.x = spd.angular.z = 0;
 		behaviour = nextBehaviour;
 		printf("Movement done: %.3f %.3f\n",dist,moveDistance); 
@@ -218,7 +220,6 @@ int robotMTM(const sensor_msgs::LaserScanConstPtr &msg)
 	float dist = sqrt(dx*dx+dy*dy);
 	spd.linear.x = (fabs(moveDistance) - dist + 0.1);
 	if (moveDistance < 0) spd.linear.x = - spd.linear.x;
-	printf("MTM moving: %.3f %.3f\n",dist,moveDistance); 
 	if (dist > fabs(moveDistance) && moveDistance < 0){
 		behaviour = nextBehaviour; 	
 	}
@@ -226,7 +227,6 @@ int robotMTM(const sensor_msgs::LaserScanConstPtr &msg)
 	{
 		spd.linear.x = 0;
 		float angleDiff = anchorAngle-tf::getYaw(robotPose.pose.orientation);
-		printf("MTM turning: %.3f \n",angleDiff); 
 		spd.angular.z =  angleDiff*10;
 		if (fabs(angleDiff) < 0.01){
 			anchorPose = robotPose;
@@ -256,15 +256,21 @@ int moveTurnMove(float distance,EBehaviour nextBeh = NONE)
 	return 0;
 }
 
+int alignRobotWithWall(float offset = 0,int messageDelayCount = 210,EBehaviour nb=NONE)
+{
+	wallAngleOffset = offset;
+	alignMessageDelayCount = messageDelayCount;
+	behaviour = ROBOT_ALIGN_PHI;
+	nextBehaviour = nb;
+}
 
 int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 {
 	float angle = tf::getYaw(msg->pose.pose.orientation);
 	geometry_msgs::Twist spd;
-	printf("Robot align: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
 	spd.linear.x = spd.angular.z = 0;
 	if (msg->detected){
-		if (incomingMessageCount++ > 90) {
+		if (incomingMessageCount++ > 120) {
 			float angleDiff = (msg->pose.pose.position.y*3-angle);
 			spd.angular.z =  angleDiff*10;
 			spd.linear.x = -msg->pose.pose.position.x;
@@ -272,11 +278,13 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 			
 			if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(msg->pose.pose.position.x) < 0.02){
 				spd.linear.x = spd.angular.z = 0;
+				printf("Final robot alignment: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
 				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
-				behaviour = NONE;
+				alignRobotWithWall(robotXYMove*0.05,NONE); 
 				return 0;
 			}
 			if ((fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02) || (angle*msg->pose.pose.position.y > 0 && fabs(angle) > 0.2)){
+				printf("Current robot alignment: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
 				anchorPose = robotPose;
 				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
 				moveTurnMove(0.3,ROBOT_ALIGN_X_PHI);
@@ -295,20 +303,17 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 	return;
 }
 
-
-
-
 int robotAlignPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 {
 	float angle = tf::getYaw(msg->pose.pose.orientation);
-	printf("Robot align to the wall: %f\n", angle);
 	spd.linear.x = spd.angular.z = 0;
 	if (msg->detected){
-		if (incomingMessageCount++ > 90) {
+		if (incomingMessageCount++ > alignMessageDelayCount) {
 			float angleDiff = wallAngleOffset-angle;
 			spd.angular.z =  angleDiff*10;
 			spd.linear.x = 0;
 			if (fabs(angleDiff) < 0.01){
+				printf("Robot aligned to the wall: %f\n", angle);
 				behaviour = nextBehaviour;
 				return 0;
 			}
@@ -317,13 +322,6 @@ int robotAlignPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	setSpeed(spd);
 }
 
-int alignRobotWithWall(float offset = 0,EBehaviour nb=NONE)
-{
-	wallAngleOffset = offset;
-	incomingMessageCount = -120;
-	behaviour = ROBOT_ALIGN_PHI;
-	nextBehaviour = nb;
-}
 
 
 void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
@@ -358,7 +356,8 @@ int positionArm(bool high = true)
 	if (active_storage == 1) srv.request.data = -0.3;
 	if (prepareClient.call(srv)) {
 		usleep(3500000);	//TODO this is unsafe
-		if (active_storage == 1) usleep(1700000); 
+		if (active_storage == 1) usleep(2300000); 
+		if (active_storage == 2) usleep(3300000); 
 		ROS_INFO("ARM POSITIONED");
 		return 0;
 	}
@@ -472,12 +471,23 @@ int alignRobotWithBrick()
 	behaviour = ROBOT_ALIGN_X_PHI; 
 }
 
+int alignRobot()
+{
+	alignRobotWithBrick(); 
+//	if (robotXYMove == 0) alignRobotWithBrick(); 
+//	if (robotXYMove > 0) alignRobotWithWall(0.05); 
+//	if (robotXYMove < 0) alignRobotWithWall(-0.05); 
+}
+
+
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
 	state = ARMRESET;//TODO
+	//state = TEST1;//TODO
 	EState nextState = state;
 	EState recoveryState = state;
+	active_storage = 4;
 	while (isTerminal(state) == false && ros::ok()) 
 	{
 		printf("Active behaviour %s, active state %s\n",toStr(behaviour),toStr(state));
@@ -486,29 +496,32 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 			switch (state){
 				case TEST1: if (moveRobot(+0.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
 				case TEST2: if (moveRobot(-0.5) == 0) nextState = TEST1; else nextState = IDLE; break;
-				case ARMRESET: if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
+				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
-				case ARMPOSITIONING_NOMOVE: if (positionArm() == 0) {switchDetection(true);  nextState = ARMALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
-				case ROBOT_ALIGNMENT: alignRobotWithBrick(); nextState = ARMALIGNMENT; break;
+				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
 				case ARMALIGNMENT: if (alignArm() == 0) nextState = ARMDESCENT; else nextState = ARMRESET; break;
 				case ARMDESCENT: if (descentArm() == 0) nextState = ARMPICKUP; else nextState = ARMALIGNMENT; switchDetection(false); break;
 				case ARMPICKUP:  if (pickupBrick() == 0) nextState = ARMSTORAGE; else nextState = ARMALIGNMENT; break;
 				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMALIGNMENT; break;
 				case BRICKSTORE: if (storeBrick() == 0){
-							 if (active_storage == 1)  nextState = ARMPOSITIONING_NOMOVE;
-							 if (active_storage == 2)  nextState = ROBOT_MOVE_NEXT_BRICK;
-							 if (active_storage == 3)  nextState = MOVE_TO_RED_BRICK_2;
-						  }else { nextState = ARMRESET;} break;
-				case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
-				case ROBOT_ALIGN_WITH_WALL: switchDetection(true); alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
-				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.6); nextState = ARMRESET; break;
-				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); nextState = ARMPOSITIONING_NOMOVE; break;
-				case MOVE_TO_RED_BRICK_1: switchDetection(false); moveRobot(-1.2); nextState = ARMPOSITIONING_NOMOVE; break;
+							 printf("STORAGE status %i\n",active_storage);
+							 if (active_storage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
+							 if (active_storage == 2)  {nextState = ROBOT_MOVE_NEXT_BRICK;} 	//after the second red, allow only forward phi alignment 
+							 if (active_storage == 3)  {nextState = MOVE_TO_RED_BRICK_2;}		//after picking up green, allow only backward phi alignment 
+							 if (active_storage == 4)  {nextState = ARMPOSITIONING;}
+							 if (active_storage == 5)  {nextState = MOVE_TO_GREEN_BRICK_2;}
+							 if (active_storage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
+							 }else { nextState = ARMRESET;} break;
+							 case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
+							 case ROBOT_ALIGN_WITH_WALL: switchDetection(true); robotXYMove = +1; alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
+							 case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); robotXYMove = -1; nextState = ARMPOSITIONING; break;
+							 case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-1.2); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
+							 case MOVE_TO_GREEN_BRICK_2: moveRobot(1.9); robotXYMove = +1; nextState = ARMPOSITIONING; break;
+						 }
 			}
-		}
-		usleep(1200000);
-	} 
-if (state == ARMLOWPOSITIONING) {
+			usleep(1200000);
+		} 
+		/*if (state == ARMLOWPOSITIONING) {
 			ROS_INFO("MOVING ARM INTO LOW BRICK POSITION");
 			mbzirc_husky_msgs::Float64 srv;
 			srv.request.data = -0.3;
@@ -543,20 +556,20 @@ if (state == ARMLOWPOSITIONING) {
 				ROS_INFO("FAILED: FAILED TO ALIGN ARM (LOW)");
 			}
 		}
-	usleep(1200000);
+		usleep(1200000);*/
 
-	if (state == FINAL)
-		state = SUCCESS;
-	else
-		state = FAIL;
-	if (state == SUCCESS)
-		server->setSucceeded(result);
-	if (state == FAIL)
-		server->setAborted(result);
-	if (state == PREEMPTED)
-		server->setPreempted(result);
-	state = IDLE;
-}
+		if (state == FINAL)
+			state = SUCCESS;
+		else
+			state = FAIL;
+		if (state == SUCCESS)
+			server->setSucceeded(result);
+		if (state == FAIL)
+			server->setAborted(result);
+		if (state == PREEMPTED)
+			server->setPreempted(result);
+		state = IDLE;
+	}
 
 int main(int argc, char** argv)
 {

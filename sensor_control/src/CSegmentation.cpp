@@ -311,7 +311,6 @@ SSegment CSegmentation::findSegment(CRawDepthImage *image,int minSize,int maxSiz
 			dX[ii] = segmentArray[i].cPX[ii]-segmentArray[i].cPX[(ii+1)%4];
 			dY[ii] = segmentArray[i].cPY[ii]-segmentArray[i].cPY[(ii+1)%4];
 			dist[ii] = sqrt(dX[ii]*dX[ii]+dY[ii]*dY[ii]);
-			printf("DIST: %f\n",dist[ii]);
 		}
 		if (dist[0] > dist[1])
 		{

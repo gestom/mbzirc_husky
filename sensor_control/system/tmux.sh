@@ -13,9 +13,12 @@ tmux send-keys 'roslaunch mbzirc_husky gmapping.launch'
 tmux split-window
 tmux send-keys 'roslaunch mbzirc_husky amcl.launch'
 tmux split-window -h
+tmux send-keys 'rosrun amcl amcl'
+tmux split-window
 tmux send-keys 'roslaunch mbzirc_husky laserscan.launch'
 tmux split-window
 tmux send-keys 'roscd mbzirc_husky;rosrun map_server map_server maps/map.yaml'
+tmux select-layout tiled
 tmux new-window -n:"Arm"
 tmux send-keys 'roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=j2n6s300'
 tmux split-window -v
