@@ -24,6 +24,7 @@ add_message_files(DIRECTORY msg/ FILES
 
 add_service_files(DIRECTORY srv/ FILES
   Vector3.srv
+  Vector7.srv
   Float64.srv
   EndEffectorPose.srv
   brickDetect.srv
