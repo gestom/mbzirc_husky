@@ -31,6 +31,7 @@ Server *server;
 
 ros::ServiceClient prepareClient;
 ros::Subscriber scan_sub;
+ros::Publisher ransac_pub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
 ros::Publisher point_of_inter_pub;
@@ -40,6 +41,7 @@ typedef enum{
 	IDLE = 0,
 	EXPLORINGBRICKS,
     MOVINGTOBRICKS,
+    PRECISEBRICKFIND,
     BRICKAPPROACH,
     EXPLORINGSTACKSITE,
     MOVINGTOSTACKSITE,
@@ -67,11 +69,12 @@ float fwSpeed = 0.1;
 int misdetections = 0;
 
 //brickStackLocation in map frame
-bool brickStackLocationKnown = false;
-float brickStackRedX = 0.0f;
-float brickStackRedY = 0.0f;
-float brickStackOrangeX = 0.0f;
-float brickStackOrangeY = 0.0f;
+bool brickStackLocationKnown = true;
+bool precisePositionFound = false;
+float brickStackRedX = -1.27;
+float brickStackRedY = -0.65;
+float brickStackOrangeX = -5.21;
+float brickStackOrangeY = -0.64;
 
 ros::Subscriber schedulerSub;
 int redBricksRequired = 0;
@@ -79,7 +82,7 @@ int greenBricksRequired = 0;
 int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
 
-ros::Subscriber locationDebug;
+ros::Subscriber preciseLocation;
 
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* movebaseAC;
 
@@ -381,7 +384,7 @@ void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		bool s = false;
 		for ( int j = 0; j <= num_ranges; j++){
 			angle = scan_msg->angle_min+j*scan_msg->angle_increment;
-		if(angle < 0 && angle > -(3.14/2) ){ 	
+		if(angle < (3.1415/4) && angle > -(3.14/2) ){ 	
 
 			if (fabs(maxA[b1]*x[j]-y[j]+maxB[b1])<tolerance) {
 				pcl_two_line_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.15));
@@ -794,29 +797,64 @@ void moveToApproachWP()
     ROS_INFO("Approached, done");
 }
 
-void locationDebugCallback(const std_msgs::String::ConstPtr& msg)
+void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
 {
-	if(brickStackLocationKnown)
-		return;
+    if(precisePositionFound)
+        return; 
 	ROS_INFO("RECEIVED POS");
 	char* ch;
 	ch = strtok(strdup(msg->data.c_str()), " ");
 	int varIdx = 0;
+
+    int RX, RY, OX, OY;
+
 	while(ch != NULL)
 	{
 		if(varIdx == 0)
-			brickStackRedX = atof(ch);
+			RX = atof(ch);
 		else if(varIdx == 1)
-			brickStackRedY = atof(ch);
+			RY = atof(ch);
 		else if(varIdx == 2)
-			brickStackOrangeX = atof(ch);
+			OX = atof(ch);
 		else if(varIdx == 3)
-			brickStackOrangeY = atof(ch);
+			OY = atof(ch);
 		varIdx++;
 		ch = strtok(NULL, " ");
 	}
+
+    tf::TransformListener listener;
+    try
+    {
+        geometry_msgs::PoseStamped pose;
+        pose.header.frame_id = "base_link";
+        pose.header.stamp = ros::Time::now();
+        pose.pose.position.x = OX;
+        pose.pose.position.y = OY;
+        pose.pose.position.z = 0;
+        pose.pose.orientation.x = 0;
+        pose.pose.orientation.y = 0;
+        pose.pose.orientation.z = 0;
+        pose.pose.orientation.w = 1;
+        listener.waitForTransform("/base_link", "map", ros::Time::now(), ros::Duration(1.0));
+        geometry_msgs::PoseStamped newPose;
+        listener.transformPose("/map", pose, newPose);
+        brickStackOrangeX = newPose.pose.position.x;
+        brickStackOrangeY = newPose.pose.position.y;
+        pose.pose.position.x = RX; 
+        pose.pose.position.y = RY; 
+        listener.transformPose("/map", pose, newPose);
+        brickStackRedX = newPose.pose.position.x;
+        brickStackRedY = newPose.pose.position.y;
+    }
+    catch (tf::TransformException &ex)
+    {
+        ROS_INFO("Error looking up transform %s", ex.what());
+        return;
+    }
+
 	ROS_INFO("POSITION STORED");
 	brickStackLocationKnown = true;
+    precisePositionFound = true;
 }
 
 void moveToBricks(int brick)
@@ -1015,6 +1053,122 @@ void findBricks()
     usleep(1000000);
 }
 
+void moveToBrickPile()
+{
+    ROS_INFO("Moving to bricks");
+    //get front/back normals of brick stack
+    float dx = brickStackOrangeX - brickStackRedX;
+    float dy = brickStackOrangeY - brickStackRedY;
+    if (sqrt(dx*dx+dy*dy) < 1.0)
+    {
+        brickStackLocationKnown = false;
+        return;
+    }
+    printf("BRICK %f: %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0,0,atan2(dy,dx));
+    float orientationZ = quat_tf.z();
+    float orientationW = quat_tf.w();
+
+    float frontNormalX = -dy;
+    float frontNormalY = dx;
+
+    //normalise normals
+    float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
+    frontNormalX /= magnitude;
+    frontNormalY /= magnitude;
+    float gradientX = dx / magnitude;
+    float gradientY = dy / magnitude;
+
+    float wayPointX = 2.5;
+    float wayPointY = 1;
+    float originX = brickStackRedX;
+    float originY = brickStackRedY;
+    //add the y
+    printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
+    float mapWPX = originX + (frontNormalX * wayPointY);
+    float mapWPY = originY + (frontNormalY * wayPointY);
+    //add the x
+    mapWPX -= (gradientX * (wayPointX)); 
+    mapWPY -= (gradientY * (wayPointX));
+
+    ROS_INFO("MOVING TO POS %f %f", mapWPX, mapWPY);
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::ARROW;
+
+    marker.scale.x = 0.4;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+
+    marker.color.r = 0;
+    marker.color.g = 0;
+    marker.color.b = 0;
+    marker.color.a = 1;
+
+    marker.pose.position.x = mapWPX;
+    marker.pose.position.y = mapWPY;
+    marker.pose.position.z = 0;
+
+    marker.pose.orientation.x = 0;
+    marker.pose.orientation.y = 0;
+    marker.pose.orientation.z = orientationZ;
+    marker.pose.orientation.w = orientationW;
+
+    debugVisualiser.publish(marker);
+
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = mapWPX;
+    goal.target_pose.pose.position.y = mapWPY;
+
+    //goal orientation
+    goal.target_pose.pose.orientation.z = orientationZ;
+    goal.target_pose.pose.orientation.w = orientationW;
+
+    ROS_INFO("Moving to brick position");
+    movebaseAC->sendGoal(goal);
+    while(ros::ok())
+    {
+        usleep(15000000);
+        actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+        if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+        {
+            ROS_INFO("Approached current bricks, setting to final");
+           
+            //yeah this is copied from online, but it only needs to trigger it
+            std_msgs::String msg;
+            std::stringstream ss;
+            ss << "hello world ";
+            msg.data = ss.str();
+
+            ransac_pub.publish(msg);
+            precisePositionFound = false;
+            state = PRECISEBRICKFIND;
+            break;
+        }
+        ROS_INFO("Long time for move base, current state: %s", mbState.getText().c_str());
+        state = FAIL;
+        break;
+    }
+}
+
+void preciseBrickFind()
+{
+   if(precisePositionFound)
+   {
+       moveToApproachWP(); 
+   }
+   else
+   {
+        usleep(1000000);
+   }
+}
+
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
 {
     mbzirc_husky::brickExploreResult result;
@@ -1045,7 +1199,11 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         }
         else if(state == MOVINGTOBRICKS)
         {
-            //TODO moveToBricks(goal->brick);
+            moveToBrickPile();
+        }
+        else if(state == PRECISEBRICKFIND)
+        {
+            preciseBrickFind();
         }
         else if(state == BRICKAPPROACH)
         {
@@ -1086,9 +1244,10 @@ int main(int argc, char** argv)
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
     scan_sub = n.subscribe("/scan",100, scanCallback);	
+	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
-	locationDebug = n.subscribe("/locationDebug", 1, locationDebugCallback);
+	preciseLocation = n.subscribe("/ransac/clusterer_sub", 1, preciseLocationCallback);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);
 	server = new Server(n, "brickExploreServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();
