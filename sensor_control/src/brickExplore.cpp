@@ -81,6 +81,7 @@ int redBricksRequired = 0;
 int greenBricksRequired = 0;
 int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
+int moveToBrickPosition(float x, float y, float orientationOffset);
 
 ros::Subscriber preciseLocation;
 
@@ -749,12 +750,6 @@ void findBricks()
     usleep(1000000);
 }
 
-void finalApproach()
-{
-    ROS_INFO("Final approach");
-    if moveToBrickPosition(-0.5, 0.55);
-}
-
 void moveToBrickPile()
 {
     ROS_INFO("Approaching bricks");
@@ -789,8 +784,8 @@ void preciseBrickFind()
 
 int moveToBrickPosition(float x, float y, float orientationOffset)
 { 
-    float dx = brickStackOrangeX - brickStackRedX;
-    float dy = brickStackOrangeY - brickStackRedY;
+    float dx = abs(brickStackOrangeX) - abs(brickStackRedX);
+    float dy = abs(brickStackOrangeY) - abs(brickStackRedY);
     if (sqrt(dx*dx+dy*dy) < 1.0)
     {
         brickStackLocationKnown = false;
@@ -858,7 +853,7 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
     goal.target_pose.pose.orientation.w = orientationW;
 
     movebaseAC->sendGoal(goal);
-    movebaseAC->waitForResult(const ros::Duration &timeout = ros::Duration(0, 0));
+    movebaseAC->waitForResult(ros::Duration(0, 0));
     actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
     ROS_INFO("Move base state %s", mbState.getText());
 
@@ -882,6 +877,21 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
         ROS_INFO("Move base timed out, current state: %s", mbState.getText().c_str());
         return -1;
     }
+}
+
+void finalApproach()
+{
+	ROS_INFO("Final approach");
+	if(moveToBrickPosition(-0.5, 0.55, 0.0) == 0)
+	{
+		ROS_INFO("Approach successful");
+		state = FINAL;
+	}
+	else
+	{
+		ROS_INFO("Failed final approach, going round again");
+		state = MOVINGTOBRICKS;
+	}
 }
 
 void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Server* as)
