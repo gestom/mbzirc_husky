@@ -12,19 +12,25 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 #include <sstream>
 #include <cstdlib>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <opencv2/core.hpp>
+#include <random>
+#include <iterator>
+#include <std_msgs/builtin_string.h>
+#include <string>
 
 #define LEN_MULTIPLIER (0.03271908282177614)    // SPECIFIC FOR VLP16
 #define INV_SQRT_2PI (0.3989422804014327)
 
 #define GET_CENTER(x1, x2) ((x1 + x2)/2)
 
-typedef cv::Point3f MyPoint;
+typedef cv::Point3d MyPoint;
 typedef std::array<MyPoint, 2> BrickLine;
 
 class BrickDetector {
@@ -32,10 +38,12 @@ class BrickDetector {
 public:
 
     ros::NodeHandle *n;
+    std::array<std::vector<MyPoint>, 4> wall_setup;
 
     BrickDetector(ros::NodeHandle node) {
         n = &node;
         fetch_parameters();
+        build_wall();
     }
 
     std::array<std::vector<BrickLine>, 4> find_bricks(sensor_msgs::PointCloud2 &ptcl);
@@ -44,7 +52,12 @@ public:
 
     void filter_on_line(MyPoint p1, MyPoint p2, std::array<std::vector<BrickLine>, 4> &ret);
 
-    std::array<std::array<double, 2>, 4> get_piles(std::array<std::vector<BrickLine>, 4> &lines);
+    std::array<MyPoint, 4> get_piles(std::array<std::vector<BrickLine>, 4> &lines);
+
+    std::array<std::vector<MyPoint>, 4> get_brick_centers(std::array<std::vector<BrickLine>, 4> &lines,
+                                                          std::array<MyPoint, 4> &piles);
+
+    std::array<MyPoint, 2> fit_detection(std::array<std::vector<MyPoint>, 4> proposal, std::array<std::vector<MyPoint>, 4> wall);
 
     void subscribe_ptcl(sensor_msgs::PointCloud2 ptcl);
 
@@ -69,6 +82,7 @@ private:
     float SIZE_TOLERANCE;        // each brick should be size % BRICK_SIZE == 0
     float MAX_DIST;              // maximal possible distance of a detection
     float MAX_HEIGHT;            // maximal possible height of a detection
+    double BRICK_HEIGHT = 0.2;
 
     void fetch_parameters();
 
@@ -86,6 +100,8 @@ private:
 
     void filter_size(std::vector<BrickLine> *in_lines, double size,
                      std::vector<BrickLine> &ret);
+
+    void build_wall();
 
 };
 

@@ -11,6 +11,8 @@ find_package(
   pcl_ros REQUIRED
 )
 
+find_package(OpenCV REQUIRED)
+
 catkin_package()
 
 ###########
