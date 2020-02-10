@@ -483,26 +483,25 @@ int alignRobot()
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
+	state = TEST1;//TODO
 	state = ARMRESET;//TODO
-	//state = TEST1;//TODO
 	EState nextState = state;
 	EState recoveryState = state;
-	active_storage = 4;
 	while (isTerminal(state) == false && ros::ok()) 
 	{
 		printf("Active behaviour %s, active state %s\n",toStr(behaviour),toStr(state));
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
-				case TEST1: if (moveRobot(+0.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
-				case TEST2: if (moveRobot(-0.5) == 0) nextState = TEST1; else nextState = IDLE; break;
+				case TEST1: if (moveRobot(-0.35) == 0) nextState = IDLE; else nextState = IDLE; break; 
+				case TEST2: if (moveRobot(-0.55) == 0) nextState = IDLE; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
 				case ARMALIGNMENT: if (alignArm() == 0) nextState = ARMDESCENT; else nextState = ARMRESET; break;
 				case ARMDESCENT: if (descentArm() == 0) nextState = ARMPICKUP; else nextState = ARMALIGNMENT; switchDetection(false); break;
 				case ARMPICKUP:  if (pickupBrick() == 0) nextState = ARMSTORAGE; else nextState = ARMALIGNMENT; break;
-				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMALIGNMENT; break;
+				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMPOSITIONING; break;
 				case BRICKSTORE: if (storeBrick() == 0){
 							 printf("STORAGE status %i\n",active_storage);
 							 if (active_storage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
