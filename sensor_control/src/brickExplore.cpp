@@ -640,13 +640,17 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
         return -1;
     }
 
+    float theta = atan2(dy, dx)
+    float mapWPX = x*cos(theta) - y*sin(theta) + brickStackRedX;
+    float mapWPY = y*sin(theta) + y*cos(theta) + brickStackRedY;
+
     tf2::Quaternion quat_tf;
     quat_tf.setRPY(0, 0, atan2(dy, dx) + orientationOffset);
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
 
-    float frontNormalX = -dy;
-    float frontNormalY = dx;
+    /*float frontNormalX = dy;
+    float frontNormalY = -dx;
 
     //normalise normals
     float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
@@ -660,11 +664,11 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
     float originX = brickStackRedX;
     float originY = brickStackRedY;
 
-    float mapWPX = originX + (frontNormalX * wayPointY) - (gradientX * wayPointX);
-    float mapWPY = originY + (frontNormalY * wayPointY) - (gradientY * wayPointX);
+    float mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * wayPointX);
+    float mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * wayPointX);
 
     ROS_INFO("Markers: %f %f %f %f %f %f\n",originX,originY,frontNormalX,frontNormalY,wayPointX,wayPointY);
-    ROS_INFO("MOVING TO MAP POS %f %f", mapWPX, mapWPY);
+    ROS_INFO("MOVING TO MAP POS %f %f", mapWPX, mapWPY);*/
 
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
