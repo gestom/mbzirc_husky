@@ -42,7 +42,7 @@ Iter select_randomly(Iter start, Iter end) {
 }
 
 array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposal, array<vector<MyPoint>, 4> wall){
-    int max_inliers = 0;
+    double min_distance = 10000;
     cv::Mat best_t;
     cv::Mat best_R;
     array<MyPoint, 2> ret_arr;
@@ -96,27 +96,29 @@ array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposa
 
             if (assert_size2 < 0.1) {
                 // compute inliers
-                int inlier_num = 0;
+                double curr_distance = 0;
                 for (int &clr : avail_clrs) {
 
                     for (auto &tar : proposal[clr]) {
+                        double curr_min_dist = 100000;
                         cv::Mat tar_pt = R * cv::Mat(cv::Point2d(tar.x, tar.y)) + t;
                         for (auto &src : wall[clr]) {
-                            MyPoint tar_mypt(tar_pt.at<double>(0), tar_pt.at<double>(1), src.z);
+                            MyPoint tar_mypt(tar_pt.at<double>(0), tar_pt.at<double>(1), tar.z);
                             MyPoint diff = src - tar_mypt;
+                            diff.z *= 2;
                             double dist = cv::norm(diff);
 
-                            if (dist < 0.05 and abs(src.z - tar.z) < 0.05) {
-                                inlier_num++;
-                                break;
+                            if (dist < curr_min_dist) {
+                                curr_min_dist = dist;
                             }
                         }
+                        curr_distance += curr_min_dist;
                     }
                 }
-                if (max_inliers < inlier_num) {
+                if (curr_distance < min_distance) {
                     best_t = t;
                     best_R = R;
-                    max_inliers = inlier_num;
+                    min_distance = curr_distance;
                 }
             }
         }
@@ -126,10 +128,10 @@ array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposa
         cout << ret1 << endl;
         cout << ret2 << endl;
 
-        ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), max_inliers/10);
-        ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), proposal_size/10);
+        ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), min_distance/100);
+        ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), min_distance/100);
 
-        cout << "Ransac matching distance: " << max_inliers << endl;
+        cout << "Ransac matching distance: " << min_distance << endl;
 
         return ret_arr;
     }
@@ -745,26 +747,23 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         }
     }
 
-    if (way_point[0].x != 0 and way_point[0].y != 0){
-        sensor_msgs::PointCloud origin_line1;
-        sensor_msgs::PointCloud2 origin_line2;
-        origin_line1.header.frame_id = "velodyne";
-        origin_line1.header.stamp = ros::Time::now();
-        // fill with points
-        geometry_msgs::Point32 pub_pt1;
-        pub_pt1.x = way_point[0].x;
-        pub_pt1.y = way_point[0].y;
-        pub_pt1.z = 0;
-        origin_line1.points.push_back(pub_pt1);
-        geometry_msgs::Point32 pub_pt2;
-        pub_pt2.x = way_point[1].x;
-        pub_pt2.y = way_point[1].y;
-        pub_pt2.z = 0;
-        origin_line1.points.push_back(pub_pt2);
-        sensor_msgs::convertPointCloudToPointCloud2(origin_line1, origin_line2);
-        origin_pcl_pub.publish(origin_line2);
-    }
+    sensor_msgs::PointCloud origin_line1;
+    origin_line1.header.frame_id = "velodyne";
+    origin_line1.header.stamp = ros::Time::now();
+    // fill with points
+    geometry_msgs::Point32 pub_pt1;
+    pub_pt1.x = way_point[0].x;
+    pub_pt1.y = way_point[0].y;
+    pub_pt1.z = way_point[0].z;
+    origin_line1.points.push_back(pub_pt1);
+    geometry_msgs::Point32 pub_pt2;
+    pub_pt2.x = way_point[1].x;
+    pub_pt2.y = way_point[1].y;
+    pub_pt2.z = 0;
+    origin_line1.points.push_back(pub_pt2);
 
+
+    origin_pcl_pub.publish(origin_line1);
     center_pub.publish(centers);
     vis_pub.publish(lists);
 
@@ -780,7 +779,7 @@ void init_velodyne_subscriber(int argc, char **argv) {
 
     vis_pub = n.advertise<visualization_msgs::MarkerArray>("/visualization_marker", 5);
     center_pub = n.advertise<visualization_msgs::Marker>("/pile_centers", 5);
-    origin_pcl_pub = n.advertise<sensor_msgs::PointCloud2>("/origin_line", 5);
+    origin_pcl_pub = n.advertise<sensor_msgs::PointCloud>("/origin_line", 5);
 
     ros::Subscriber sub = n.subscribe("/velodyne_points", 5, &BrickDetector::subscribe_ptcl, &detector);
     ros::spin();

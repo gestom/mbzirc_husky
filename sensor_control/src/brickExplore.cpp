@@ -530,157 +530,6 @@ void positionArm()
     prepareClient.call(srv);
 }
 
-void moveToApproachWP()
-{
-    //get front/back normals of brick stack
-    float dx = brickStackOrangeX - brickStackRedX;
-    float dy = brickStackOrangeY - brickStackRedY;
-    if (sqrt(dx*dx+dy*dy) < 1.0) brickStackLocationKnown = false;
-    printf("START: %f %f %f %f\n",brickStackOrangeX,brickStackRedX,brickStackOrangeY,brickStackRedY);
-    tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0,0,atan2(dy,dx)-0.0);
-    float orientationZ = quat_tf.z();
-    float orientationW = quat_tf.w();
-    quat_tf.setRPY(0,0,atan2(dy,dx)+0.0);
-    float finalOrientationZ = quat_tf.z();
-    float finalOrientationW = quat_tf.w();
-
-    float frontNormalX = -dy;
-    float frontNormalY = dx;
-
-    //normalise normals
-    float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
-    frontNormalX /= magnitude;
-    frontNormalY /= magnitude;
-    float gradientX = dx / magnitude;
-    float gradientY = dy / magnitude;
-
-    //now we can calculate waypoint position in stack frame
-    //the following x,y are the approach path waypoints rel to stack
-    //where 0, 0 equals the red side of the stack, closest right corner
-    //and +ve x moves to the right of the stack
-    //and if facing the front of the stack +ve y steps back
-    //basically just as in the spec book
-    //all in map frame
-    float wayPointX = 2.f;
-    float wayPointY = 0.65f;
-    float stackDepth = 0.4; //half the depth ie 1.5 blocks plus 10cm gap
-    const float originX = brickStackRedX + 0;//(frontNormalX * stackDepth);
-    const float originY = brickStackRedY + 0;//(frontNormalY * stackDepth);
-    //add the y
-    printf("AA:A: %f %f %f\n",originX,frontNormalX,wayPointY);
-    float mapWPX = originX + (frontNormalX * wayPointY);
-    float mapWPY = originY + (frontNormalY * wayPointY);
-    //add the x
-    mapWPX -= (gradientX * (wayPointX+0.2));
-    mapWPY -= (gradientY * (wayPointX+0.2));
-    //orientation
-    float orientationTheta = (PI) - atan2((wayPointY - originY), (wayPointX - originX));
-    //float orientationZ = sin(orientationTheta / 2);
-    //float orientationW = cos(orientationTheta / 2);
-//    float orientationZ = quat_tf.z();
-  //  float orientationW = quat_tf.w();
-
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = "map";
-    marker.header.stamp = ros::Time::now();
-    marker.id = 0;
-    marker.type = visualization_msgs::Marker::ARROW;
-
-    marker.scale.x = 0.4;
-    marker.scale.y = 0.2;
-    marker.scale.z = 0.2;
-
-    marker.color.r = 0;
-    marker.color.g = 0;
-    marker.color.b = 0;
-    marker.color.a = 1;
-
-    marker.pose.position.x = mapWPX;
-    marker.pose.position.y = mapWPY;
-    marker.pose.position.z = 0;
-
-    marker.pose.orientation.x = 0;
-    marker.pose.orientation.y = 0;
-    marker.pose.orientation.z = orientationZ;
-    marker.pose.orientation.w = orientationW;
-    
-    debugVisualiser.publish(marker);
-
-    move_base_msgs::MoveBaseGoal goal;
-    goal.target_pose.header.frame_id = "map";
-    goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = mapWPX;
-    goal.target_pose.pose.position.y = mapWPY;
-
-    //goal orientation
-    goal.target_pose.pose.orientation.z = orientationZ;
-    goal.target_pose.pose.orientation.w = orientationW;
-
-    ROS_INFO("Moving to approach position");
-    movebaseAC->sendGoal(goal);
-    while(ros::ok())
-    {
-        usleep(8000000);
-        actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
-        if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
-        {
-            ROS_INFO("Approached outer wp, moving to bricks");
-            break;
-        }
-        ROS_INFO("Long move base action for outer wp, current state: %s", mbState.getText().c_str());
-        state = FAIL;
-        break;
-    }
-
-    //fire off command to get arm ready
-    positionArm();
-	printf("ALALAL: %f %f %f %f %f %f %f\n",mapWPX,originX,frontNormalX,wayPointY,gradientX,gradientY,magnitude);
-
-	mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * 1);
-	mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * 1);
-
-    marker.header.stamp = ros::Time::now();
-    marker.type = visualization_msgs::Marker::ARROW;
-
-    marker.pose.position.x = mapWPX;
-    marker.pose.position.y = mapWPY;
-    marker.pose.position.z = 0.3;
-    marker.pose.orientation.z = finalOrientationZ;
-    marker.pose.orientation.w = finalOrientationW;
-    
-    debugVisualiser.publish(marker);
-
-    goal.target_pose.header.frame_id = "map";
-    goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = mapWPX;
-    goal.target_pose.pose.position.y = mapWPY;
-    goal.target_pose.pose.orientation.z = finalOrientationZ;
-    goal.target_pose.pose.orientation.w = finalOrientationW;
-	ROS_INFO("%f", mapWPX);
-	ROS_INFO("%f", mapWPY);
-
-    ROS_INFO("Moving to brick position");
-    movebaseAC->sendGoal(goal);
-    while(ros::ok())
-    {
-        sleep(205);
-        actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
-        if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
-        {
-            ROS_INFO("Approached first brick, picking up");
-            state = FINAL;
-            break;
-        }
-        ROS_INFO("Long move base action for first brick, current state: %s", mbState.getText().c_str());
-        state = FAIL;
-        return;
-    }
-
-    //ROS_INFO(movebaseAC.getState());
-    ROS_INFO("Approached, done");
-}
-
 void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
 {
 	if(state != PRECISEBRICKFIND)
@@ -771,21 +620,16 @@ void moveToBrickPile()
 
 void preciseBrickFind()
 {
-    if(precisePositionFound)
-    {
-        moveToApproachWP(); 
-    }
-    else
-    {
-        ROS_INFO("Waiting for ransac...");
-        usleep(1000000);
-    }
+    //the ransac callback should trigger the change to the next state
+    ROS_INFO("Waiting for ransac...");
+    usleep(2000000);
 }
 
 int moveToBrickPosition(float x, float y, float orientationOffset)
 { 
-    float dx = abs(brickStackOrangeX) - abs(brickStackRedX);
-    float dy = abs(brickStackOrangeY) - abs(brickStackRedY);
+    float dx = brickStackRedX - brickStackOrangeX;
+    float dy = brickStackRedY - brickStackOrangeY;
+    
     if (sqrt(dx*dx+dy*dy) < 1.0)
     {
         brickStackLocationKnown = false;
@@ -853,23 +697,13 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
     goal.target_pose.pose.orientation.w = orientationW;
 
     movebaseAC->sendGoal(goal);
-    movebaseAC->waitForResult(ros::Duration(0, 0));
+    movebaseAC->waitForResult(ros::Duration(180, 0));
     actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
     ROS_INFO("Move base state %s", mbState.getText());
 
     if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
     {
         ROS_INFO("Move target achieved");
-
-        //yeah this is copied from online, but it only needs to trigger it
-        std_msgs::String msg;
-        std::stringstream ss;
-        ss << "hello world ";
-        msg.data = ss.str();
-
-        ransac_pub.publish(msg);
-        precisePositionFound = false;
-        state = PRECISEBRICKFIND;
         return 0;
     }
     else

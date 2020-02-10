@@ -25,6 +25,7 @@
 #include <visualization_msgs/Marker.h>
 
 #define DOF 6
+#define ALLOWED_NUM_OF_ERRORS 200
 
 namespace kinova_control_manager
 {
@@ -442,11 +443,13 @@ bool kinova_control_manager::callbackHomingService([[maybe_unused]] std_srvs::Tr
   }
 
   ROS_INFO("[kinova_control_manager]: Reset last arm goal. Homing...");
+  
   status              = HOMING;
   time_of_last_motion = ros::Time::now();
   last_goal           = home_pose;
 
   ungrip();
+
   kinova_msgs::HomeArm msg;
   service_client_homing.call(msg.request, msg.response);
   while (status != IDLE) {
@@ -680,7 +683,7 @@ bool kinova_control_manager::callbackPickupBrickService([[maybe_unused]] std_srv
 
   while (!brick_attached && brick_reliable) {
 
-	  if(picking_error_counter > 20){
+	  if(picking_error_counter > ALLOWED_NUM_OF_ERRORS){
 	  	ROS_ERROR("[kinova_control_manager]: Arm is probably stuck. Consider homing");
 		flushVelocityTopic(msg);
 		res.success = false;
@@ -944,50 +947,22 @@ bool kinova_control_manager::callbackUnloadBrickService(mbzirc_husky_msgs::Stora
     return false;
   }
 
-  picking_error_counter = 0;
-  status              = PICKING;
+  status              = MOVING;
   time_of_last_motion = ros::Time::now();
 
-  kinova_msgs::PoseVelocity msg;
-  ROS_INFO("[kinova_control_manager]: Moving down");
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > ((storage_pose[req.position].pos.z() + 0.2 * req.layer) - 0.2)) {
-
-	  if(picking_error_counter > 20){
-	  	ROS_ERROR("[kinova_control_manager]: Arm is probably stuck. Consider homing");
-		flushVelocityTopic(msg);
-		res.success = false;
-		return false;
-	  }
-
-    msg.twist_linear_x  = 0.0;
-    msg.twist_linear_y  = 0.0;
-    msg.twist_linear_z  = -move_down_speed_slower;
-    msg.twist_angular_x = 0.0;
-    msg.twist_angular_y = 0.0;
-    msg.twist_angular_z = 0.0;
-    publisher_cartesian_velocity.publish(msg);
-    ros::Duration(0.01).sleep();
-  }
+  Pose3d new_goal = storage_pose[req.position];
+  new_goal.pos.z() += (0.2 * req.layer) - 0.25;
+  goTo(new_goal);
   grip();
-  ROS_INFO("[kinova_control_manager]: MEGA slow now");
-  while (!brick_attached && end_effector_pose_compensated.pos.z() > ((storage_pose[req.position].pos.z() + 0.2 * req.layer) - 0.34)) {
-    msg.twist_linear_x  = 0.0;
-    msg.twist_linear_y  = 0.0;
-    msg.twist_linear_z  = -move_down_speed_mega_slow;
-    msg.twist_angular_x = 0.0;
-    msg.twist_angular_y = 0.0;
-    msg.twist_angular_z = 0.0;
-    publisher_cartesian_velocity.publish(msg);
-    ros::Duration(0.01).sleep();
-  }
+  new_goal.pos.z() -= 0.07;
+  goTo(new_goal);
+
   if (!brick_attached) {
     ROS_ERROR("[kinova_control_manager]: Failed to attach brick!");
-    flushVelocityTopic(msg);
     status      = IDLE;
     res.success = false;
     return false;
   }
-  flushVelocityTopic(msg);
   status      = IDLE;
   res.success = true;
   return true;
@@ -1197,6 +1172,26 @@ bool kinova_control_manager::goTo(Pose3d pose) {
   publisher_end_effector_pose.publish(msg);
 
   while (status != MotionStatus_t::IDLE) {
+	if(brick_attached){
+  		msg.goal.pose.pose.position.x = end_effector_pose_compensated.pos.x();
+  		msg.goal.pose.pose.position.y = end_effector_pose_compensated.pos.y();
+  		msg.goal.pose.pose.position.z = end_effector_pose_compensated.pos.z();
+
+  		msg.goal.pose.pose.orientation.x = end_effector_pose_compensated.rot.x();
+  		msg.goal.pose.pose.orientation.y = end_effector_pose_compensated.rot.y();
+  		msg.goal.pose.pose.orientation.z = end_effector_pose_compensated.rot.z();
+  		msg.goal.pose.pose.orientation.w = end_effector_pose_compensated.rot.w();
+
+  		std::stringstream ss;
+  		ss << arm_type << "_link_base";
+  		msg.goal.pose.header.frame_id = ss.str().c_str();
+  		msg.header.frame_id           = ss.str().c_str();
+
+  		publisher_end_effector_pose.publish(msg);
+		
+		status = IDLE;
+	  	return true;
+	}
     ros::Duration(0.01).sleep();
     ros::spinOnce();
   }
