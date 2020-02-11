@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 add_message_files(DIRECTORY msg/ FILES
+  Gen3ArmStatus.msg
   ArmStatus.msg
   brickPosition.msg
   brickGoal.msg
