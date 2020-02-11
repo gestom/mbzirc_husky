@@ -1,16 +1,19 @@
 lidar_rows: 16                # VLP-16
+point_iteration_step: 1       # step during splitting
 height_tolerance: 0.025       # for creating ground plane --- NOT USED
 ground_safe_distance: 0.03    # minimal distance from ground
 lidar_height: 0.45            # lidar height
 clustering_dist: 0.06         # maximal distance used for clustering
+wall_clustering_dist: 0.18    # maximal distance used for clustering
 min_cluster_size: 5           # minimal number of points in one cluster
-point_iteration_step: 1       # step during splitting
 splitting_distance: 0.06      # minimal distance to split into more clusters
+wall_splitting_distance: 0.18 # minimal distance for splitting wall clusters
 minimal_line_length: 5        # sets minimal number of points to line
 maximal_join_angle: 40        # this doesnt really improve performance
 maximal_join_distamce: 0.75   #               --||--
 maximal_join_shift: 0.5       #               --||--
 brick_size: 0.3               # size of the smallest brick - we presume that all sizes are multiplication of this
 size_tolerance: 0.04          # each brick should be size % BRICK_SIZE == 0
-max_dist: 6.0                 # maximal possible distance of detection
-max_height: 1                 # maximal possible height of detection
+max_brick_dist: 6.0           # maximal possible distance of brick detection
+max_dist: 25                  # maximal distance for detecting bigger objects
+max_height: 2                 # maximal possible height of detection

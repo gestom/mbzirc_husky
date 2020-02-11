@@ -8,8 +8,7 @@ ros::Publisher vis_pub;
 ros::Publisher center_pub;
 ros::Publisher origin_pcl_pub;
 
-double normal_pdf(double x, double m, double s)
-{
+double normal_pdf(double x, double m, double s) {
     double a = (x - m) / s;
     return INV_SQRT_2PI / s * std::exp(-0.5f * a * a);
 }
@@ -28,7 +27,7 @@ double diff_angle(double a1, double a2) {
 }
 
 template<typename Iter, typename RandomGenerator>
-Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
+Iter select_randomly(Iter start, Iter end, RandomGenerator &g) {
     std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
     std::advance(start, dis(g));
     return start;
@@ -41,24 +40,25 @@ Iter select_randomly(Iter start, Iter end) {
     return select_randomly(start, end, gen);
 }
 
-array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposal, array<vector<MyPoint>, 4> wall){
+array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposal, array<vector<MyPoint>, 4> wall,
+                                               array<cv::Point2d, 2> tar_pt) {
     double min_distance = 10000;
     cv::Mat best_t;
     cv::Mat best_R;
     array<MyPoint, 2> ret_arr;
 
-    // how many piles was detected???
+    // how many piles was detected?
     int proposal_size = 0;
     vector<int> avail_clrs;
-    for (int clr_idx = 0; clr_idx < 3; clr_idx++){      // TODO: add orange brick
-        if (not proposal[clr_idx].empty()){
+    for (int clr_idx = 0; clr_idx < 4; clr_idx++) {
+        if (not proposal[clr_idx].empty()) {
             avail_clrs.push_back(clr_idx);
             proposal_size += proposal[clr_idx].size();
         }
     }
 
     if ((avail_clrs.size() > 1 and proposal_size > 3) or proposal[0].size() > 4 or proposal[1].size() > 3) {
-        for (int it = 0; it < 1000; it++) {
+        for (int it = 0; it < 500; it++) {
             // run 1000 iterations of RANSAC
             vector<MyPoint> target_pts;
             vector<MyPoint> src_pts;
@@ -123,25 +123,22 @@ array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposa
             }
         }
 
-        cv::Mat ret1 = best_R.t() * (cv::Mat(cv::Point2d(0, 0)) - best_t);
-        cv::Mat ret2 = best_R.t() * (cv::Mat(cv::Point2d(5.0, 0)) - best_t);
-        cout << ret1 << endl;
-        cout << ret2 << endl;
+        cv::Mat ret1 = best_R.t() * (cv::Mat(tar_pt[0]) - best_t);
+        cv::Mat ret2 = best_R.t() * (cv::Mat(tar_pt[1]) - best_t);
 
-        ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), min_distance/100);
-        ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), min_distance/100);
-
-        cout << "Ransac matching distance: " << min_distance << endl;
+        ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), min_distance);
+        ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), min_distance);
 
         return ret_arr;
     }
     return ret_arr;
 }
 
-array<vector<MyPoint>, 4> BrickDetector::get_brick_centers(array<vector<BrickLine>, 4> &lines, array<MyPoint, 4> &piles){
+array<vector<MyPoint>, 4>
+BrickDetector::get_centers_in_piles(array<vector<BrickLine>, 4> &lines, array<MyPoint, 4> &piles) {
 
     array<vector<MyPoint>, 4> ret = {};
-    for (int clr_idx = 0; clr_idx < 4; clr_idx++){
+    for (int clr_idx = 0; clr_idx < 4; clr_idx++) {
         vector<MyPoint> centers;
         if (piles[clr_idx].x != 0 and piles[clr_idx].y != 0) {      // check for valid pile
             for (auto &line : lines[clr_idx]) {
@@ -149,7 +146,7 @@ array<vector<MyPoint>, 4> BrickDetector::get_brick_centers(array<vector<BrickLin
                 if (norm(center - piles[clr_idx]) < 1.5) {          // 1.5 meters distance from pile center is ok
                     double new_z = int((center.z + LIDAR_HEIGHT) / BRICK_HEIGHT) * BRICK_HEIGHT +
                                    (BRICK_HEIGHT / 2);              // allign height to 0.1, 0.3 and so on
-                    if (new_z < 2*BRICK_HEIGHT) {
+                    if (new_z < 2 * BRICK_HEIGHT) {
                         MyPoint candidate(center.x, center.y, new_z);
                         bool unique = true;
                         for (auto &inserted : centers) {
@@ -172,18 +169,18 @@ array<vector<MyPoint>, 4> BrickDetector::get_brick_centers(array<vector<BrickLin
     return ret;
 }
 
-array<MyPoint, 4> BrickDetector::get_piles(array<vector<BrickLine>, 4> &lines){
+array<MyPoint, 4> BrickDetector::get_piles(array<vector<BrickLine>, 4> &lines) {
 
     array<MyPoint, 4> ret{};
 
     double var = 1.4;
-    for(int clr_idx = 0; clr_idx < 4; clr_idx++){
+    for (int clr_idx = 0; clr_idx < 4; clr_idx++) {
         if ((clr_idx == 0 and lines[clr_idx].size() > 5) or         // need 6 <= of red detection to detect red pile
             (clr_idx == 1 and lines[clr_idx].size() > 3) or
             (clr_idx > 1 and lines[clr_idx].size() > 1)) {
 
             vector<array<double, 2>> probs;
-            for (int i = 0; i < lines[clr_idx].size(); i++){
+            for (int i = 0; i < lines[clr_idx].size(); i++) {
                 array<double, 2> prob = {1.0, 1.0};
                 probs.push_back(prob);
             }
@@ -195,7 +192,7 @@ array<MyPoint, 4> BrickDetector::get_piles(array<vector<BrickLine>, 4> &lines){
             double sum_x = 0;
             double sum_y = 0;
 
-            for (int iter = 0; iter < 25; iter++){
+            for (int iter = 0; iter < 25; iter++) {
 
                 sum_x = 0;
                 sum_y = 0;
@@ -232,53 +229,53 @@ array<MyPoint, 4> BrickDetector::get_piles(array<vector<BrickLine>, 4> &lines){
 
 }
 
-array<vector<BrickLine>, 4> BrickDetector::match_detections(array<vector<BrickLine>, 4> lines) {
+vector<BrickLine> BrickDetector::match_detections(vector<BrickLine> lines,
+                                                  double obj_height, double obj_top, double req_height,
+                                                  int min_detections, int max_detections) {
 
-    std::array<std::vector<BrickLine>, 4> ret;
-    for (int clr_idx = 0; clr_idx < 4; clr_idx++){
+    vector<BrickLine> ret;
 
-        std::sort(lines[clr_idx].begin(), lines[clr_idx].end(), [](const BrickLine &l1, const BrickLine &l2) {
-            return l1[0].z < l2[0].z;
-        });
-
-        for (int i = 0; i < lines[clr_idx].size(); i++){
-            MyPoint curr_center = GET_CENTER(lines[clr_idx][i][0], lines[clr_idx][i][1]);
-            int hits = 0;
-            double max_z = curr_center.z + LIDAR_HEIGHT;
-            double curr_yaw = atan2(curr_center.y, curr_center.x);
-            double curr_dist = norm(curr_center);
-            double expected_z_dist = curr_dist*LEN_MULTIPLIER;
-            int expected_hits = min(int((0.4/expected_z_dist) - 1), 2);                            // should be 40 tall
-            double expected_yaw = abs(acos((0.35*0.35) / (2*curr_dist*curr_dist) - 1));     // 30 cm is ok yaw diff
-            if (expected_hits > 1) {
-                for (int j = 0; j < lines[clr_idx].size(); j++) {
-                    if (i != j) {
-                        MyPoint new_center = GET_CENTER(lines[clr_idx][j][0], lines[clr_idx][j][1]);
-                        double new_yaw = atan2(new_center.y, new_center.x);
-                        double yaw_diff = abs(diff_angle(curr_yaw, new_yaw)) * 180 / M_PI;
-                        if (yaw_diff < expected_yaw) {      // filter using yaw
-                            double new_dist = norm(new_center);
-                            if (abs(new_dist - curr_dist) < 0.5) {      // filter using distance
-                                hits++;
-                                max_z = max(max_z, new_center.z + double(LIDAR_HEIGHT));
-                                if (new_center.z + LIDAR_HEIGHT > 0.45) {        // 45cm is too high - filter using height
-                                    hits = 0;
-                                }
+    for (int i = 0; i < lines.size(); i++) {
+        MyPoint curr_center = GET_CENTER(lines[i][0], lines[i][1]);
+        int hits = 0;
+        double max_z = curr_center.z + LIDAR_HEIGHT;
+        double curr_yaw = atan2(curr_center.y, curr_center.x);
+        double curr_dist = norm(curr_center);
+        double expected_z_dist = curr_dist * LEN_MULTIPLIER;
+        int expected_hits = int(max(double(min_detections),
+                                    min((obj_height / expected_z_dist), double(max_detections))));
+        double expected_yaw = abs(
+                acos(-(0.3 * 0.3) / (2 * curr_dist * curr_dist) + 1));     // 30 cm is ok yaw diff
+        if (expected_hits > min_detections and min_detections != 0) {
+            for (int j = 0; j < lines.size(); j++) {
+                if (i != j) {
+                    MyPoint new_center = GET_CENTER(lines[j][0], lines[j][1]);
+                    double new_yaw = atan2(new_center.y, new_center.x);
+                    double tmp = abs(diff_angle(curr_yaw, new_yaw));
+                    double yaw_diff = min(tmp, abs(tmp - M_PI));
+                    if (yaw_diff < expected_yaw) {      // filter using yaw
+                        double new_dist = norm(new_center);
+                        if (abs(new_dist - curr_dist) < 0.5) {      // filter using distance
+                            hits++;
+                            max_z = max(max_z, new_center.z + double(LIDAR_HEIGHT));
+                            if (new_center.z + LIDAR_HEIGHT >
+                                obj_top) {     // 45cm is too high - filter using height
+                                hits = 0;
                             }
                         }
                     }
                 }
             }
-            if (hits >= expected_hits and max_z > BRICK_HEIGHT){
-                ret[clr_idx].push_back(lines[clr_idx][i]);
-            }
+        }
+        if (hits >= int(expected_hits) and max_z > req_height) {
+            ret.push_back(lines[i]);
         }
     }
+
     return ret;
 }
 
-
-void BrickDetector::filter_on_line(MyPoint p1, MyPoint p2, array<vector<BrickLine>, 4> &ret){
+void BrickDetector::filter_on_line(MyPoint p1, MyPoint p2, array<vector<BrickLine>, 4> &ret) {
 
     // compute the line
     array<double, 3> line = {-(p1.y - p2.y), p1.x - p2.x, 0};    // line in general form
@@ -286,8 +283,8 @@ void BrickDetector::filter_on_line(MyPoint p1, MyPoint p2, array<vector<BrickLin
 
     double line_size = sqrt(line[0] * line[0] + line[1] * line[1]);
 
-    for(int color_idx = 0; color_idx < 4; color_idx++){
-        for (int i = ret[color_idx].size() - 1; i >= 0; i--){
+    for (int color_idx = 0; color_idx < 4; color_idx++) {
+        for (int i = ret[color_idx].size() - 1; i >= 0; i--) {
             MyPoint pt1 = ret[color_idx][i][0];
             MyPoint pt2 = ret[color_idx][i][1];
             double dist = abs(pt1.x * line[0] + pt1.y * line[1] + line[2]) / line_size;
@@ -295,14 +292,15 @@ void BrickDetector::filter_on_line(MyPoint p1, MyPoint p2, array<vector<BrickLin
             double angle2 = atan2(p1.y - p2.y, p1.x - p2.x);
             double diff = abs(diff_angle(angle1, angle2) * 180 / M_PI);
             double max_diff = max(diff, abs(diff - 180));
-            if (dist > 1.0 and max_diff > 30.0) {   // delete everything further than one meter from line and with bigger than 30 degree deviation
+            if (dist > 1.0 and max_diff >
+                               30.0) {   // delete everything further than one meter from line and with bigger than 30 degree deviation
                 ret[color_idx].erase(ret[color_idx].begin() + i);
             }
         }
     }
 }
 
-void BrickDetector::filter_size(vector<BrickLine> *in_lines, double size,
+void BrickDetector::filter_size(vector<BrickLine> *in_lines, double size, double tolerance,
                                 vector<BrickLine> &ret) {
     for (int row = 0; row < LIDAR_ROWS; row++) {
         for (auto &line : in_lines[row]) {
@@ -310,7 +308,7 @@ void BrickDetector::filter_size(vector<BrickLine> *in_lines, double size,
             float dy = line[0].y - line[1].y;
             float dist = sqrt(dx * dx + dy * dy);
             float diff = abs(dist - size);
-            if (diff < SIZE_TOLERANCE) {
+            if (diff < tolerance) {
                 ret.push_back(line);
             }
         }
@@ -319,7 +317,8 @@ void BrickDetector::filter_size(vector<BrickLine> *in_lines, double size,
 
 void BrickDetector::split_and_merge(vector<MyPoint> *filtered,
                                     vector<array<int, 2>> *clusters,
-                                    vector<BrickLine> *ret) {
+                                    vector<BrickLine> *ret,
+                                    double splitting_distance) {
 
     for (int row = 0; row < LIDAR_ROWS; row++) {
         while (not clusters[row].empty()) {
@@ -351,7 +350,7 @@ void BrickDetector::split_and_merge(vector<MyPoint> *filtered,
             }
 
             // split using most distant point and append to clusters or results
-            if (max_dist > SPLITTING_DISTANCE) {
+            if (max_dist > splitting_distance) {
                 if (split_index - cluster_idxs[0] > MINIMAL_LINE_LENGTH) {
                     array<int, 2> new_cluster = {cluster_idxs[0], split_index};
                     clusters[row].push_back(new_cluster);
@@ -422,7 +421,9 @@ void BrickDetector::split_and_merge(vector<MyPoint> *filtered,
 
 
 void BrickDetector::create_clusters(vector<MyPoint> *filtered,
-                                    vector<array<int, 2>> *ret) {
+                                    vector<array<int, 2>> *ret,
+                                    double clustering_distance,
+                                    double max_distance) {
     float dist;
     float d_x;
     float d_y;
@@ -433,8 +434,9 @@ void BrickDetector::create_clusters(vector<MyPoint> *filtered,
             d_x = filtered[row][end - 1].x - filtered[row][end].x;
             d_y = filtered[row][end - 1].y - filtered[row][end].y;
             dist = sqrt(d_x * d_x + d_y * d_y);
-            if (dist > CLUSTERING_DIST) {
-                if ((end - 1) - start > MIN_CLUSTER_SIZE) {
+            if (dist > clustering_distance) {
+                if ((end - 1) - start > MIN_CLUSTER_SIZE and cv::norm(filtered[row][end - 1]) < max_distance and
+                    cv::norm(filtered[row][start]) < max_distance) {
                     array<int, 2> tmp = {start, end - 1};
                     ret[row].push_back(tmp);
                 }
@@ -443,7 +445,7 @@ void BrickDetector::create_clusters(vector<MyPoint> *filtered,
         }
 
         end--;
-        if (dist < CLUSTERING_DIST and end - start > MIN_CLUSTER_SIZE) {
+        if (dist < clustering_distance and end - start > MIN_CLUSTER_SIZE) {
             array<int, 2> tmp = {start, end};
             ret[row].push_back(tmp);
         }
@@ -484,9 +486,10 @@ double BrickDetector::fetch_pointcloud(sensor_msgs::PointCloud2 &ptcl, vector<My
             }
         }
         */
-        if (sqrt((*iter_x) * (*iter_x) + (*iter_y) * (*iter_y)) < MAX_DIST) {
+        if (sqrt((*iter_x) * (*iter_x) + (*iter_y) * (*iter_y)) < 100.0) {
             ret[*iter_ring].emplace_back(*iter_x, *iter_y, *iter_z);
         }
+
 
     }
     // when parsing velodyne_packets the points can be in incorrect order - sorting by yaw
@@ -508,27 +511,31 @@ void BrickDetector::fetch_parameters() {
     n->param("/detector/ground_safe_distance", GROUND_SAFE_DISTANCE, float(0.05));
     n->param("/detector/lidar_height", LIDAR_HEIGHT, float(0.4));
     n->param("/detector/clustering_dist", CLUSTERING_DIST, float(0.06));
+    n->param("/detector/wall_clustering_dist", WALL_CLUSTERING_DIST, float(0.18));
     n->param("/detector/min_cluster_size", MIN_CLUSTER_SIZE, 10);
     n->param("/detector/point_iteration_step", POINT_ITERATION_STEP, 1);
     n->param("/detector/splitting_distance", SPLITTING_DISTANCE, float(0.1));
+    n->param("/detector/wall_splitting_distance", WALL_SPLITTING_DISTANCE, float(0.18));
     n->param("/detector/minimal_line_length", MINIMAL_LINE_LENGTH, 5);
     n->param("/detector/maximal_join_angle", MAXIMAL_JOIN_ANGLE, float(3));
     n->param("/detector/maximal_join_distamce", MAXIMAL_JOIN_DISTANCE, float(0.1));
     n->param("/detector/maximal_join_shift", MAXIMAL_JOIN_SHIFT, float(0.02));
     n->param("/detector/brick_size", BRICK_SIZE, float(0.3));
     n->param("/detector/size_tolerance", SIZE_TOLERANCE, float(0.07));
-    n->param("/detector/max_dist", MAX_DIST, float(5));
+    n->param("/detector/max_dist", MAX_DIST, float(20));
+    n->param("/detector/max_brick_dist", MAX_BRICK_DIST, float(5));
     n->param("/detector/max_height", MAX_HEIGHT, float(2));
 }
 
-void BrickDetector::build_wall(){
+void BrickDetector::build_walls() {
+    /// WALL FROM FRONT
     // visible red bricks
     wall_setup[0].push_back(MyPoint(0.15, -0.3, 0.1));
     wall_setup[0].push_back(MyPoint(0.15, -0.3, 0.3));
-    wall_setup[0].push_back(MyPoint(0.55, 0, 0.1));
-    wall_setup[0].push_back(MyPoint(0.55, 0, 0.3));
-    wall_setup[0].push_back(MyPoint(0.95, 0, 0.1));
-    wall_setup[0].push_back(MyPoint(0.95, 0, 0.3));
+    wall_setup[0].push_back(MyPoint(0.55, 0.0, 0.1));
+    wall_setup[0].push_back(MyPoint(0.55, 0.0, 0.3));
+    wall_setup[0].push_back(MyPoint(0.95, 0.0, 0.1));
+    wall_setup[0].push_back(MyPoint(0.95, 0.0, 0.3));
     wall_setup[0].push_back(MyPoint(1.35, -0.3, 0.1));
     wall_setup[0].push_back(MyPoint(1.35, -0.3, 0.3));
 
@@ -541,71 +548,139 @@ void BrickDetector::build_wall(){
     // visible blue bricks
     wall_setup[2].push_back(MyPoint(4.4, 0.0, 0.1));
     wall_setup[2].push_back(MyPoint(4.4, -0.3, 0.3));
+
+    // visible orange bricks
+    wall_setup[3].push_back(MyPoint(6.4, 0.0, 0.1));
+    wall_setup[3].push_back(MyPoint(6.4, 0.0, 0.3));
+    wall_setup[3].push_back(MyPoint(6.4, -0.3, 0.5));
+
+    /// WALL FROM BEHIND
+    // visible orange bricks
+    wall_setup_back[3].push_back(MyPoint(0.9, 0.0, 0.1));
+    wall_setup_back[3].push_back(MyPoint(0.9, 0.0, 0.3));
+    wall_setup_back[3].push_back(MyPoint(0.9, -0.3, 0.5));
+
+    // visible blue bricks
+    wall_setup_back[2].push_back(MyPoint(2.9, 0.0, 0.1));
+    wall_setup_back[2].push_back(MyPoint(2.9, 0.0, 0.3));
+
+    // visible green bricks
+    wall_setup_back[1].push_back(MyPoint(4.3, 0.0, 0.1));
+    wall_setup_back[1].push_back(MyPoint(4.3, 0.0, 0.3));
+    wall_setup_back[1].push_back(MyPoint(5.0, 0.0, 0.1));
+    wall_setup_back[1].push_back(MyPoint(5.0, 0.0, 0.3));
+
+    // visible red bricks
+    wall_setup_back[0].push_back(MyPoint(7.15, 0.0, 0.1));
+    wall_setup_back[0].push_back(MyPoint(7.15, 0.0, 0.3));
+    wall_setup_back[0].push_back(MyPoint(6.75, 0.0, 0.1));
+    wall_setup_back[0].push_back(MyPoint(6.75, 0.0, 0.3));
+    wall_setup_back[0].push_back(MyPoint(5.95, 0.0, 0.1));
+    wall_setup_back[0].push_back(MyPoint(5.95, 0.0, 0.3));
+    wall_setup_back[0].push_back(MyPoint(6.35, 0.0, 0.1));
+    wall_setup_back[0].push_back(MyPoint(6.35, 0.0, 0.3));
+
 }
 
-array<vector<BrickLine>, 4> BrickDetector::find_bricks(sensor_msgs::PointCloud2 &ptcl) {
-
-    // fill the row buffers and find point with the lowest height
-    vector<MyPoint> point_rows[LIDAR_ROWS];
-    double min_z = fetch_pointcloud(ptcl, point_rows);
-
-    std::vector<double> ground = {0, 0, 1, LIDAR_HEIGHT};
-
-    // if (not ground.empty()) { // did we manage to obtain ground in this measurement?
-
-    // cout << "groud plane: " << ground[0] << " " << ground[1] << " " << ground[2] << " " << ground[3] << endl;
-
-    vector<MyPoint> filtered[LIDAR_ROWS];
-    filter_ground(ground, point_rows, filtered);        // filter ground points and project points to ground
+array<vector<BrickLine>, 5> BrickDetector::find_brick_segments(vector<MyPoint> *filtered_ptcl) {
 
     vector<array<int, 2>> clusters[LIDAR_ROWS];
-    create_clusters(filtered, clusters);                // group points into the clusters
+    create_clusters(filtered_ptcl, clusters, CLUSTERING_DIST, MAX_BRICK_DIST);    // group points into the clusters
 
     vector<BrickLine> lines[LIDAR_ROWS];
-    split_and_merge(filtered, clusters, lines);         // create lines using split-and-merge algorithm
+    split_and_merge(filtered_ptcl, clusters, lines,
+                    SPLITTING_DISTANCE);       // create lines using split-and-merge algorithm
+
+    vector<BrickLine> side_lines;         // get side of bricks
+    filter_size(lines, 0.2, SIZE_TOLERANCE, side_lines);
 
     vector<BrickLine> red_lines;          // get red lines
-    filter_size(lines, 0.3, red_lines);
+    filter_size(lines, 0.3, SIZE_TOLERANCE, red_lines);
 
     vector<BrickLine> green_lines;        // get green lines
-    filter_size(lines, 0.6, green_lines);
+    filter_size(lines, 0.6, SIZE_TOLERANCE, green_lines);
 
     vector<BrickLine> blue_lines;         // get blue lines
-    filter_size(lines, 1.2, blue_lines);
+    filter_size(lines, 1.2, SIZE_TOLERANCE, blue_lines);
 
     vector<BrickLine> orange_lines;       // get orange lines
-    filter_size(lines, 1.8, orange_lines);
+    filter_size(lines, 1.8, SIZE_TOLERANCE, orange_lines);
 
-    /*
-    cout << "red detected: " << red_lines.size() << endl << "green detected: " << green_lines.size() << endl
-         << "blue detected: " << blue_lines.size() << endl << "orange detected: " << orange_lines.size() << endl
-         << endl;
-    */
-    array<vector<BrickLine>, 4> ret = {red_lines, green_lines, blue_lines, orange_lines};
+    array<vector<BrickLine>, 5> ret = {red_lines, green_lines, blue_lines, orange_lines, side_lines};
     return ret;
+}
+
+vector<BrickLine> BrickDetector::find_wall_segments(vector<MyPoint> *filtered_ptcl) {
+
+    vector<array<int, 2>> clusters[LIDAR_ROWS];
+    create_clusters(filtered_ptcl, clusters, WALL_CLUSTERING_DIST, MAX_DIST);       // group points into the clusters
+
+    vector<BrickLine> lines[LIDAR_ROWS];
+    split_and_merge(filtered_ptcl, clusters, lines,
+                    WALL_SPLITTING_DISTANCE);       // create lines using split-and-merge algorithm
+
+    vector<BrickLine> wall_lines;                                              // get red lines
+    filter_size(lines, 2.75, 1.5, wall_lines);
+
+    return wall_lines;
 }
 
 void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 {
 
-    array<vector<BrickLine>, 4> all_lines = find_bricks(ptcl);
-    // array<vector<BrickLine>, 4> matched_lines = find_bricks(ptcl);
+    /// DETECTION  ------------------------------------------------------------------------------------------------
 
-    // MyPoint my_pt1(2.37, -2.45, 0.0);
-    // MyPoint my_pt2(4.1, 1.89, 0);
-    // filter_on_line(my_pt1, my_pt2, all_lines);
+    // fill the row buffers and find point with the lowest height
+    vector<MyPoint> point_rows[LIDAR_ROWS];
+    double min_z = fetch_pointcloud(ptcl, point_rows);
 
-    array<vector<BrickLine>, 4> matched_lines = match_detections(all_lines);
+    // filter ground points
+    vector<MyPoint> filtered_dense[LIDAR_ROWS];
+    vector<MyPoint> filtered_sparse[LIDAR_ROWS];
+    std::vector<double> ground1 = {0, 0, 1, LIDAR_HEIGHT};
+    std::vector<double> ground2 = {0, 0, 1, LIDAR_HEIGHT * 2};
+    filter_ground(ground1, point_rows, filtered_dense);
+    filter_ground(ground2, point_rows, filtered_sparse);
 
-    array<MyPoint, 4> pile_centers = get_piles(matched_lines);
+    // find segments using split and merge algorithm
+    array<vector<BrickLine>, 5> lines = find_brick_segments(filtered_dense);
+    vector<BrickLine> wall_lines = find_wall_segments(filtered_sparse);
 
-    array<vector<MyPoint>, 4> brick_centers = get_brick_centers(matched_lines, pile_centers);
+    // perform brick segment matching using hits with different heights
+    array<vector<BrickLine>, 4> matched_bricks;
+    array<vector<BrickLine>, 4> matched_single_bricks;
+    vector<BrickLine> matched_walls;
+    vector<BrickLine> matched_wall_sides;
+    // matched_bricks = {lines[0], lines[1], lines[2], lines[3]};
 
+    for (int i = 0; i < 3; i++) {
+        matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 2, 3);
+    }
+    matched_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.425, 2, 3);
+
+    matched_walls = match_detections(wall_lines, 1.1, 2.0, 0.8, 2, 3);
+    matched_wall_sides = match_detections(lines[4], 1.1, 1.75, 0.8, 2, 3);
+    for (int i = 0; i < 4; i++) {
+        matched_single_bricks[i] = match_detections(lines[i], 0.2, 0.25, 0.025, 0, 2);
+    }
+
+
+    // obtain piles
+    array<MyPoint, 4> pile_centers = get_piles(matched_bricks);
+    array<vector<MyPoint>, 4> brick_centers = get_centers_in_piles(matched_bricks, pile_centers);
+
+    /*
     cout << "red detected: " << brick_centers[0].size() << endl << "green detected: " << brick_centers[1].size() << endl
-         << "blue detected: " << brick_centers[2].size() << endl << "orange detected: " << brick_centers[3].size() << endl
+         << "blue detected: " << brick_centers[2].size() << endl << "orange detected: " << brick_centers[3].size()
+         << endl
          << endl;
+    */
 
-    array<MyPoint, 2> way_point = fit_detection(brick_centers, wall_setup);
+    // fit wall shape on my detection
+    array<cv::Point2d, 2> tar_pt = {cv::Point2d(0.0, 0.0), cv::Point2d(5.0, 0.0)};
+    array<MyPoint, 2> way_point = fit_detection(brick_centers, wall_setup, tar_pt);
+    array<cv::Point2d, 2> tar_pt_back = {cv::Point2d(7.3, -0.8), cv::Point2d(2.3, -0.8)};
+    array<MyPoint, 2> way_point_back = fit_detection(brick_centers, wall_setup_back, tar_pt_back);
 
     /// visualise using marker publishing in rviz --------------------------------------------------------------
     visualization_msgs::MarkerArray lists;
@@ -620,7 +695,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     line_list1.scale.x = 0.025;
     line_list1.color.a = 1.0;
     line_list1.color.r = 1.0;
-    for (auto &red_line : matched_lines[0]) {
+    for (auto &red_line : matched_bricks[0]) {
         geometry_msgs::Point p1;
         geometry_msgs::Point p2;
 
@@ -647,7 +722,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     line_list2.scale.x = 0.025;
     line_list2.color.a = 1.0;
     line_list2.color.g = 1.0;
-    for (auto &green_line : matched_lines[1]) {
+    for (auto &green_line : matched_bricks[1]) {
         geometry_msgs::Point p1;
         geometry_msgs::Point p2;
 
@@ -674,7 +749,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     line_list3.scale.x = 0.025;
     line_list3.color.a = 1.0;
     line_list3.color.b = 1.0;
-    for (auto &line : matched_lines[2]) {
+    for (auto &line : matched_bricks[2]) {
         geometry_msgs::Point p1;
         geometry_msgs::Point p2;
 
@@ -702,7 +777,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     line_list4.color.a = 1.0;
     line_list4.color.g = 1.0;
     line_list4.color.r = 1.0;
-    for (auto &line : matched_lines[3]) {
+    for (auto &line : matched_bricks[3]) {
         geometry_msgs::Point p1;
         geometry_msgs::Point p2;
 
@@ -716,7 +791,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         p2.z = line[1].z;
         line_list4.points.push_back(p2);
     }
-
 
     lists.markers.push_back(line_list1);
     lists.markers.push_back(line_list2);
@@ -737,8 +811,8 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     centers.color.a = 1.0;
     centers.color.g = 1.0;
 
-    for(int i = 0; i < 4; i++){
-        if (pile_centers[i].x != 0 and pile_centers[i].y != 0){
+    for (int i = 0; i < 4; i++) {
+        if (pile_centers[i].x != 0 and pile_centers[i].y != 0) {
             geometry_msgs::Point pt;
             pt.x = pile_centers[i].x;
             pt.y = pile_centers[i].y;
@@ -747,23 +821,28 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         }
     }
 
-    sensor_msgs::PointCloud origin_line1;
-    origin_line1.header.frame_id = "velodyne";
-    origin_line1.header.stamp = ros::Time::now();
-    // fill with points
-    geometry_msgs::Point32 pub_pt1;
-    pub_pt1.x = way_point[0].x;
-    pub_pt1.y = way_point[0].y;
-    pub_pt1.z = way_point[0].z;
-    origin_line1.points.push_back(pub_pt1);
-    geometry_msgs::Point32 pub_pt2;
-    pub_pt2.x = way_point[1].x;
-    pub_pt2.y = way_point[1].y;
-    pub_pt2.z = 0;
-    origin_line1.points.push_back(pub_pt2);
+    if (way_point[0].x != 0 and way_point[0].y != 0 and way_point[0].z < 1.0) {
+        if (way_point[0].z > way_point_back[0].z) {
+            way_point = way_point_back;
+        }
 
+        sensor_msgs::PointCloud origin_line1;
+        origin_line1.header.frame_id = "velodyne";
+        origin_line1.header.stamp = ros::Time::now();
+        // fill with points
+        geometry_msgs::Point32 pub_pt1;
+        pub_pt1.x = way_point[0].x;
+        pub_pt1.y = way_point[0].y;
+        pub_pt1.z = way_point[0].z;
+        origin_line1.points.push_back(pub_pt1);
+        geometry_msgs::Point32 pub_pt2;
+        pub_pt2.x = way_point[1].x;
+        pub_pt2.y = way_point[1].y;
+        pub_pt2.z = 0;
+        origin_line1.points.push_back(pub_pt2);
+        origin_pcl_pub.publish(origin_line1);
+    }
 
-    origin_pcl_pub.publish(origin_line1);
     center_pub.publish(centers);
     vis_pub.publish(lists);
 

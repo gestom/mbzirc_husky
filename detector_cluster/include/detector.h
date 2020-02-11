@@ -39,25 +39,31 @@ public:
 
     ros::NodeHandle *n;
     std::array<std::vector<MyPoint>, 4> wall_setup;
+    std::array<std::vector<MyPoint>, 4> wall_setup_back;
 
     BrickDetector(ros::NodeHandle node) {
         n = &node;
         fetch_parameters();
-        build_wall();
+        build_walls();
     }
 
-    std::array<std::vector<BrickLine>, 4> find_bricks(sensor_msgs::PointCloud2 &ptcl);
+    std::array<std::vector<BrickLine>, 5> find_brick_segments(std::vector<MyPoint> *filtered_ptcl);
 
-    std::array<std::vector<BrickLine>, 4> match_detections(std::array<std::vector<BrickLine>, 4> lines);
+    std::vector<BrickLine> find_wall_segments(std::vector<MyPoint> *filtered_ptcl);
+
+    std::vector<BrickLine> match_detections(std::vector<BrickLine> lines,
+                                            double obj_height, double obj_top, double req_height, int min_detections,
+                                            int max_detections);
 
     void filter_on_line(MyPoint p1, MyPoint p2, std::array<std::vector<BrickLine>, 4> &ret);
 
     std::array<MyPoint, 4> get_piles(std::array<std::vector<BrickLine>, 4> &lines);
 
-    std::array<std::vector<MyPoint>, 4> get_brick_centers(std::array<std::vector<BrickLine>, 4> &lines,
-                                                          std::array<MyPoint, 4> &piles);
+    std::array<std::vector<MyPoint>, 4> get_centers_in_piles(std::array<std::vector<BrickLine>, 4> &lines,
+                                                            std::array<MyPoint, 4> &piles);
 
-    std::array<MyPoint, 2> fit_detection(std::array<std::vector<MyPoint>, 4> proposal, std::array<std::vector<MyPoint>, 4> wall);
+    std::array<MyPoint, 2>
+    fit_detection(std::array<std::vector<MyPoint>, 4> proposal, std::array<std::vector<MyPoint>, 4> wall, std::array<cv::Point2d, 2> tar_pt);
 
     void subscribe_ptcl(sensor_msgs::PointCloud2 ptcl);
 
@@ -66,22 +72,25 @@ private:
 
     // parameters
     // 910-911 pts per one plane of VLP-16 lidar
-    int LIDAR_ROWS;              // VLP-16
-    float HEIGHT_TOLERANCE;      // for creating ground plane
-    float GROUND_SAFE_DISTANCE;  // minimal distance from ground
-    float LIDAR_HEIGHT;          // height of the lidar from ground
-    float CLUSTERING_DIST;       // maximal distance used for clustering
-    int MIN_CLUSTER_SIZE;        // minimal number of points in one cluster
-    int POINT_ITERATION_STEP;    // step during splitting
-    float SPLITTING_DISTANCE;    // minimal distance to split into more clusters
-    int MINIMAL_LINE_LENGTH;     // sets minimal number of points to line
-    float MAXIMAL_JOIN_ANGLE;    // maximal join angle in degrees
-    float MAXIMAL_JOIN_DISTANCE; // maximal distance to join sections
-    float MAXIMAL_JOIN_SHIFT;    // maximal distance of first point from previous line
-    float BRICK_SIZE;            // size of the smallest brick - we presume that all sizes are multiplication of this
-    float SIZE_TOLERANCE;        // each brick should be size % BRICK_SIZE == 0
-    float MAX_DIST;              // maximal possible distance of a detection
-    float MAX_HEIGHT;            // maximal possible height of a detection
+    int LIDAR_ROWS;                 // VLP-16
+    float HEIGHT_TOLERANCE;         // for creating ground plane
+    float GROUND_SAFE_DISTANCE;     // minimal distance from ground
+    float LIDAR_HEIGHT;             // height of the lidar from ground
+    float CLUSTERING_DIST;          // maximal distance used for clustering
+    float WALL_CLUSTERING_DIST;    // maximal distance for clastering bigger wall segments
+    int MIN_CLUSTER_SIZE;           // minimal number of points in one cluster
+    int POINT_ITERATION_STEP;       // step during splitting
+    float SPLITTING_DISTANCE;       // minimal distance to split into more clusters
+    float WALL_SPLITTING_DISTANCE;  // minimal distance to split into more clusters
+    int MINIMAL_LINE_LENGTH;        // sets minimal number of points to line
+    float MAXIMAL_JOIN_ANGLE;       // maximal join angle in degrees
+    float MAXIMAL_JOIN_DISTANCE;    // maximal distance to join sections
+    float MAXIMAL_JOIN_SHIFT;       // maximal distance of first point from previous line
+    float BRICK_SIZE;               // size of the smallest brick - we presume that all sizes are multiplication of this
+    float SIZE_TOLERANCE;           // each brick should be size % BRICK_SIZE == 0
+    float MAX_DIST;                 // maximal possible distance of a detection
+    float MAX_BRICK_DIST;           // maximal possible distance of brick detection
+    float MAX_HEIGHT;               // maximal possible height of a detection
     double BRICK_HEIGHT = 0.2;
 
     void fetch_parameters();
@@ -92,16 +101,19 @@ private:
     filter_ground(std::vector<double> ground, std::vector<MyPoint> *point_rows, std::vector<MyPoint> *ret);
 
     void create_clusters(std::vector<MyPoint> *filtered,
-                         std::vector<std::array<int, 2>> *ret);
+                         std::vector<std::array<int, 2>> *ret,
+                         double clustering_distance,
+                         double max_dist);
 
     void split_and_merge(std::vector<MyPoint> *filtered,
                          std::vector<std::array<int, 2>> *clusters,
-                         std::vector<BrickLine> *ret);
+                         std::vector<BrickLine> *ret,
+                         double splitting_distance);
 
-    void filter_size(std::vector<BrickLine> *in_lines, double size,
+    void filter_size(std::vector<BrickLine> *in_lines, double size, double tolerance,
                      std::vector<BrickLine> &ret);
 
-    void build_wall();
+    void build_walls();
 
 };
 
