@@ -14,6 +14,16 @@
 #include <geometry_msgs/Twist.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Twist.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <visualization_msgs/Marker.h>
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+PointCloud::Ptr pcl_msg (new PointCloud);
+PointCloud::Ptr pcl_two_line_msg (new PointCloud);
+PointCloud::Ptr pcl_of_interest_msg (new PointCloud);
+ros::Publisher point_pub;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickPickupAction> Server;
 Server *server;
@@ -37,6 +47,7 @@ const char *behStr[] = {
 	"aligining phi",
 	"moving y",
 	"moving fw/bw",
+	"moving odo",
 	"number"
 };
 
@@ -508,6 +519,140 @@ int alignRobot()
 //	if (robotXYMove < 0) alignRobotWithWall(-0.05); 
 }
 
+float tolerance = 0.05;
+int minPoints = 0;
+int maxEvalu = 360;
+
+int misdetections = 0;
+
+void precise(float *ai,float *bi,float *x,float *y,int numPoints)
+{
+        float a = *ai;
+        float b = *bi;
+        float sxx,sxy,sx,sy;
+        int n = 0;
+        sxx=sxy=sx=sy=0;
+        for (int j = 0; j <= numPoints; j++){
+                if (fabs(sin(a)*x[j]+cos(a)*y[j]+b)<tolerance){
+                        sx += x[j];
+                        sy += y[j];
+                        sxx += x[j]*x[j];
+                        sxy += x[j]*y[j];
+                        n++;
+                }
+                if (fabs(sin(a)*x[j]+cos(a)*(y[j]+0.3)+b)<tolerance){
+                        sx += x[j];
+                        sy += y[j]+0.3;
+                        sxx += x[j]*x[j];
+                        sxy += x[j]*(y[j]+0.3);
+                        n++;
+                }
+        }
+        if ((n*sxx-sx*sx) != 0 && n > 0){
+                a = atan2(n*sxy-sx*sy,n*sxx-sx*sx);
+                b = (sy-a*sx)/n;
+                *ai=a;
+                *bi=b;
+        }
+}
+
+void scanCallBacka(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
+{
+	size_t num_ranges = scan_msg->ranges.size();
+	float x[num_ranges];
+	float y[num_ranges];
+	bool m[num_ranges];
+	float angle;
+	misdetections++;
+	int numPoints = 0;
+	float pX, pY;
+	float maxX,minX,maxY,minY;
+	minX = -0.0;
+	maxX = +5.0;
+	minY = -1.0;
+	maxY = -0.4;
+	for (int i = 0; i <= num_ranges; i++)
+	{
+		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
+		pX = scan_msg->ranges[i]*cos(angle);
+		pY = scan_msg->ranges[i]*sin(angle);
+		if (pX < maxX && pX > - maxX && pY > minY && pY < maxY){
+			x[numPoints] = pX;
+			y[numPoints] = pY;
+			m[numPoints] = true;
+			numPoints++;
+		}
+	}
+
+
+	int eval = 0;
+	int max_iterations = 100;
+	float a,b;
+	float maxA;
+	float maxB;
+	int maxEval=0;
+	for (int i = 0; i <= max_iterations; i++)
+	{
+		int aIndex = rand()%num_ranges;
+		int bIndex = rand()%num_ranges;
+		while (bIndex == aIndex) bIndex = rand()%num_ranges;
+		if((x[bIndex]-x[aIndex]) == 0) continue;
+		a = atan2(y[bIndex]-y[aIndex],x[bIndex]-x[aIndex]);
+		b = y[bIndex]-sin(a)*x[bIndex];
+		eval = 0;
+		for (int j = 0; j <= numPoints; j++){
+			if (fabs(sin(a)*x[j]-cos(a)*y[j]+b)<tolerance && m[j]) eval++;
+			if (fabs(sin(a)*x[j]-cos(a)*(y[j]+0.3)+b)<tolerance && m[j]) eval++;
+		}
+		if (maxEval < eval){
+			maxEval=eval;
+			maxA=a;
+			maxB=b;
+		}
+	}
+	int max_idx;
+	precise(&maxA,&maxB,x,y,numPoints);
+	if (maxA > M_PI/2){
+	       	maxA = maxA - M_PI;
+	       	maxB = -maxB;
+	}
+	if (maxA < - M_PI/2){
+	       	maxA = maxA + M_PI;
+	       	maxB = -maxB;
+	}
+	printf("Points: %i %i %i %.3f %.3f\n",num_ranges,numPoints,maxEval,maxA,maxB);
+
+
+
+	pcl_msg->header.frame_id = "velodyne";
+	pcl_msg->height = 1;
+	pcl_msg->points.clear();
+	pcl_msg->width = 0;
+	int b1 = -1;
+	int b2 = -1;
+	for (int j = 0; j <= numPoints; j++)
+	{
+		if (fabs(sin(maxA)*x[j]-cos(maxA)*y[j]+maxB)<tolerance){
+			pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
+			pcl_msg->width++;
+		}
+		if (fabs(sin(maxA)*x[j]-cos(maxA)*(y[j]+0.3)+maxB)<tolerance){
+			pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
+			pcl_msg->width++;
+		}
+	}
+	pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
+	point_pub.publish (pcl_msg);
+	spd.angular.z = 0;
+	if (maxEval > 300) spd.angular.z = (0.57+maxB); else spd.angular.z = maxA;
+	spd.linear.x = 0.1;
+	setSpeed(spd);
+}
+
+
+
+
+
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
@@ -616,7 +761,9 @@ int main(int argc, char** argv)
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
 	storageUnloadClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/unload_brick");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
-	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
+	subscriberScan = n.subscribe("/scan", 1, &scanCallBacka);
+	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
+
 	listener = new tf::TransformListener();
 	// Dynamic reconfiguration server
 	/*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
