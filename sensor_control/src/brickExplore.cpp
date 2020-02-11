@@ -636,7 +636,7 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
         return -1;
     }
 
-    float theta = atan2(dy, dx)
+    float theta = atan2(dy, dx);
     float mapWPX = x*cos(theta) - y*sin(theta) + brickStackRedX;
     float mapWPY = y*sin(theta) + y*cos(theta) + brickStackRedY;
 
