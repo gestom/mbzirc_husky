@@ -602,9 +602,9 @@ void findBricks()
 void moveToBrickPile()
 {
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(2.5, -1, 0.3);
+    moveToBrickPosition(2., -1., 0.3);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(2., -0.8, 0.1);   
+    moveToBrickPosition(-1.2, -0.7, 0.1);   
            
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
