@@ -55,9 +55,10 @@ EBehaviour behaviour = NONE;
 EBehaviour nextBehaviour = NONE;
 EBehaviour recoveryBehaviour = NONE;
 
+float ransacTolerance = 0.05;
 int behaviourResult = 0;
 int robotXYMove = 1;
-int alignMessageDelayCount = 210;
+int alignMessageDelayCount = 30;
 
 const char *stateStr[] = { 
 	"Idle",
@@ -170,7 +171,7 @@ int alignmentOK = 0;
 
 void setSpeed(geometry_msgs::Twist speed)
 {
-	float maxX = 0.10;
+	float maxX = 0.20;
 	float maxZ = 0.15;
 	if (speed.linear.x > +maxX) speed.linear.x = +maxX;
 	if (speed.linear.x < -maxX) speed.linear.x = -maxX;
@@ -249,6 +250,162 @@ int robotMTM(const sensor_msgs::LaserScanConstPtr &msg)
 	return 0;
 }
 
+void precise(float *ai,float *bi,float *x,float *y,int numPoints)
+{
+        float a = *ai;
+        float b = *bi;
+        float sxx,sxy,sx,sy;
+        int n = 0;
+        sxx=sxy=sx=sy=0;
+        for (int j = 0; j <= numPoints; j++){
+                if (fabs(sin(a)*x[j]+cos(a)*y[j]+b)<ransacTolerance){
+                        sx += x[j];
+                        sy += y[j];
+                        sxx += x[j]*x[j];
+                        sxy += x[j]*y[j];
+                        n++;
+                }
+                if (fabs(sin(a)*x[j]+cos(a)*(y[j]+0.3)+b)<ransacTolerance){
+                        sx += x[j];
+                        sy += y[j]+0.3;
+                        sxx += x[j]*x[j];
+                        sxy += x[j]*(y[j]+0.3);
+                        n++;
+                }
+        }
+        if ((n*sxx-sx*sx) != 0 && n > 0){
+                a = atan2(n*sxy-sx*sy,n*sxx-sx*sx);
+                b = (sy-a*sx)/n;
+                *ai=a;
+                *bi=b;
+        }
+}
+
+
+
+
+int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
+{
+	spd.linear.x = spd.angular.z = 0;
+	float dx = anchorPose.pose.position.x-robotPose.pose.position.x;
+	float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
+	float dist = sqrt(dx*dx+dy*dy);
+
+
+
+
+	size_t num_ranges = scan_msg->ranges.size();
+	float x[num_ranges];
+	float y[num_ranges];
+	bool m[num_ranges];
+	float angle;
+	int numPoints = 0;
+	float pX, pY;
+	float maxX,minX,maxY,minY;
+	minX = -0.0;
+	maxX = +5.0;
+	minY = -1.0;
+	maxY = -0.4;
+	for (int i = 0; i <= num_ranges; i++)
+	{
+		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
+		pX = scan_msg->ranges[i]*cos(angle);
+		pY = scan_msg->ranges[i]*sin(angle);
+		if (pX < maxX && pX > - maxX && pY > minY && pY < maxY){
+			x[numPoints] = pX;
+			y[numPoints] = pY;
+			m[numPoints] = true;
+			numPoints++;
+		}
+	}
+
+
+	int evalA,evalB = 0;
+	int max_iterations = 100;
+	float a,b;
+	float maxA;
+	float maxB;
+	int maxEval,maxEvalA,maxEvalB;
+	maxEval = maxEvalA = maxEvalB =0;
+	for (int i = 0; i <= max_iterations; i++)
+	{
+		int aIndex = rand()%num_ranges;
+		int bIndex = rand()%num_ranges;
+		while (bIndex == aIndex) bIndex = rand()%num_ranges;
+		if((x[bIndex]-x[aIndex]) == 0) continue;
+		a = atan2(y[bIndex]-y[aIndex],x[bIndex]-x[aIndex]);
+		b = y[bIndex]-sin(a)*x[bIndex];
+		evalA = evalB = 0;
+		for (int j = 0; j <= numPoints; j++){
+			if (fabs(sin(a)*x[j]-cos(a)*y[j]+b)<ransacTolerance && m[j]) evalA++;
+			if (fabs(sin(a)*x[j]-cos(a)*(y[j]+0.3)+b)<ransacTolerance && m[j]) evalB++;
+		}
+		if (maxEval < evalA+evalB){
+			maxEval=evalA+evalB;
+			maxEvalA = evalA;
+			maxEvalB = evalB;
+			maxA=a;
+			maxB=b;
+		}
+	}
+	int max_idx;
+	precise(&maxA,&maxB,x,y,numPoints);
+	if (maxA > M_PI/2){
+	       	maxA = maxA - M_PI;
+	       	maxB = -maxB;
+	}
+	if (maxA < - M_PI/2){
+	       	maxA = maxA + M_PI;
+	       	maxB = -maxB;
+	}
+
+
+
+	pcl_msg->header.frame_id = "velodyne";
+	pcl_msg->height = 1;
+	pcl_msg->points.clear();
+	pcl_msg->width = 0;
+	int b1 = -1;
+	int b2 = -1;
+	maxEvalA = 0;
+	maxEvalB = 0;
+	for (int j = 0; j <= numPoints; j++)
+	{
+		if (fabs(sin(maxA)*x[j]-cos(maxA)*y[j]+maxB)<ransacTolerance){
+			pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
+			maxEvalA++;
+			pcl_msg->width++;
+		}
+		if (fabs(sin(maxA)*x[j]-cos(maxA)*(y[j]+0.3)+maxB)<ransacTolerance){
+			pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
+			maxEvalB++;
+			pcl_msg->width++;
+		}
+	}
+	pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
+	point_pub.publish (pcl_msg);
+	spd.angular.z = 0;
+	printf("Points: %i %i %i %.3f %.3f\n",numPoints,maxEvalA,maxEvalB,maxA,maxB);
+	spd.linear.x = 0.1;
+	float signMove = 1;
+	if (moveDistance < 0) signMove = -1;
+
+	if (maxEvalA + maxEvalB > 50) { spd.angular.z = maxA; spd.linear.x = 0.3;}
+	if (maxEvalA > 50 && maxEvalB > 50) {spd.angular.z = signMove*(0.57+maxB);} 
+	spd.linear.x = signMove*(fabs(moveDistance) - dist + 0.1);
+
+	if (dist > fabs(moveDistance)) {
+		spd.linear.x = spd.angular.z = 0;
+		behaviour = nextBehaviour;
+		printf("Movement done: %.3f %.3f\n",dist,moveDistance); 
+		setSpeed(spd);
+		return 0;
+	}
+	setSpeed(spd);
+	return 1;
+}
+
+
 
 int moveRobot(float distance,EBehaviour nextBeh = NONE)
 {
@@ -282,13 +439,13 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	geometry_msgs::Twist spd;
 	spd.linear.x = spd.angular.z = 0;
 	if (msg->detected){
-		if (incomingMessageCount++ > 120) {
+		if (incomingMessageCount++ > alignMessageDelayCount) {
 			float angleDiff = (msg->pose.pose.position.y*3-angle);
 			spd.angular.z =  angleDiff*10;
 			spd.linear.x = -msg->pose.pose.position.x;
 
 			
-			if (fabs(msg->pose.pose.position.y) < 0.02 && fabs(msg->pose.pose.position.x) < 0.02){
+			if (fabs(msg->pose.pose.position.y) < 0.08 && fabs(msg->pose.pose.position.x) < 0.02){
 				spd.linear.x = spd.angular.z = 0;
 				printf("Final robot alignment: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
 				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
@@ -310,7 +467,7 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
 {
 	if (updateRobotPosition() < 0) return;
-	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
+	if (behaviour == ROBOT_MOVE_ODO)  robotMoveScan(msg); 
 	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
 	return;
 }
@@ -365,11 +522,13 @@ int positionArm(bool high = true)
 	ROS_INFO("MOVING ARM INTO POSITION");
 	mbzirc_husky_msgs::Float64 srv;
 	srv.request.data = 0;
+	//std_srvs::Trigger srv;
+	//srv.request.data = 0;
 	if (active_storage == 1) srv.request.data = -0.3;
 	if (prepareClient.call(srv)) {
-		usleep(3500000);	//TODO this is unsafe
-		if (active_storage == 1) usleep(2300000); 
-		if (active_storage == 2) usleep(3300000); 
+		//usleep(3500000);	//TODO this is unsafe
+		//if (active_storage == 1) usleep(2300000); 
+		//if (active_storage == 2) usleep(3300000); 
 		ROS_INFO("ARM POSITIONED");
 		return 0;
 	}
@@ -381,11 +540,12 @@ int positionArm(bool high = true)
 int alignArm(bool high = true)
 {
 	ROS_INFO("ALIGNING ARM");
-	mbzirc_husky_msgs::Float64 srv;
-	srv.request.data = 0.0;
-	if (active_storage == 1) srv.request.data = -0.3;
+	//mbzirc_husky_msgs::Float64 srv;
+	std_srvs::Trigger srv;
+	//srv.request.data = 0.0;
+	//if (active_storage == 1) srv.request.data = -0.3;
 	if (alignClient.call(srv)) {
-		usleep(3000000);
+		//usleep(3000000);
 		ROS_INFO("ARM ALIGNED");
 		return 0;
 	}
@@ -456,23 +616,6 @@ int storeBrick()
 		ROS_INFO("BRICK STORED IN POSITION %d", active_storage);
 		active_storage++;
 		return 0;
-		
-		/*if (active_storage == 2) {
-			ROS_INFO("FINISHED PICKUP, GOING for 1st green");
-
-			mbzirc_husky_msgs::Float64 srv;
-			srv.request.data = 0;
-			if (prepareClient.call(srv)){
-				moveDistance = 0.4;	
-				//						state = ROBOTALIGN_WITH_WALL_ODO;
-				//active_storage = 0;
-				active_layer++;
-			}
-		}
-		else
-		{
-			state = ARMLOWPOSITIONING;
-		}*/
 	}
 
 	ROS_INFO("FAILED TO STORE THE BRICK SUCCESSFULLY");
@@ -519,136 +662,6 @@ int alignRobot()
 //	if (robotXYMove < 0) alignRobotWithWall(-0.05); 
 }
 
-float tolerance = 0.05;
-int minPoints = 0;
-int maxEvalu = 360;
-
-int misdetections = 0;
-
-void precise(float *ai,float *bi,float *x,float *y,int numPoints)
-{
-        float a = *ai;
-        float b = *bi;
-        float sxx,sxy,sx,sy;
-        int n = 0;
-        sxx=sxy=sx=sy=0;
-        for (int j = 0; j <= numPoints; j++){
-                if (fabs(sin(a)*x[j]+cos(a)*y[j]+b)<tolerance){
-                        sx += x[j];
-                        sy += y[j];
-                        sxx += x[j]*x[j];
-                        sxy += x[j]*y[j];
-                        n++;
-                }
-                if (fabs(sin(a)*x[j]+cos(a)*(y[j]+0.3)+b)<tolerance){
-                        sx += x[j];
-                        sy += y[j]+0.3;
-                        sxx += x[j]*x[j];
-                        sxy += x[j]*(y[j]+0.3);
-                        n++;
-                }
-        }
-        if ((n*sxx-sx*sx) != 0 && n > 0){
-                a = atan2(n*sxy-sx*sy,n*sxx-sx*sx);
-                b = (sy-a*sx)/n;
-                *ai=a;
-                *bi=b;
-        }
-}
-
-void scanCallBacka(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
-{
-	size_t num_ranges = scan_msg->ranges.size();
-	float x[num_ranges];
-	float y[num_ranges];
-	bool m[num_ranges];
-	float angle;
-	misdetections++;
-	int numPoints = 0;
-	float pX, pY;
-	float maxX,minX,maxY,minY;
-	minX = -0.0;
-	maxX = +5.0;
-	minY = -1.0;
-	maxY = -0.4;
-	for (int i = 0; i <= num_ranges; i++)
-	{
-		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
-		pX = scan_msg->ranges[i]*cos(angle);
-		pY = scan_msg->ranges[i]*sin(angle);
-		if (pX < maxX && pX > - maxX && pY > minY && pY < maxY){
-			x[numPoints] = pX;
-			y[numPoints] = pY;
-			m[numPoints] = true;
-			numPoints++;
-		}
-	}
-
-
-	int eval = 0;
-	int max_iterations = 100;
-	float a,b;
-	float maxA;
-	float maxB;
-	int maxEval=0;
-	for (int i = 0; i <= max_iterations; i++)
-	{
-		int aIndex = rand()%num_ranges;
-		int bIndex = rand()%num_ranges;
-		while (bIndex == aIndex) bIndex = rand()%num_ranges;
-		if((x[bIndex]-x[aIndex]) == 0) continue;
-		a = atan2(y[bIndex]-y[aIndex],x[bIndex]-x[aIndex]);
-		b = y[bIndex]-sin(a)*x[bIndex];
-		eval = 0;
-		for (int j = 0; j <= numPoints; j++){
-			if (fabs(sin(a)*x[j]-cos(a)*y[j]+b)<tolerance && m[j]) eval++;
-			if (fabs(sin(a)*x[j]-cos(a)*(y[j]+0.3)+b)<tolerance && m[j]) eval++;
-		}
-		if (maxEval < eval){
-			maxEval=eval;
-			maxA=a;
-			maxB=b;
-		}
-	}
-	int max_idx;
-	precise(&maxA,&maxB,x,y,numPoints);
-	if (maxA > M_PI/2){
-	       	maxA = maxA - M_PI;
-	       	maxB = -maxB;
-	}
-	if (maxA < - M_PI/2){
-	       	maxA = maxA + M_PI;
-	       	maxB = -maxB;
-	}
-	printf("Points: %i %i %i %.3f %.3f\n",num_ranges,numPoints,maxEval,maxA,maxB);
-
-
-
-	pcl_msg->header.frame_id = "velodyne";
-	pcl_msg->height = 1;
-	pcl_msg->points.clear();
-	pcl_msg->width = 0;
-	int b1 = -1;
-	int b2 = -1;
-	for (int j = 0; j <= numPoints; j++)
-	{
-		if (fabs(sin(maxA)*x[j]-cos(maxA)*y[j]+maxB)<tolerance){
-			pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
-			pcl_msg->width++;
-		}
-		if (fabs(sin(maxA)*x[j]-cos(maxA)*(y[j]+0.3)+maxB)<tolerance){
-			pcl_msg->points.push_back (pcl::PointXYZ(x[j], y[j], 0.1));
-			pcl_msg->width++;
-		}
-	}
-	pcl_conversions::toPCL(ros::Time::now(), pcl_msg->header.stamp);
-	point_pub.publish (pcl_msg);
-	spd.angular.z = 0;
-	if (maxEval > 300) spd.angular.z = (0.57+maxB); else spd.angular.z = maxA;
-	spd.linear.x = 0.1;
-	setSpeed(spd);
-}
-
 
 
 
@@ -666,12 +679,12 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
-				case TEST1: if (moveRobot(-0.35) == 0) nextState = IDLE; else nextState = IDLE; break; 
-				case TEST2: if (moveRobot(-0.55) == 0) nextState = IDLE; else nextState = IDLE; break;
+				case TEST1: if (moveRobot(-2.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
+				case TEST2: if (moveRobot(+2.5) == 0) nextState = TEST1; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
-				case ARMALIGNMENT: if (alignArm() == 0) nextState = ARMDESCENT; else nextState = ARMRESET; break;
+				case ARMALIGNMENT: if (alignArm() == 0) nextState = MOVE_TO_GREEN_BRICK_1; else nextState = ARMRESET; break;
 				case ARMDESCENT: if (descentArm() == 0) nextState = ARMPICKUP; else nextState = ARMALIGNMENT; switchDetection(false); break;
 				case ARMPICKUP:  if (pickupBrick() == 0) nextState = ARMSTORAGE; else nextState = ARMALIGNMENT; break;
 				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMPOSITIONING; break;
@@ -684,52 +697,15 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 							 if (active_storage == 5)  {nextState = MOVE_TO_GREEN_BRICK_2;}
 							 if (active_storage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
 						 }else { nextState = ARMRESET;} break;
-				case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
-				case ROBOT_ALIGN_WITH_WALL: switchDetection(true); robotXYMove = +1; alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
-				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.2); robotXYMove = -1; nextState = ARMPOSITIONING; break;
+				//case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
+				//case ROBOT_ALIGN_WITH_WALL: switchDetection(true); robotXYMove = +1; alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.8); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-1.2); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(1.9); robotXYMove = +1; nextState = ARMPOSITIONING; break;
 			}
 		}
 		usleep(1200000);
 	} 
-	/*if (state == ARMLOWPOSITIONING) {
-	  ROS_INFO("MOVING ARM INTO LOW BRICK POSITION");
-	  mbzirc_husky_msgs::Float64 srv;
-	  srv.request.data = -0.3;
-	  if (prepareClient.call(srv)) {
-	  usleep(3500000);
-	  state = ARMLOWALIGNMENT;
-	  mbzirc_husky_msgs::brickDetect brick_srv;
-	  brick_srv.request.activate            = true;
-	  brick_srv.request.groundPlaneDistance = 0;
-	  brick_srv.request.x                   = 640;
-	  brick_srv.request.y                   = 480;
-	  brickDetectorClient.call(brick_srv.request, brick_srv.response);
-
-	  } else {
-	// unsafe
-	//state = ROBOTALIGNMENT_PHI;
-	// state = ARMALIGNMENT;
-	ROS_INFO("ARM POSITION FAILED");
-	usleep(3500000);
-	}
-
-	} else if (state == ARMLOWALIGNMENT) {
-	usleep(5000000);
-	mbzirc_husky_msgs::Float64 srv;
-	srv.request.data = -0.3;
-	if (alignClient.call(srv)) {
-	state = ARMDESCENT;
-	ROS_INFO("ARM ALIGNED");
-	} else {
-	usleep(500000);
-	state = ARMLOWALIGNMENT;
-	ROS_INFO("FAILED: FAILED TO ALIGN ARM (LOW)");
-	}
-	}
-	usleep(1200000);*/
-
 	if (state == FINAL)
 		state = SUCCESS;
 	else
@@ -753,15 +729,17 @@ int main(int argc, char** argv)
 
 	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+	//prepareClient       = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
 	liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");
-	alignClient         = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/align_arm");
+	//alignClient         = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/align_arm_goto");
+	alignClient         = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
 	pickupClient        = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
 	homeClient          = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
 	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
 	storageUnloadClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/unload_brick");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
-	subscriberScan = n.subscribe("/scan", 1, &scanCallBacka);
+	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 
 	listener = new tf::TransformListener();
