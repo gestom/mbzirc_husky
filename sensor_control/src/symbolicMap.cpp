@@ -2,7 +2,6 @@
 #include <tf/tf.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <tf/transform_listener.h>
 #include <mbzirc_husky/boundsConfig.h>
 #include <mbzirc_husky/setPoi.h>
@@ -23,6 +22,8 @@ double map_rotation;
 
 std::vector<cv::Point2d> waypoints;
 
+
+
 void callback(mbzirc_husky::boundsConfig &config, uint32_t level) {
         map_width=config.w;
         map_height=config.h;
@@ -31,10 +32,13 @@ void callback(mbzirc_husky::boundsConfig &config, uint32_t level) {
         map_rotation=config.r;
 }
 
-/* service for set/reset the distance */
+// Take incoming point from service
+// Point type - 0 waypoint, 1 Drone Pile, 2 Drone delivery, 3 robot delivery, 4 red bricks, 5 green, 6 blue, 7 orange 
 bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::Response &res)
 {
-        ROS_INFO("Setting point for the symbolic map");
+ 	switch (req.type){
+		case 0: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);break;
+	}		
         res.res = true;
 	return true;
 
@@ -51,7 +55,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
         return true;
 }
 
-int loadWaypoints(){
+void loadWaypoints(){
 	std::ifstream loadFile;
 	loadFile.open("./src/mbzirc_husky/sensor_control/bricks/bricks.txt");
 	int i=0;
@@ -64,7 +68,6 @@ int loadWaypoints(){
 		waypoints.push_back(tmp);
 	}
 	loadFile.close();
-	return waypoints.size();	
 }
 
 	
