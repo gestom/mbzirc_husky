@@ -1,0 +1,45 @@
+<launch>
+  <node name="kortex_control_manager" pkg="kortex_control_manager" type="kortex_control_manager" output="screen">
+    <rosparam file="$(find kortex_control_manager)/config/params.yaml" />
+
+    <!-- output commands to arm driver -->
+    <remap from="~execute_trajectory" to="my_gen3/move_group_action" />
+    <remap from="~cartesian_velocity_out" to="my_gen3/in/cartesian_velocity" />
+
+    <!-- output to the mrs gripper -->
+    <remap from="~grip_out" to="husky/gripper/grip" />
+    <remap from="~ungrip_out" to="husky/gripper/ungrip" />
+
+    <!-- brick detection -->
+    <remap from="~brick_detect" to="detectBricks" />
+    <remap from="~brick_pose_in" to="brickPosition" />
+    
+    <!-- status input from arm driver and gripper -->
+    <remap from="~joint_states_in" to="my_gen3/joint_states" />
+    <remap from="~gripper_diagnostics_in" to="husky/gripper/gripper_diagnostics" />
+
+    <!-- manager status -->
+    <remap from="~arm_status_out" to="kinova/arm_manager/status" />
+    <remap from="~camera_to_ground_out" to="kinova/arm_manager/camera_to_ground" />
+    <remap from="~cartesian_velocity_out" to="my_gen3/in/cartesian_velocity" />
+    <remap from="~markers_out" to="kinova/arm_manager/rviz_markers" />
+
+    <!-- provided commands -->
+    <remap from="~home_in" to="kinova/arm_manager/home_arm" />
+    <remap from="~align_arm_in" to="kinova/arm_manager/align_arm" />
+    <remap from="~align_arm_goto_in" to="kinova/arm_manager/align_arm_goto" />
+    <remap from="~goto_in" to="kinova/arm_manager/goto" />
+    <remap from="~goto_relative_in" to="kinova/arm_manager/goto_relative" />
+    <remap from="~goto_angles_in" to="kinova/arm_manager/goto_angles" />
+    <remap from="~goto_angles_relative_in" to="kinova/arm_manager/goto_angles_relative" />
+    <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
+    <remap from="~lift_brick_in" to="kinova/arm_manager/lift_brick" />
+    <remap from="~pickup_in" to="kinova/arm_manager/pickup_brick" />
+    <remap from="~goto_storage_in" to="kinova/arm_manager/goto_storage" />
+    <remap from="~store_brick_in" to="kinova/arm_manager/store_brick" />
+    <remap from="~raise_camera_in" to="kinova/arm_manager/raise_camera" />
+    <remap from="~unload_brick_in" to="kinova/arm_manager/unload_brick" />
+
+    
+  </node>
+</launch>
