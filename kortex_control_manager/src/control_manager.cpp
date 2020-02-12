@@ -800,7 +800,10 @@ while (!brick_attached){ // && magnet_to_ground > stopping_height) {
     ros::spinOnce();
     ros::Duration(0.05).sleep();
   }
+  status = IDLE;
   setCartesianVelocity(ZERO_VELOCITY);
+  usleep(10000);
+  status = IDLE;
   if (brick_attached) {
     ROS_INFO("[%s]: Brick attached", ros::this_node::getName().c_str());
     return true;
