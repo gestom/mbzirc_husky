@@ -100,12 +100,15 @@ if __name__ == "__main__":
 
             cv2.imwrite(folder + "/" + newFilename + "-nogo.png", img2) 
 
+            yaml = ""
+            with open(folder + "/" + newFilename + ".yaml", "r") as f:
+                yaml = f.read()
+            yaml = yaml.replace(newFilename + ".pgm", newFilename + "-nogo.png")
+            with open(folder + "/" + newFilename + "-nogo.yaml", "w") as f:
+                f.write(yaml)
+
             wp = []
             wp.append((x, y))
-
-            M
-             
-
 
             with open(folder + "/" + newFilename + "-waypoints.txt", "w") as f:
                 for i in wp:
