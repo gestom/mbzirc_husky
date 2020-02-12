@@ -11,6 +11,9 @@ local_costmap:
   resolution: 0.1
   inflation_radius: 0.25
 
+  no_go_layer:
+      map_topic: /no_go_map
+
   inflater_layer:
                 inflation_radius: 0.1
                 cost_scaling_factor: 0.5
@@ -24,4 +27,5 @@ local_costmap:
 
   plugins:
           - {name: obstacle_layer, type: "costmap_2d::ObstacleLayer"}
+          - {name: no_go_layer, type: "costmap_2d::ObstacleLayer"} 
           - {name: inflater_layer, type: "costmap_2d::InflationLayer"}

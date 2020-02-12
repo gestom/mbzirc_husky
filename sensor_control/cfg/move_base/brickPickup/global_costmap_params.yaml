@@ -10,3 +10,11 @@ global_costmap:
   rolling_window: true
   inflation_radius: 0.4
   resolution: 0.1
+
+
+  no_go_layer:
+      map_topic: /no_go_map
+
+
+  plugins:
+      - {name: no_go_layer, type: "costmap_2d::ObstacleLayer"}
