@@ -1,0 +1,6 @@
+float32 x
+float32 y
+int32 type # 0 brickPile, 1 brick Delivery, 2 Drone Pile, 3 Drone delivery 4 waypoint
+float32 covariance
+---
+bool res
