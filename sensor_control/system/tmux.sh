@@ -7,7 +7,7 @@ sleep 0.2
 tmux send-keys 'roslaunch mbzirc_husky velodyne.launch'
 tmux split-window 
 sleep 0.2
-tmux send-keys 'roslaunch realsense2_camera rs_rgbd.launch'
+tmux send-keys 'roslaunch realsense2_camera rs_camera.launch'
 tmux new-window -n:"Slam"
 tmux send-keys 'roslaunch mbzirc_husky gmapping.launch'
 tmux split-window
@@ -20,11 +20,13 @@ tmux split-window
 tmux send-keys 'roscd mbzirc_husky;rosrun map_server map_server maps/map.yaml'
 tmux select-layout tiled
 tmux new-window -n:"Arm"
-tmux send-keys 'roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=j2n6s300'
-tmux split-window -v
+tmux send-keys 'roslaunch kortex_driver kortex_driver.launch start_rviz:=false start_moveit:=true'
+tmux split-window -h
+tmux send-keys 'roslaunch iiwa_moveit_pouring moveit_action.launch'
+tmux split-window -h
 sleep 0.2
-tmux send-keys 'roslaunch kinova_control_manager control_manager.launch'
-tmux split-window 
+tmux send-keys 'roslaunch kortex_control_manager control_manager.launch'
+tmux split-window -v
 sleep 0.2
 tmux send-keys 'roslaunch mrs_gripper uav.launch'
 tmux select-layout even-vertical

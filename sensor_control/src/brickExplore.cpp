@@ -602,9 +602,11 @@ void findBricks()
 void moveToBrickPile()
 {
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(2., -1., 0.3);
+    moveToBrickPosition(2.2, -1.3, -0.4);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-1.2, -0.7, 0.1);   
+    moveToBrickPosition(1.6, -0.5, -0.4);   
+    moveToBrickPosition(0.8, -0.5, -0.4);   
+    moveToBrickPosition(1.6, -0.5, -0.4);   
            
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
@@ -636,12 +638,12 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
         return -1;
     }
 
-    float theta = atan2(dy, dx)
+    float theta = atan2(dy, dx);
     float mapWPX = x*cos(theta) - y*sin(theta) + brickStackRedX;
     float mapWPY = y*sin(theta) + y*cos(theta) + brickStackRedY;
 
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0, 0, atan2(dy, dx) + orientationOffset);
+    quat_tf.setRPY(0, 0, atan2(dy, dx) + orientationOffset + PI) ;
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
 
@@ -720,7 +722,7 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
 void finalApproach()
 {
 	ROS_INFO("Final approach");
-	if(moveToBrickPosition(-0.5, 0.55, 0.0) == 0)
+	if(moveToBrickPosition(-1.2, -0.5, 0.4) == 0)
 	{
 		ROS_INFO("Approach successful");
 		state = FINAL;
