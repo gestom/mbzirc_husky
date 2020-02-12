@@ -134,6 +134,7 @@ double angular_vel_max;
 double angular_vel_min;
 double align_timeout;
 double descent_to_storage;
+double gripper_threshold;
 
 Eigen::Vector3d camera_offset;
 
@@ -770,22 +771,24 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
   }
   ROS_INFO("[%s]: Brick unreliable, going straight down", ros::this_node::getName().c_str());
 
-  double stopping_height = (detected_brick.brick_layer * 0.2) + 0.2;
+  double stopping_height = (detected_brick.brick_layer * 0.2) - 0.04;
   ROS_INFO("[%s]: Stopping height: %.2f", ros::this_node::getName().c_str(), stopping_height);
 
   grip();
   double magnet_to_ground = end_effector_pose.pos.z() - camera_offset.z() + arm_base_to_ground;
 
-  while (!brick_attached && magnet_to_ground > stopping_height) {
+while (!brick_attached){ // && magnet_to_ground > stopping_height) {
     magnet_to_ground = end_effector_pose.pos.z() + arm_base_to_ground - gripper_length;
     ROS_INFO("[%s]: Magnet to ground: %.2f", ros::this_node::getName().c_str(), magnet_to_ground);
 
+    /*
     if (status == IDLE) {
       ROS_ERROR("[%s]: Arm stopped! Pickup failed", ros::this_node::getName().c_str());
       setCartesianVelocity(ZERO_VELOCITY);
       res.success = false;
       return false;
     }
+    */
 
     linear_vel.x()  = 0.0;
     linear_vel.y()  = 0.0;
@@ -1035,7 +1038,12 @@ void callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr 
     gripper_start_time = ros::Time::now();
   }
   gripper_on     = msg->gripper_on;
-  brick_attached = msg->gripping_object;
+
+  if (msg->hall1_debug < gripper_threshold){
+  	brick_attached = true;
+  }else{
+  	brick_attached = false;
+  }
 }
 //}
 
@@ -1165,6 +1173,7 @@ int main(int argc, char **argv) {
   nh.getParam("status_timer_rate", status_timer_rate);
   nh.getParam("descent_to_storage", descent_to_storage);
   nh.getParam("raised_camera_angles", raised_camera_angles);
+  nh.getParam("gripper_threshold", gripper_threshold);
 
   /* parse params //{ */
   if (gripping_pose_raw.size() != 6) {
@@ -1199,6 +1208,7 @@ int main(int argc, char **argv) {
 
   //}
 
+  status = IDLE;
   tf_buffer_.reset(new tf2_ros::Buffer);
   tf2_ros::TransformListener tl(*tf_buffer_);
 

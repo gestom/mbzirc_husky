@@ -26,11 +26,13 @@ align_limits:
   x: [-0.3, 0.3]
   y: [0.25, 0.65]
 
+gripper_threshold: 400
+
 align_timeout: 15.0 # [s]
 
 home_angles: [0.0, 0.26, 3.14, -2.27, 0.0, 0.96, 1.57] # [rad ... rad]
 
-raised_camera_angles: [-1.5708, 0.0, -3.1416, 0.0, 0.0, -2.0, 1.5708] # [rad ... rad]
+raised_camera_angles: [-1.5708, 0.0, -3.1416, 0.0, 0.0, -1.9, 1.5708] # [rad ... rad]
 
 gripping_pose: [0.487, 0.0, 0.52, 0.0, 3.139, 1.5707] # [m m m rad rad rad]
 
