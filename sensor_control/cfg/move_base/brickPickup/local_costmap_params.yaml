@@ -1,12 +1,27 @@
 local_costmap:
-  update_frequency: 5
-  publish_frequency: 5
+  update_frequency: 2
+  publish_frequency: 2
   transform_tolerance: 0.15
-  static_map: true
+  static_map: false
   rolling_window: true
   width: 5
   height: 5
   origin_x: -2.5
   origin_y: -2.5
-  resolution: 0.01
-  inflation_radius: 0.05
+  resolution: 0.1
+  inflation_radius: 0.25
+
+  inflater_layer:
+                inflation_radius: 0.1
+                cost_scaling_factor: 0.5
+
+  obstacle_layer:
+          observation_sources: laser_scan_sensor
+          laser_scan_sensor: {sensor_frame: velodyne, data_type: LaserScan, topic: scan, clearing: true, marking: true}
+          max_obstacle_height: 1
+          obstacle_range: 10
+          raytrace_range: 11
+
+  plugins:
+          - {name: obstacle_layer, type: "costmap_2d::ObstacleLayer"}
+          - {name: inflater_layer, type: "costmap_2d::InflationLayer"}
