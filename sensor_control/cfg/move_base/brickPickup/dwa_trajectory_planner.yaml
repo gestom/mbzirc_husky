@@ -8,10 +8,10 @@ DWAPlannerROS:
   min_vel_x: -0.2
   max_vel_y: 0
   min_vel_y: 0
-  max_rot_vel: 0.03
-  min_rot_vel: 0.015
-  yaw_goal_tolerance: 0.15
-  xy_goal_tolerance: 0.35
+  max_rot_vel: 10.9
+  min_rot_vel: 8
+  yaw_goal_tolerance: 0.25
+  xy_goal_tolerance: 0.4
   latch_xy_goal_tolerance: false
   sim_time: 1.5
   sim_granularity: 0.025
@@ -20,8 +20,8 @@ DWAPlannerROS:
   vtheta_samples: 20
   controller_frequency: 10
   penalize_negative_x: true
-  path_distance_bias: 0.7
-  goal_distance_bias: 0.8
+  path_distance_bias: 0.3
+  goal_distance_bias: 0.5
   occdist_scale: 0.01
   forward_point_distance: 0.325
   stop_time_buffer: 0.2

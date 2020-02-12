@@ -10,10 +10,10 @@ from geometry_msgs.msg import Point
 lp = lg.LaserProjection()
 pub = None
 
-iterations = 250
-tolerance = 0.05
-nPointsA = 50
-nPointsB = 30
+iterations = 1000
+tolerance = 0.03
+nPointsA = 55
+nPointsB = 55
 maxDistBetweenPoints = 0.3
 
 def scanCallback(msg):
@@ -60,7 +60,8 @@ def scanCallback(msg):
         pointDistance = ((modelLineDX ** 2) + (modelLineDY ** 2)) ** 0.5
 
         allPoints = []
-
+        lineA = []
+        lineB = []
         for point in points:
 
             #twice triangle area
@@ -73,46 +74,16 @@ def scanCallback(msg):
 
             point = list(point)
             if distanceToLine < tolerance:
-                point.append(0)
-                allPoints.append(point)
+                #point.append(0)
+                lineA.append(point)
+                #allPoints.append(point)
             elif distanceToLineB < tolerance:
-                point.append(1)
-                allPoints.append(point)
+                #point.append(1)
+                #allPoints.append(point)
+                lineB.append(point)
 
         #break lines by gaps
-        sections = []
-        currentSection = []
-        for i in range(len(allPoints)-1):
-             cp = allPoints[i]
-             np = allPoints[i]
-             print(cp, np)
-             distanceToNext = ((np[0] - cp[0])**2 + (np[1] - cp[1])**2) ** 0.5
-             currentSection.append(allPoints[i])
-             if distanceToNext > maxDistBetweenPoints:
-                 sections.append(currentSection)
-                 currentSection = []
-        sections.append(currentSection)
-        sections = filter(None, sections)
-          
-        #get biggest section
-        biggestSectionIdx = -1
-        biggestSectionSize = 0
-        for i in range(len(sections)):
-            if len(sections[i]) > biggestSectionSize:
-                biggestSectionIdx = i
-                biggestSectionSize = len(sections[i])
-        section = sections[biggestSectionIdx]
-
-        inliersA = []
-        inliersB = []
-        print(section)
-        for i in section:
-            if i[-1] == 0:
-                inliersA.append(i)
-            if i[-1] == 1:
-                inliersB.append(i)
-
-        if len(inliersA) > nPointsA and len(inliersB) > nPointsB:
+        if len(lineA) > nPointsA and len(lineB) > nPointsB:
             print("Done")
             
             msg = msgTemplate.Marker()
@@ -132,7 +103,7 @@ def scanCallback(msg):
             msg.color.b = 0
 
             pubPoints = []
-            for point in inliersA:
+            for point in lineA:
                 p = Point(x=point[0],y=point[1],z=0.3)
                 pubPoints.append(p)
 
@@ -143,7 +114,7 @@ def scanCallback(msg):
             msg.color.r = 1
             pubPoints = []
 
-            for point in inliersB:
+            for point in lineB:
                 p = Point(x=point[0],y=point[1],z=0.3)
                 pubPoints.append(p)
 

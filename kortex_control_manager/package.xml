@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>kortex_control_manager</name>
+  <version>0.0.0</version>
+  <description>The mrs kortex_control_manager package</description>
+
+  <author email="stibipet@fel.cvut.cz">Petr Stibinger</author>
+  <maintainer email="stibipet@fel.cvut.cz">Petr Stibinger</maintainer>
+
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <depend>actionlib</depend>
+  <depend>geometry_msgs</depend>
+  <depend>kortex_control</depend>
+  <depend>kortex_driver</depend>
+  <depend>mbzirc_husky_msgs</depend>
+  <depend>message_generation</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning</depend>
+  <depend>moveit_ros_planning_interface</depend>
+  <depend>mrs_msgs</depend>
+  <depend>pluginlib</depend>
+  <depend>pouring_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  
+</package>

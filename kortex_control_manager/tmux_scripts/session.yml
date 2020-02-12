@@ -1,0 +1,69 @@
+name: tmux_ground
+root: ./
+startup_window: control_manager
+pre_window: export BASE_NAME=husky
+windows:
+  - kortex_driver:
+      layout: even-vertical
+      panes:
+        roslaunch temp_launch kortex_driver.launch start_moveit:=true start_rviz:=false
+  - moveit_action:
+      layout: even-vertical
+      panes:
+        - sleep 6; roslaunch iiwa_moveit_pouring moveit_action.launch
+  - vision:
+      layout: even-vertical
+      panes:
+        roslaunch kinova_vision kinova_vision.launch
+  - brick_detection:
+      layout: even-vertical
+      panes:
+        rosrun mbzirc_husky brickDetector
+  - moveit_aux:
+      layout: even-vertical
+      panes:
+        - sleep 10; roslaunch mbzirc_move_it_config set_collision_objects.launch base:=0
+  - control_manager:
+      layout: even-vertical
+      panes:
+        - 'history -s roslaunch kortex_control_manager control_manager.launch'
+  - arm_status:
+      layout: even-vertical
+      panes:
+        - 'history -s rostopic echo /kinova/arm_manager/status'
+  - home_arm:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/home_arm'
+   - prepare_gripping:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/prepare_gripping'
+   - align_arm:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/align_arm'
+  - pickup_brick:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/pickup_brick'
+  - lift_brick:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/pickup_brick'
+  - goto:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/goto \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
+  - goto_relative:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/goto_relative \"pose: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
+  - goto_angles:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/goto_angles \"data: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
+   - goto_angles_relative:
+      layout: even-vertical
+      panes:
+        - 'history -s rosservice call /kinova/arm_manager/goto_angles_relative \"data: \[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0\]\"'
