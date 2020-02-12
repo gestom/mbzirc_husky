@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/romance.pgm"
+filename = "../maps/nogotest/map.pgm"
 mapRes = 0.1
 x = 2000
 y = 2000
@@ -15,6 +15,7 @@ maxObservableDistance = 4
 
 rotAmount = 0.02
 mvAmount = 10
+resizeAmount = 10
 
 running = True
 mapmul = 1/mapRes
@@ -29,7 +30,6 @@ if __name__ == "__main__":
     while running:
 
         k = cv2.waitKey(33)
-        print("Key: " + str(k))
 
         if k == 27:
             #esc
@@ -54,16 +54,16 @@ if __name__ == "__main__":
             r += rotAmount
         elif k == 114:
             #r
-            w += 1
+            w += resizeAmount
         elif k == 116:
             #t
-            w -= 1
+            w -= resizeAmount
         elif k == 102:
             #f
-            h += 1
+            h += resizeAmount
         elif k == 103:
             #g
-            h -= 1
+            h -= resizeAmount
 
         img = rawimg.copy()
 

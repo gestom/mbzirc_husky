@@ -684,14 +684,14 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
-				case ARMALIGNMENT: if (alignArm() == 0) nextState = MOVE_TO_GREEN_BRICK_1; else nextState = ARMRESET; break;
-				case ARMDESCENT: if (descentArm() == 0) nextState = ARMPICKUP; else nextState = ARMALIGNMENT; switchDetection(false); break;
+				case ARMALIGNMENT: if (alignArm() == 0) nextState = ARMDESCENT; else nextState = ARMRESET; break;
+				case ARMDESCENT: if (descentArm() == 0){ nextState = ARMPICKUP;} else nextState = ARMALIGNMENT; switchDetection(false); break;
 				case ARMPICKUP:  if (pickupBrick() == 0) nextState = ARMSTORAGE; else nextState = ARMALIGNMENT; break;
 				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMPOSITIONING; break;
 				case BRICKSTORE: if (storeBrick() == 0){
 							 printf("STORAGE status %i\n",active_storage);
 							 if (active_storage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
-							 if (active_storage == 2)  {nextState = ROBOT_MOVE_NEXT_BRICK;} 	//after the second red, allow only forward phi alignment 
+							 if (active_storage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 		//after the second red, allow only forward phi alignment 
 							 if (active_storage == 3)  {nextState = MOVE_TO_RED_BRICK_2;}		//after picking up green, allow only backward phi alignment 
 							 if (active_storage == 4)  {nextState = ARMPOSITIONING;}
 							 if (active_storage == 5)  {nextState = MOVE_TO_GREEN_BRICK_2;}
@@ -702,6 +702,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.8); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-1.2); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(1.9); robotXYMove = +1; nextState = ARMPOSITIONING; break;
+				case MOVE_TO_BLUE_BRICK: moveRobot(1.4); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 			}
 		}
 		usleep(1200000);
