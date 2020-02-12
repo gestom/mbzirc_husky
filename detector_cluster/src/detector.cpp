@@ -459,10 +459,12 @@ BrickDetector::filter_ground(vector<double> ground, vector<MyPoint> *point_rows,
 
     for (int row = 0; row < LIDAR_ROWS; row++) {
         for (int i = 0; point_rows[row].size() > i; i++) {
+            /*
             double dist = (ground[0] * point_rows[row][i].x) +
                           (ground[1] * point_rows[row][i].y) +
                           (ground[2] * point_rows[row][i].z) + ground[3];
-
+           */
+            double dist = point_rows[row][i].z + ground[3];
             if (dist > GROUND_SAFE_DISTANCE and dist < MAX_HEIGHT) {   // 2 meters high is too much
                 ret[row].push_back(point_rows[row][i]);
             }
@@ -638,7 +640,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     vector<MyPoint> filtered_dense[LIDAR_ROWS];
     vector<MyPoint> filtered_sparse[LIDAR_ROWS];
     std::vector<double> ground1 = {0, 0, 1, LIDAR_HEIGHT};
-    std::vector<double> ground2 = {0, 0, 1, LIDAR_HEIGHT * 2};
+    std::vector<double> ground2 = {0, 0, 1, 0};
     filter_ground(ground1, point_rows, filtered_dense);
     filter_ground(ground2, point_rows, filtered_sparse);
 
@@ -654,7 +656,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     // matched_bricks = {lines[0], lines[1], lines[2], lines[3]};
 
     for (int i = 0; i < 3; i++) {
-        matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 2, 3);
+        matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 1, 3);
     }
     matched_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.425, 2, 3);
 
@@ -685,7 +687,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     /// visualise using marker publishing in rviz --------------------------------------------------------------
     visualization_msgs::MarkerArray lists;
     visualization_msgs::Marker line_list1;
-    line_list1.header.frame_id = "velodyne";
+    line_list1.header.frame_id = PUBLISH_FRAME;
     line_list1.header.stamp = ros::Time::now();
     line_list1.ns = "points_and_lines";
     line_list1.action = visualization_msgs::Marker::ADD;
@@ -712,7 +714,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // green
     visualization_msgs::Marker line_list2;
-    line_list2.header.frame_id = "velodyne";
+    line_list2.header.frame_id = PUBLISH_FRAME;
     line_list2.header.stamp = ros::Time::now();
     line_list2.ns = "points_and_lines";
     line_list2.action = visualization_msgs::Marker::ADD;
@@ -739,7 +741,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // blue
     visualization_msgs::Marker line_list3;
-    line_list3.header.frame_id = "velodyne";
+    line_list3.header.frame_id = PUBLISH_FRAME;
     line_list3.header.stamp = ros::Time::now();
     line_list3.ns = "points_and_lines";
     line_list3.action = visualization_msgs::Marker::ADD;
@@ -766,7 +768,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // orange
     visualization_msgs::Marker line_list4;
-    line_list4.header.frame_id = "velodyne";
+    line_list4.header.frame_id = PUBLISH_FRAME;
     line_list4.header.stamp = ros::Time::now();
     line_list4.ns = "points_and_lines";
     line_list4.action = visualization_msgs::Marker::ADD;
@@ -792,13 +794,75 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         line_list4.points.push_back(p2);
     }
 
+    // drone walls
+    visualization_msgs::Marker line_list5;
+    line_list5.header.frame_id = PUBLISH_FRAME;
+    line_list5.header.stamp = ros::Time::now();
+    line_list5.ns = "points_and_lines";
+    line_list5.action = visualization_msgs::Marker::ADD;
+    line_list5.pose.orientation.w = 1.0;
+    line_list5.id = 4;
+    line_list5.type = visualization_msgs::Marker::LINE_LIST;
+    line_list5.scale.x = 0.025;
+    line_list5.color.a = 1.0;
+    line_list5.color.g = 0.0;
+    line_list5.color.r = 0.0;
+    line_list5.color.b = 0.0;
+    for (auto &line : matched_walls) {
+        geometry_msgs::Point p1;
+        geometry_msgs::Point p2;
+
+        p1.x = line[0].x;
+        p1.y = line[0].y;
+        p1.z = line[0].z;
+        line_list5.points.push_back(p1);
+
+        p2.x = line[1].x;
+        p2.y = line[1].y;
+        p2.z = line[1].z;
+        line_list5.points.push_back(p2);
+    }
+
+    // single bricks
+    visualization_msgs::Marker line_list6;
+    line_list6.header.frame_id = PUBLISH_FRAME;
+    line_list6.header.stamp = ros::Time::now();
+    line_list6.ns = "points_and_lines";
+    line_list6.action = visualization_msgs::Marker::ADD;
+    line_list6.pose.orientation.w = 1.0;
+    line_list6.id = 5;
+    line_list6.type = visualization_msgs::Marker::LINE_LIST;
+    line_list6.scale.x = 0.025;
+    line_list6.color.a = 1.0;
+    line_list6.color.g = 1.0;
+    line_list6.color.r = 1.0;
+    line_list6.color.b = 1.0;
+    for (int i = 0; i < 4; i++){
+        for (auto &line : matched_single_bricks[i]) {
+            geometry_msgs::Point p1;
+            geometry_msgs::Point p2;
+
+            p1.x = line[0].x;
+            p1.y = line[0].y;
+            p1.z = line[0].z;
+            line_list6.points.push_back(p1);
+
+            p2.x = line[1].x;
+            p2.y = line[1].y;
+            p2.z = line[1].z;
+            line_list6.points.push_back(p2);
+        }
+    }
+
     lists.markers.push_back(line_list1);
     lists.markers.push_back(line_list2);
     lists.markers.push_back(line_list3);
     lists.markers.push_back(line_list4);
+    lists.markers.push_back(line_list5);
+
 
     visualization_msgs::Marker centers;
-    centers.header.frame_id = "velodyne";
+    centers.header.frame_id = PUBLISH_FRAME;
     centers.header.stamp = ros::Time::now();
     centers.ns = "pile_centers";
     centers.action = visualization_msgs::Marker::ADD;
@@ -827,7 +891,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         }
 
         sensor_msgs::PointCloud origin_line1;
-        origin_line1.header.frame_id = "velodyne";
+        origin_line1.header.frame_id = PUBLISH_FRAME;
         origin_line1.header.stamp = ros::Time::now();
         // fill with points
         geometry_msgs::Point32 pub_pt1;

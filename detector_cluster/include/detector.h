@@ -77,7 +77,7 @@ private:
     float GROUND_SAFE_DISTANCE;     // minimal distance from ground
     float LIDAR_HEIGHT;             // height of the lidar from ground
     float CLUSTERING_DIST;          // maximal distance used for clustering
-    float WALL_CLUSTERING_DIST;    // maximal distance for clastering bigger wall segments
+    float WALL_CLUSTERING_DIST;     // maximal distance for clastering bigger wall segments
     int MIN_CLUSTER_SIZE;           // minimal number of points in one cluster
     int POINT_ITERATION_STEP;       // step during splitting
     float SPLITTING_DISTANCE;       // minimal distance to split into more clusters
@@ -92,6 +92,7 @@ private:
     float MAX_BRICK_DIST;           // maximal possible distance of brick detection
     float MAX_HEIGHT;               // maximal possible height of a detection
     double BRICK_HEIGHT = 0.2;
+    std::string PUBLISH_FRAME = "velodyne";      // frame in which you publish the results
 
     void fetch_parameters();
 
