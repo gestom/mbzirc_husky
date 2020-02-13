@@ -152,6 +152,7 @@ bool goToAnglesAction(Pose3d pose);
 
 // predefined positions
 std::vector<double> home_angles;
+std::vector<double> gripping_angles;
 std::vector<double> raised_camera_angles;
 Pose3d              gripping_pose;
 
@@ -628,10 +629,18 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   status          = MOVING;
 
   std::vector<double> turn_angles = joint_angles;
-  turn_angles[0] += 1.5708;
-  bool waypoint_1 = goToAnglesAction(turn_angles);
-  turn_angles[DOF-1] -=1.5708;
-  bool waypoint_2 = goToAnglesAction(turn_angles);
+  if(joint_angles[0] < 1.0){
+  	turn_angles[0] = 2.3;
+  	bool waypoint_1 = goToAnglesAction(turn_angles);
+	if(waypoint_1){
+		ROS_INFO("[%s]: Waypoint 1/2 reached", ros::this_node::getName());
+	}
+  	turn_angles[DOF-1] +=1.5708;
+  	bool waypoint_2 = goToAnglesAction(turn_angles);
+	if(waypoint_2){
+		ROS_INFO("[%s]: Waypoint 2/2 reached", ros::this_node::getName());
+	}
+  }
 
   Pose3d goal_pose = storage_poses[req.position];
 
@@ -851,6 +860,8 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
 
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
+
+  bool waypoint1 = goToAnglesAction(gripping_angles);
 
   Pose3d goal_pose = gripping_pose;
   goal_pose.pos.z() += req.data;
@@ -1183,6 +1194,7 @@ int main(int argc, char **argv) {
   nh.getParam("nearby_pos_threshold", nearby_pos_threshold);
   nh.getParam("nearby_rot_threshold", nearby_rot_threshold);
   nh.getParam("home_angles", home_angles);
+  nh.getParam("gripping_angles", gripping_angles);
   nh.getParam("gripping_pose", gripping_pose_raw);
   nh.getParam("brick_storage", storage_poses_raw);
   nh.getParam("linear_vel_modifier", linear_vel_modifier);
