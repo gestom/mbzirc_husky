@@ -195,6 +195,7 @@ ros::ServiceServer service_server_goto_angles_relative;
 ros::ServiceServer service_server_goto_storage;
 ros::ServiceServer service_server_homing;
 ros::ServiceServer service_server_lift_brick;
+ros::ServiceServer service_server_lift_brick_storage;
 ros::ServiceServer service_server_prepare_gripping;
 ros::ServiceServer service_server_pickup_brick;
 ros::ServiceServer service_server_raise_camera;
@@ -724,6 +725,46 @@ bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hus
 }
 //}
 
+/* callbackLiftBrickStorageService //{ */
+bool callbackLiftBrickStorageService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Lifting brick up from storage", ros::this_node::getName().c_str());
+  status = MOVING;
+
+  Pose3d goal_pose = end_effector_pose;
+  goal_pose.pos.z() += descent_to_storage;
+
+  bool goal_reached = goToAction(goal_pose);
+
+  if (!brick_attached) {
+    ROS_ERROR("[%s]: Brick lost during ascent!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
 /* callbackPickupBrickService //{ */
 bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
@@ -955,11 +996,11 @@ bool callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req
   Pose3d new_goal = storage_poses[req.position];
   new_goal.pos.z() += (0.2 * req.layer) - (0.75 * descent_to_storage);
   goToAction(new_goal);
-  grip();
   ROS_INFO("[%s]: Switching to velocity control until magnet grips a brick", ros::this_node::getName().c_str());
 
   Eigen::Vector3d linear_vel;
   Eigen::Vector3d angular_vel;
+  grip();
   while (!brick_attached) {  // TODO add some safety mechanism
     linear_vel.x()  = 0.0;
     linear_vel.y()  = 0.0;
@@ -1269,6 +1310,7 @@ int main(int argc, char **argv) {
   service_server_raise_camera         = nh.advertiseService("raise_camera_in", &callbackRaiseCameraService);
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
   service_server_unload_brick         = nh.advertiseService("unload_brick_in", &callbackUnloadBrickService);
+  service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");
