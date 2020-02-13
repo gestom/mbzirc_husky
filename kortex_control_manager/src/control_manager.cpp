@@ -791,7 +791,7 @@ bool callbackLowerBrickService(mbzirc_husky_msgs::LowerBrickRequest &req, mbzirc
 //}
 
 /* callbackLiftBrickStorageService //{ */
-bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &req, mbzirc_husky_msgs::StoragePositionResponse &res) {
+bool callbackLiftBrickStorageService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -811,7 +811,7 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
     return false;
   }
 
-  ROS_INFO("[%s]: Lifting brick up from storage %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
+  ROS_INFO("[%s]: Lifting brick from storage", ros::this_node::getName().c_str());
   status = MOVING;
 
   Pose3d goal_pose = end_effector_pose;
