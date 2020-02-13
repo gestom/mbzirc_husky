@@ -77,6 +77,26 @@ std::string statusToString(MotionStatus ms) {
 }
 //}
 
+/* getStorageIndex //{ */
+int getStorageIndex(int position, int layer) {
+  if (position == 0 && layer == 0) {
+    return 0;
+  } else if (position == 0 && layer == 1) {
+    return 1;
+  } else if (position == 1 && layer == 0) {
+    return 4;
+  } else if (position == 1 && layer == 1) {
+    return 5;
+  } else if (position == 2 && layer == 0) {
+    return 2;
+  } else if (position == 2 && layer == 1) {
+    return 3;
+  } else {
+    return 6;
+  }
+}
+//}
+
 /* struct Pose3d //{ */
 struct Pose3d
 {
@@ -157,7 +177,8 @@ std::vector<double> gripping_angles;
 std::vector<double> raised_camera_angles;
 Pose3d              gripping_pose;
 
-std::vector<Pose3d> storage_poses;
+std::vector<Pose3d>              storage_poses;
+std::vector<std::vector<double>> storage_poses_jointspace;
 
 // arm status
 bool is_initialized            = false;
@@ -631,31 +652,26 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   bool have_brick = brick_attached;
   status          = MOVING;
 
-  std::vector<double> turn_angles = joint_angles;
-  if (joint_angles[0] < 1.0) {
-    turn_angles[0]  = 2.3;
-    bool waypoint_1 = goToAnglesAction(turn_angles);
-    if (waypoint_1) {
-      ROS_INFO("[%s]: Waypoint 1/2 reached", ros::this_node::getName().c_str());
-    }
-    turn_angles[DOF - 1] += 1.5708;
-    bool waypoint_2 = goToAnglesAction(turn_angles);
-    if (waypoint_2) {
-      ROS_INFO("[%s]: Waypoint 2/2 reached", ros::this_node::getName().c_str());
-    }
+  // first go to the blue brick position
+  std::vector<double> goal_angles = storage_poses_jointspace[6];
+  if (goToAnglesAction(goal_angles)) {
+    ROS_INFO("[%s]: Waypoint reached", ros::this_node::getName().c_str());
   }
+  if (have_brick != brick_attached) {
+    ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+  int storage_index = getStorageIndex(req.position, req.layer);
+  goal_angles       = storage_poses_jointspace[storage_index];
 
-  Pose3d goal_pose = storage_poses[req.position];
-  goal_pose.pos.z() += 0.2 * req.layer;
-
-  bool goal_reached = goToAction(goal_pose);
+  bool goal_reached = goToAnglesAction(goal_angles);
 
   if (have_brick != brick_attached) {
     ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
-
   res.success = goal_reached;
   return goal_reached;
 }
@@ -1006,13 +1022,32 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
 
   status = MOVING;
 
-  Pose3d new_goal = storage_poses[req.position];
-  new_goal.pos.z() += (0.2 * req.layer) - descent_to_storage;
-  bool goal_reached = goToAction(new_goal);
-  ungrip();
+  double descent;
+  if (req.layer == 0) {
+    descent = 0.2;
+  } else if (req.layer == 1) {
+    descent = 0.1;
+  } else {
+    descent = 0.05;
+  }
+
+  Pose3d goal_pose = end_effector_pose;
+  goal_pose.pos.z() -= descent;
+
+  if (goToAction(goal_pose)) {
+    ROS_INFO("[%s]: Descent successful, releasing the brick", ros::this_node::getName().c_str());
+    ungrip();
+  }
+  ros::spinOnce();
   ros::Duration(0.2).sleep();
-  res.success = goal_reached;
-  return goal_reached;
+  ros::spinOnce();
+
+  if (!brick_attached) {
+    res.success = true;
+    return true;
+  }
+  res.success = false;
+  return false;
 }
 //}
 
@@ -1261,6 +1296,7 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
 }
 //}
 
+
 /* main //{ */
 int main(int argc, char **argv) {
   ros::init(argc, argv, "kortex_control_manager");
@@ -1270,6 +1306,7 @@ int main(int argc, char **argv) {
 
   // param containers
   std::vector<double> storage_poses_raw;
+  std::vector<double> storage_joints_raw;
   std::vector<double> camera_offset_raw;
   std::vector<double> gripping_pose_raw;
 
@@ -1297,6 +1334,7 @@ int main(int argc, char **argv) {
   nh.getParam("descent_to_storage", descent_to_storage);
   nh.getParam("raised_camera_angles", raised_camera_angles);
   nh.getParam("gripper_threshold", gripper_threshold);
+  nh.getParam("storage_poses_joint_space", storage_joints_raw);
 
   /* parse params //{ */
   if (gripping_pose_raw.size() != 6) {
@@ -1329,7 +1367,20 @@ int main(int argc, char **argv) {
   }
   camera_offset = Eigen::Vector3d(camera_offset_raw[0], camera_offset_raw[1], camera_offset_raw[2]);
 
+  if (storage_joints_raw.size() % DOF != 0) {
+    ROS_ERROR("[%s]: Parameter \"brick_storage_joint_space\" is expected to be divisible by %d!", ros::this_node::getName().c_str(), DOF);
+    ros::shutdown();
+  }
+  num_storage_bins = (int)(storage_joints_raw.size() / DOF);
+  for (int i = 0; i < num_storage_bins; i++) {
+    std::vector<double> single_brick_storage;
+    for (int j = 0; j < DOF; j++) {
+      single_brick_storage.push_back(storage_joints_raw[i * DOF + j]);
+    }
+    storage_poses_jointspace.push_back(single_brick_storage);
+  }
   //}
+  ROS_INFO("[%s]: All params parsed successfully", ros::this_node::getName().c_str());
 
   status = IDLE;
   tf_buffer_.reset(new tf2_ros::Buffer);
