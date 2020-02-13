@@ -629,17 +629,17 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   status          = MOVING;
 
   std::vector<double> turn_angles = joint_angles;
-  if(joint_angles[0] < 1.0){
-  	turn_angles[0] = 2.3;
-  	bool waypoint_1 = goToAnglesAction(turn_angles);
-	if(waypoint_1){
-		ROS_INFO("[%s]: Waypoint 1/2 reached", ros::this_node::getName());
-	}
-  	turn_angles[DOF-1] +=1.5708;
-  	bool waypoint_2 = goToAnglesAction(turn_angles);
-	if(waypoint_2){
-		ROS_INFO("[%s]: Waypoint 2/2 reached", ros::this_node::getName());
-	}
+  if (joint_angles[0] < 1.0) {
+    turn_angles[0]  = 2.3;
+    bool waypoint_1 = goToAnglesAction(turn_angles);
+    if (waypoint_1) {
+      ROS_INFO("[%s]: Waypoint 1/2 reached", ros::this_node::getName().c_str());
+    }
+    turn_angles[DOF - 1] += 1.5708;
+    bool waypoint_2 = goToAnglesAction(turn_angles);
+    if (waypoint_2) {
+      ROS_INFO("[%s]: Waypoint 2/2 reached", ros::this_node::getName().c_str());
+    }
   }
 
   Pose3d goal_pose = storage_poses[req.position];
@@ -647,7 +647,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   bool goal_reached = goToAction(goal_pose);
 
   if (have_brick != brick_attached) {
-    ROS_ERROR("[%: Brick lost during motion!", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
