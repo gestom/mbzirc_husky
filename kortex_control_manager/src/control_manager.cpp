@@ -646,6 +646,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   }
 
   Pose3d goal_pose = storage_poses[req.position];
+  goal_pose.pos.z() += 0.2 * req.layer;
 
   bool goal_reached = goToAction(goal_pose);
 
@@ -751,7 +752,7 @@ bool callbackLowerBrickService(mbzirc_husky_msgs::LowerBrickRequest &req, mbzirc
   ROS_INFO("[%s]: Putting brick down", ros::this_node::getName().c_str());
   status = MOVING;
 
-  double placemenet_height = -0.2 + camera_offset.z() + (0.2 * req.layer);
+  double placemenet_height = camera_offset.z() + (0.2 * req.layer);
   Pose3d goal_pose         = end_effector_pose;
   goal_pose.pos.z()        = placemenet_height;
 
