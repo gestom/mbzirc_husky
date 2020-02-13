@@ -27,6 +27,8 @@
 #include <tf2_ros/transform_listener.h>
 
 #define DOF 7
+#define EFFORT_SAMPLES 25
+
 #define ZERO_VELOCITY Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(0.0, 0.0, 0.0)
 
 typedef enum
@@ -168,6 +170,11 @@ bool brick_reliable            = false;
 std::vector<double> joint_angles;
 Pose3d              end_effector_pose;
 
+std::vector<double> last_effort;
+std::vector<double> effort_difference_samples;
+double              accumulated_effort_difference;
+
+
 MotionStatus status;
 Brick        detected_brick;
 
@@ -202,6 +209,7 @@ ros::Publisher publisher_arm_status;
 ros::Publisher publisher_camera_to_ground;
 ros::Publisher publisher_rviz_markers;
 ros::Publisher publisher_cartesian_velocity;
+ros::Publisher publisher_effort_changes;
 
 // subscribers
 ros::Subscriber subscriber_joint_state;
@@ -777,7 +785,7 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
   grip();
   double magnet_to_ground = end_effector_pose.pos.z() - camera_offset.z() + arm_base_to_ground;
 
-while (!brick_attached){ // && magnet_to_ground > stopping_height) {
+  while (!brick_attached) {  // && magnet_to_ground > stopping_height) {
     magnet_to_ground = end_effector_pose.pos.z() + arm_base_to_ground - gripper_length;
     ROS_INFO("[%s]: Magnet to ground: %.2f", ros::this_node::getName().c_str(), magnet_to_ground);
 
@@ -1001,8 +1009,24 @@ void callbackBrickPoseTopic(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
   getting_joint_angles = true;
 
+  double effort_diff = 0;
   for (int i = 0; i < DOF; i++) {
     joint_angles[i] = msg->position[i];
+    effort_diff += std::abs(last_effort[i] - msg->effort[i]);
+    last_effort[i] = msg->effort[i];
+  }
+
+  effort_difference_samples.push_back(effort_diff);
+
+  if (effort_difference_samples.size() >= EFFORT_SAMPLES) {
+    accumulated_effort_difference = 0;
+    for (unsigned int i = 0; i < effort_difference_samples.size(); i++) {
+      accumulated_effort_difference += 0;
+    }
+    effort_difference_samples.clear();
+    std_msgs::Float64 msg;
+    msg.data = accumulated_effort_difference;
+    publisher_effort_changes.publish(msg);
   }
 
   try {
@@ -1021,16 +1045,6 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
   catch (tf2::LookupException ex) {
     ROS_ERROR("[%s]: %s", ros::this_node::getName().c_str(), ex.what());
   }
-
-  if (status != IDLE) {
-    bool stopped = true;
-    for (int i = 0; i < DOF; i++) {
-      stopped = stopped && msg->velocity[i] < no_move_joint_velocity;
-    }
-    if (stopped) {
-      ROS_WARN("[%s]: Motion stopped! Is the arm pushing something?", ros::this_node::getName().c_str());
-    }
-  }
 }
 //}
 
@@ -1040,12 +1054,12 @@ void callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr 
   if (!gripper_on && msg->gripper_on) {
     gripper_start_time = ros::Time::now();
   }
-  gripper_on     = msg->gripper_on;
+  gripper_on = msg->gripper_on;
 
-  if (msg->hall1_debug < gripper_threshold){
-  	brick_attached = true;
-  }else{
-  	brick_attached = false;
+  if (msg->hall1_debug < gripper_threshold || msg->hall2_debug < gripper_threshold) {
+    brick_attached = true;
+  } else {
+    brick_attached = false;
   }
 }
 //}
@@ -1217,6 +1231,7 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < DOF; i++) {
     joint_angles.push_back(0);
+    last_effort.push_back(0);
   }
 
   // action clients
@@ -1250,6 +1265,7 @@ int main(int argc, char **argv) {
   publisher_arm_status         = nh.advertise<mbzirc_husky_msgs::Gen3ArmStatus>("arm_status_out", 1);
   publisher_camera_to_ground   = nh.advertise<std_msgs::Float64>("camera_to_ground_out", 1);
   publisher_cartesian_velocity = nh.advertise<kortex_driver::TwistCommand>("cartesian_velocity_out", 1);
+  publisher_effort_changes     = nh.advertise<std_msgs::Float64>("effort_changes_out", 1);
   publisher_rviz_markers       = nh.advertise<visualization_msgs::Marker>("markers_out", 1);
 
   ROS_INFO("[%s]: Waiting for arm feedback...", ros::this_node::getName().c_str());
