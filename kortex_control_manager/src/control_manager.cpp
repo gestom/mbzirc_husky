@@ -1334,7 +1334,7 @@ int main(int argc, char **argv) {
   nh.getParam("descent_to_storage", descent_to_storage);
   nh.getParam("raised_camera_angles", raised_camera_angles);
   nh.getParam("gripper_threshold", gripper_threshold);
-  nh.getParam("storage_poses_joint_space", storage_joints_raw);
+  nh.getParam("brick_storage_jointspace", storage_joints_raw);
 
   /* parse params //{ */
   if (gripping_pose_raw.size() != 6) {
@@ -1372,6 +1372,7 @@ int main(int argc, char **argv) {
     ros::shutdown();
   }
   num_storage_bins = (int)(storage_joints_raw.size() / DOF);
+  std::cout << "storage bins: " << num_storage_bins << "\n";
   for (int i = 0; i < num_storage_bins; i++) {
     std::vector<double> single_brick_storage;
     for (int j = 0; j < DOF; j++) {
