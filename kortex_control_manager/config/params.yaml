@@ -1,7 +1,7 @@
 arm_base_to_ground: 0.405 # [m]
 gripper_length: 0.13 # [m]
 gripper_timeout: 10.0 # [s]
-no_move_joint_velocity: 0.001 # [s]
+no_move_joint_velocity: 0.01 # [s]
 move_down_speed_faster: 0.1 # [m/s]
 move_down_speed_slower: 0.07 # [m/s]
 nearby_pos_threshold: 0.05 # [m]
@@ -16,8 +16,6 @@ linear_vel_min: 0.03 # [m/s]
 
 angular_vel_max: 0.2 # [rad/s]
 angular_vel_min: 0.03 # [rad/s]
-
-descent_to_storage: 0.3 # [m]
 
 #camera_offset: [0.085, 0.05, -0.003] # [m], base_link frame (X aligned with arm cables, Z up)
 camera_offset: [0.0, 0.0, 0.1] # [m], base_link frame (X aligned with arm cables, Z up)
@@ -36,6 +34,11 @@ raised_camera_angles: [-1.5708, 0.0, -3.1416, 0.0, 0.0, -1.9, 1.5708] # [rad ...
 
 gripping_pose: [0.487, 0.0, 0.52, 0.0, 3.139, 1.5707] # [m m m rad rad rad]
 
-brick_storage: [0.0, -0.5, 0.37, 0.0379, -3.14159, 3.14159,
-                0.0, -0.5, 0.37, 0.0379, -3.14159, 3.14159,
-                0.0, -0.5, 0.37, 0.0379, -3.14159, 3.14159]
+descent_to_storage: 0.3 # [m]
+brick_storage: [0.0918, -0.43363, 0.49, 0.0, 3.14, 1.5708,
+                -0.34245, -0.515543, 0.49, 0.0, 3.14, 1.5708, #green
+                -0.1308, -0.5374, 0.49, 0.0, 3.14, 1.5708,
+                -0.0654, -0.4527, 0.58794, 0.0, 3.1316, 3.14111] # blue
+
+                #brick_storage_joint: [
+

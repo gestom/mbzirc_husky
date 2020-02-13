@@ -4,15 +4,15 @@ local_costmap:
   transform_tolerance: 0.15
   static_map: false
   rolling_window: true
-  width: 5
-  height: 5
-  origin_x: -2.5
-  origin_y: -2.5
+  width: 10
+  height: 10
+  origin_x: -5
+  origin_y: -5
   resolution: 0.1
   inflation_radius: 0.25
 
   no_go_layer:
-      map_topic: /no_go_map
+      map_topic: /nogo/no_go
 
   inflater_layer:
                 inflation_radius: 0.1

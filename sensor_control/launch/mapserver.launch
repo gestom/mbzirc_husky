@@ -1,6 +1,8 @@
 <launch>
-	<node name="map_server" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/romance.yaml" respawn="true" output="screen" />
-	<node name="map_server_no_go" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/romance-nogo.yaml" respawn="true" output="screen">
-		<remap from="map" to="map_no_go"/>	
-	</node>
+	<group ns="nogo">
+		<node name="no_go" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/nogotest/map-nogo.yaml" respawn="true" output="screen">
+			<remap from="map" to="no_go"/>	
+		</node>
+	</group>
+	<node name="map_server" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/nogotest/map.yaml" respawn="true" output="screen" />
 </launch>
