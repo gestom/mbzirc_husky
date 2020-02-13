@@ -147,6 +147,7 @@ double gripper_timeout;
 double no_move_joint_velocity;
 double move_down_speed_faster;
 double move_down_speed_slower;
+double move_down_speed_mega_slow;
 double nearby_rot_threshold;
 double nearby_pos_threshold;
 double linear_vel_modifier;
@@ -156,11 +157,10 @@ double angular_vel_modifier;
 double angular_vel_max;
 double angular_vel_min;
 double align_timeout;
-double descent_to_storage;
 double gripper_threshold;
+double align_x_min, align_x_max, align_y_min, align_y_max;
 
 Eigen::Vector3d camera_offset;
-
 
 // continuous status publishing
 ros::Timer status_timer;
@@ -209,7 +209,6 @@ std::unique_ptr<actionlib::SimpleActionClient<pouring_msgs::MoveGroupAction>> ac
 
 // advertised services
 ros::ServiceServer service_server_align_arm;
-ros::ServiceServer service_server_align_arm_goto;
 ros::ServiceServer service_server_goto;
 ros::ServiceServer service_server_goto_relative;
 ros::ServiceServer service_server_goto_angles;
@@ -222,7 +221,7 @@ ros::ServiceServer service_server_prepare_gripping;
 ros::ServiceServer service_server_pickup_brick;
 ros::ServiceServer service_server_raise_camera;
 ros::ServiceServer service_server_store_brick;
-ros::ServiceServer service_server_unload_brick;
+ros::ServiceServer service_server_pickup_storage;
 ros::ServiceServer service_server_lower_brick;
 
 // called services
@@ -453,7 +452,8 @@ bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std
     double          align_x     = -(detected_brick.pose.pos.y() - camera_offset.x());
     double          align_y     = -(detected_brick.pose.pos.x() - camera_offset.y());
 
-    if (end_effector_pose.pos.x() > 0.6 || end_effector_pose.pos.x() < 0.2 || end_effector_pose.pos.y() > 0.25 || end_effector_pose.pos.y() < -0.25) {
+    if (end_effector_pose.pos.x() > align_x_max || end_effector_pose.pos.x() < align_x_min || end_effector_pose.pos.y() > align_y_max ||
+        end_effector_pose.pos.y() < align_y_min) {
       ROS_ERROR("[%s]: Brick unreachable!", ros::this_node::getName().c_str());
       status = IDLE;
       setCartesianVelocity(ZERO_VELOCITY);
@@ -662,6 +662,8 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     res.success = false;
     return false;
   }
+
+  // then go to the correct position
   int storage_index = getStorageIndex(req.position, req.layer);
   goal_angles       = storage_poses_jointspace[storage_index];
 
@@ -789,7 +791,7 @@ bool callbackLowerBrickService(mbzirc_husky_msgs::LowerBrickRequest &req, mbzirc
 //}
 
 /* callbackLiftBrickStorageService //{ */
-bool callbackLiftBrickStorageService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &req, mbzirc_husky_msgs::StoragePositionResponse &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -809,12 +811,11 @@ bool callbackLiftBrickStorageService([[maybe_unused]] std_srvs::TriggerRequest &
     return false;
   }
 
-  ROS_INFO("[%s]: Lifting brick up from storage", ros::this_node::getName().c_str());
+  ROS_INFO("[%s]: Lifting brick up from storage %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
   status = MOVING;
 
   Pose3d goal_pose = end_effector_pose;
-  goal_pose.pos.z() += descent_to_storage;
-
+  goal_pose.pos.z() = 0.55;
   bool goal_reached = goToAction(goal_pose);
 
   if (!brick_attached) {
@@ -965,7 +966,7 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
 
-  bool waypoint1 = goToAnglesAction(gripping_angles);
+  goToAnglesAction(gripping_angles);
 
   Pose3d goal_pose = gripping_pose;
   goal_pose.pos.z() += req.data;
@@ -1051,42 +1052,52 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
 }
 //}
 
-/* callbackUnloadBrickService //{ */
-bool callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+/* callbackPickupStorageService //{ */
+bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
   if (!is_initialized) {
-    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, not initialized!");
+    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, not initialized!");
     res.success = false;
-    res.message = "Cannot unload brick from storage, not initialized!";
+    res.message = "Cannot pickup brick from storage, not initialized!";
     return false;
   }
 
   if (!getting_joint_angles) {
-    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, internal arm feedback missing!");
+    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, internal arm feedback missing!");
     res.success = false;
     return false;
   }
 
   if (status != IDLE) {
-    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, arm is not IDLE!");
+    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, arm is not IDLE!");
     res.success = false;
-    res.message = "Cannot unload brick, arm is not IDLE!";
+    res.message = "Cannot pickup brick from storage, arm is not IDLE!";
     return false;
   }
 
   status = MOVING;
 
-  Pose3d new_goal = storage_poses[req.position];
-  new_goal.pos.z() += (0.2 * req.layer) - (0.75 * descent_to_storage);
-  goToAction(new_goal);
+  double start_height = end_effector_pose.pos.z();
+
+  double descent;
+  if (req.layer == 0) {
+    descent = 0.2;
+  } else if (req.layer == 1) {
+    descent = 0.1;
+  } else {
+    descent = 0.05;
+  }
+
+  double stopping_height = start_height - descent - 0.03;
+
   ROS_INFO("[%s]: Switching to velocity control until magnet grips a brick", ros::this_node::getName().c_str());
 
   Eigen::Vector3d linear_vel;
   Eigen::Vector3d angular_vel;
   grip();
-  while (!brick_attached) {  // TODO add some safety mechanism
+  while (!brick_attached && end_effector_pose.pos.z() > stopping_height) {
     linear_vel.x()  = 0.0;
     linear_vel.y()  = 0.0;
-    linear_vel.z()  = -move_down_speed_slower;
+    linear_vel.z()  = -move_down_speed_mega_slow;
     angular_vel.x() = 0.0;
     angular_vel.y() = 0.0;
     angular_vel.z() = 0.0;
@@ -1296,7 +1307,6 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
 }
 //}
 
-
 /* main //{ */
 int main(int argc, char **argv) {
   ros::init(argc, argv, "kortex_control_manager");
@@ -1316,6 +1326,7 @@ int main(int argc, char **argv) {
   nh.getParam("no_move_joint_velocity", no_move_joint_velocity);
   nh.getParam("move_down_speed_faster", move_down_speed_faster);
   nh.getParam("move_down_speed_slower", move_down_speed_slower);
+  nh.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
   nh.getParam("nearby_pos_threshold", nearby_pos_threshold);
   nh.getParam("nearby_rot_threshold", nearby_rot_threshold);
   nh.getParam("home_angles", home_angles);
@@ -1331,10 +1342,14 @@ int main(int argc, char **argv) {
   nh.getParam("camera_offset", camera_offset_raw);
   nh.getParam("align_timeout", align_timeout);
   nh.getParam("status_timer_rate", status_timer_rate);
-  nh.getParam("descent_to_storage", descent_to_storage);
   nh.getParam("raised_camera_angles", raised_camera_angles);
   nh.getParam("gripper_threshold", gripper_threshold);
   nh.getParam("brick_storage_jointspace", storage_joints_raw);
+
+  nh.getParam("align_x_min", align_x_min);
+  nh.getParam("align_x_max", align_x_max);
+  nh.getParam("align_y_min", align_y_min);
+  nh.getParam("align_y_max", align_y_max);
 
   /* parse params //{ */
   if (gripping_pose_raw.size() != 6) {
@@ -1381,6 +1396,7 @@ int main(int argc, char **argv) {
     storage_poses_jointspace.push_back(single_brick_storage);
   }
   //}
+
   ROS_INFO("[%s]: All params parsed successfully", ros::this_node::getName().c_str());
 
   status = IDLE;
@@ -1408,7 +1424,7 @@ int main(int argc, char **argv) {
   service_server_prepare_gripping     = nh.advertiseService("prepare_gripping_in", &callbackPrepareGrippingService);
   service_server_raise_camera         = nh.advertiseService("raise_camera_in", &callbackRaiseCameraService);
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
-  service_server_unload_brick         = nh.advertiseService("unload_brick_in", &callbackUnloadBrickService);
+  service_server_pickup_storage       = nh.advertiseService("pickup_storage_in", &callbackPickupStorageService);
   service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
   service_server_lower_brick          = nh.advertiseService("lower_brick_in", &callbackLowerBrickService);
 
