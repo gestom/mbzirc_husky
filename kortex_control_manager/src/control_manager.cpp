@@ -627,6 +627,10 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   bool have_brick = brick_attached;
   status          = MOVING;
 
+  std::vector<double> turn_angles = joint_angles;
+  turn_angles[0] += 1.5708;
+  bool waypoint_ok = goToAnglesAction(turn_angles);
+
   Pose3d goal_pose = storage_poses[req.position];
 
   bool goal_reached = goToAction(goal_pose);
