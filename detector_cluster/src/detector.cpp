@@ -105,7 +105,7 @@ array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposa
                         for (auto &src : wall[clr]) {
                             MyPoint tar_mypt(tar_pt.at<double>(0), tar_pt.at<double>(1), tar.z);
                             MyPoint diff = src - tar_mypt;
-                            diff.z *= 2;
+                            diff.z *= 5;
                             double dist = cv::norm(diff);
 
                             if (dist < curr_min_dist) {
@@ -126,8 +126,8 @@ array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposa
         cv::Mat ret1 = best_R.t() * (cv::Mat(tar_pt[0]) - best_t);
         cv::Mat ret2 = best_R.t() * (cv::Mat(tar_pt[1]) - best_t);
 
-        ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), min_distance);
-        ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), min_distance);
+        ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), min_distance/proposal_size);
+        ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), min_distance/proposal_size);
 
         return ret_arr;
     }
@@ -167,6 +167,35 @@ BrickDetector::get_centers_in_piles(array<vector<BrickLine>, 4> &lines, array<My
         ret[clr_idx] = centers;
     }
     return ret;
+}
+
+vector<MyPoint> BrickDetector::get_wall_centers(vector<BrickLine> &lines){
+    vector<MyPoint> ret;
+    for (auto &line : lines){
+        MyPoint line_center = GET_CENTER(line[0], line[1]);
+        bool is_in = false;
+        for (MyPoint &wall_center : ret){
+            MyPoint diff = wall_center - line_center;
+            double dist = cv::norm(cv::Point2d(diff.x, diff.y));
+            if (dist < 1) {
+                is_in = true;
+            }
+        }
+        if (not is_in){
+            ret.push_back(line_center);
+        }
+    }
+    return ret;
+}
+
+geometry_msgs::Point BrickDetector::transform_point(MyPoint pt, geometry_msgs::TransformStamped tf){
+    geometry_msgs::Point tf_pt;
+    geometry_msgs::Point ret_pt;
+    tf_pt.x = pt.x;
+    tf_pt.y = pt.y;
+    tf_pt.z = pt.z;
+    tf2::doTransform(tf_pt, ret_pt, tf);
+    return ret_pt;
 }
 
 array<MyPoint, 4> BrickDetector::get_piles(array<vector<BrickLine>, 4> &lines) {
@@ -241,12 +270,14 @@ vector<BrickLine> BrickDetector::match_detections(vector<BrickLine> lines,
         double max_z = curr_center.z + LIDAR_HEIGHT;
         double curr_yaw = atan2(curr_center.y, curr_center.x);
         double curr_dist = norm(curr_center);
+        MyPoint curr_line_vec = lines[i][1] - lines[i][0];
+        double curr_line_yaw = atan2(curr_line_vec.y, curr_line_vec.x);
         double expected_z_dist = curr_dist * LEN_MULTIPLIER;
         int expected_hits = int(max(double(min_detections),
                                     min((obj_height / expected_z_dist), double(max_detections))));
         double expected_yaw = abs(
                 acos(-(0.3 * 0.3) / (2 * curr_dist * curr_dist) + 1));     // 30 cm is ok yaw diff
-        if (expected_hits > min_detections and min_detections != 0) {
+        if (expected_hits > min_detections) {
             for (int j = 0; j < lines.size(); j++) {
                 if (i != j) {
                     MyPoint new_center = GET_CENTER(lines[j][0], lines[j][1]);
@@ -256,11 +287,16 @@ vector<BrickLine> BrickDetector::match_detections(vector<BrickLine> lines,
                     if (yaw_diff < expected_yaw) {      // filter using yaw
                         double new_dist = norm(new_center);
                         if (abs(new_dist - curr_dist) < 0.5) {      // filter using distance
-                            hits++;
-                            max_z = max(max_z, new_center.z + double(LIDAR_HEIGHT));
-                            if (new_center.z + LIDAR_HEIGHT >
-                                obj_top) {     // 45cm is too high - filter using height
-                                hits = 0;
+                            MyPoint new_line_vec = lines[j][1] - lines[j][0];
+                            double new_line_yaw = atan2(new_line_vec.y, new_line_vec.x);
+                            if (abs(diff_angle(curr_line_yaw, new_line_yaw)) < M_PI/6){
+                                hits++;
+                                max_z = max(max_z, new_center.z + double(LIDAR_HEIGHT));
+                                if (new_center.z + LIDAR_HEIGHT >
+                                    obj_top) {     // 45cm is too high - filter using height
+                                    hits = -1;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -527,6 +563,8 @@ void BrickDetector::fetch_parameters() {
     n->param("/detector/max_dist", MAX_DIST, float(20));
     n->param("/detector/max_brick_dist", MAX_BRICK_DIST, float(5));
     n->param("/detector/max_height", MAX_HEIGHT, float(2));
+    n->param("/detector/ransac_tolerance", RANSAC_TOLERANCE, float(0.2));
+
 }
 
 void BrickDetector::build_walls() {
@@ -652,20 +690,22 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     array<vector<BrickLine>, 4> matched_bricks;
     array<vector<BrickLine>, 4> matched_single_bricks;
     vector<BrickLine> matched_walls;
-    vector<BrickLine> matched_wall_sides;
+    // vector<BrickLine> matched_wall_sides;
     // matched_bricks = {lines[0], lines[1], lines[2], lines[3]};
 
     for (int i = 0; i < 3; i++) {
-        matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 1, 3);
+        matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 1, 2);
     }
     matched_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.425, 2, 3);
 
     matched_walls = match_detections(wall_lines, 1.1, 2.0, 0.8, 2, 3);
+
+    /*
     matched_wall_sides = match_detections(lines[4], 1.1, 1.75, 0.8, 2, 3);
     for (int i = 0; i < 4; i++) {
         matched_single_bricks[i] = match_detections(lines[i], 0.2, 0.25, 0.025, 0, 2);
     }
-
+    */
 
     // obtain piles
     array<MyPoint, 4> pile_centers = get_piles(matched_bricks);
@@ -684,10 +724,101 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     array<cv::Point2d, 2> tar_pt_back = {cv::Point2d(7.3, -0.8), cv::Point2d(2.3, -0.8)};
     array<MyPoint, 2> way_point_back = fit_detection(brick_centers, wall_setup_back, tar_pt_back);
 
+    vector<MyPoint> wall_centers = get_wall_centers(matched_walls);
+
+    // get transformations
+    geometry_msgs::TransformStamped transformStamped;
+    try {
+        transformStamped = tf_buffer->lookupTransform(TARGET_FRAME, LIDAR_FRAME, ptcl.header.stamp, ros::Duration(0.2));
+        for (int i = 0; i < 4; i++){
+            if (pile_centers[i].x != 0 and pile_centers[i].y != 0){
+                geometry_msgs::Point ret_pt = transform_point(pile_centers[i], transformStamped);
+                mbzirc_husky::setPoi poi;
+                poi.request.type = 4 + i;
+                poi.request.x = pile_centers[i].x;
+                poi.request.y = pile_centers[i].y;
+                poi.request.covariance = 0;
+                if (ros::service::call("set_map_poi", poi)){
+                    cout << "Pile sent to symbolic map" << endl;
+                } else {
+                    cout << "Error calling service" << endl;
+                }
+            }
+        }
+
+        for (int i = 0; i < wall_centers.size(); i++){
+            geometry_msgs::Point ret_pt = transform_point(pile_centers[i], transformStamped);
+            mbzirc_husky::setPoi poi;
+            poi.request.type = 2;
+            poi.request.x = wall_centers[i].x;
+            poi.request.y = wall_centers[i].y;
+            poi.request.covariance = 0;
+            if (ros::service::call("set_map_poi", poi)){
+                cout << "Wall sent to symbolic map" << endl;
+            } else {
+                cout << "Error calling service" << endl;
+            }
+        }
+
+    } catch (tf2::TransformException &ex) {
+        ROS_WARN("%s",ex.what());
+        ros::Duration(1.0).sleep();
+    }
+
     /// visualise using marker publishing in rviz --------------------------------------------------------------
+
+    visualization_msgs::Marker centers;
+    centers.header.frame_id = LIDAR_FRAME;
+    centers.header.stamp = ros::Time::now();
+    centers.ns = "pile_centers";
+    centers.action = visualization_msgs::Marker::ADD;
+    centers.pose.orientation.w = 1.0;
+    centers.id = 0;
+    centers.type = visualization_msgs::Marker::SPHERE_LIST;
+    centers.scale.x = 0.25;
+    centers.scale.y = 0.25;
+    centers.scale.z = 0.25;
+    centers.color.a = 1.0;
+    centers.color.g = 1.0;
+
+    for (int i = 0; i < 4; i++) {
+        if (pile_centers[i].x != 0 and pile_centers[i].y != 0) {
+            geometry_msgs::Point pt;
+            pt.x = pile_centers[i].x;
+            pt.y = pile_centers[i].y;
+            pt.z = 0.0;
+            centers.points.push_back(pt);
+        }
+    }
+
+    center_pub.publish(centers);
+
+    if (way_point[0].x != 0 and way_point[0].y != 0 and way_point[0].z < RANSAC_TOLERANCE) {
+        if (way_point[0].z > way_point_back[0].z) {
+            way_point = way_point_back;
+        }
+
+        sensor_msgs::PointCloud origin_line1;
+        origin_line1.header.frame_id = LIDAR_FRAME;
+        origin_line1.header.stamp = ros::Time::now();
+        // fill with points
+        geometry_msgs::Point32 pub_pt1;
+        pub_pt1.x = way_point[0].x;
+        pub_pt1.y = way_point[0].y;
+        pub_pt1.z = way_point[0].z;
+        origin_line1.points.push_back(pub_pt1);
+        geometry_msgs::Point32 pub_pt2;
+        pub_pt2.x = way_point[1].x;
+        pub_pt2.y = way_point[1].y;
+        pub_pt2.z = 0;
+        origin_line1.points.push_back(pub_pt2);
+        origin_pcl_pub.publish(origin_line1);
+    }
+
+    /*
     visualization_msgs::MarkerArray lists;
     visualization_msgs::Marker line_list1;
-    line_list1.header.frame_id = PUBLISH_FRAME;
+    line_list1.header.frame_id = LIDAR_FRAME;
     line_list1.header.stamp = ros::Time::now();
     line_list1.ns = "points_and_lines";
     line_list1.action = visualization_msgs::Marker::ADD;
@@ -714,7 +845,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // green
     visualization_msgs::Marker line_list2;
-    line_list2.header.frame_id = PUBLISH_FRAME;
+    line_list2.header.frame_id = LIDAR_FRAME;
     line_list2.header.stamp = ros::Time::now();
     line_list2.ns = "points_and_lines";
     line_list2.action = visualization_msgs::Marker::ADD;
@@ -741,7 +872,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // blue
     visualization_msgs::Marker line_list3;
-    line_list3.header.frame_id = PUBLISH_FRAME;
+    line_list3.header.frame_id = LIDAR_FRAME;
     line_list3.header.stamp = ros::Time::now();
     line_list3.ns = "points_and_lines";
     line_list3.action = visualization_msgs::Marker::ADD;
@@ -768,7 +899,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // orange
     visualization_msgs::Marker line_list4;
-    line_list4.header.frame_id = PUBLISH_FRAME;
+    line_list4.header.frame_id = LIDAR_FRAME;
     line_list4.header.stamp = ros::Time::now();
     line_list4.ns = "points_and_lines";
     line_list4.action = visualization_msgs::Marker::ADD;
@@ -796,7 +927,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // drone walls
     visualization_msgs::Marker line_list5;
-    line_list5.header.frame_id = PUBLISH_FRAME;
+    line_list5.header.frame_id = LIDAR_FRAME;
     line_list5.header.stamp = ros::Time::now();
     line_list5.ns = "points_and_lines";
     line_list5.action = visualization_msgs::Marker::ADD;
@@ -823,36 +954,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         line_list5.points.push_back(p2);
     }
 
-    // single bricks
-    visualization_msgs::Marker line_list6;
-    line_list6.header.frame_id = PUBLISH_FRAME;
-    line_list6.header.stamp = ros::Time::now();
-    line_list6.ns = "points_and_lines";
-    line_list6.action = visualization_msgs::Marker::ADD;
-    line_list6.pose.orientation.w = 1.0;
-    line_list6.id = 5;
-    line_list6.type = visualization_msgs::Marker::LINE_LIST;
-    line_list6.scale.x = 0.025;
-    line_list6.color.a = 1.0;
-    line_list6.color.g = 1.0;
-    line_list6.color.r = 1.0;
-    line_list6.color.b = 1.0;
-    for (int i = 0; i < 4; i++){
-        for (auto &line : matched_single_bricks[i]) {
-            geometry_msgs::Point p1;
-            geometry_msgs::Point p2;
-
-            p1.x = line[0].x;
-            p1.y = line[0].y;
-            p1.z = line[0].z;
-            line_list6.points.push_back(p1);
-
-            p2.x = line[1].x;
-            p2.y = line[1].y;
-            p2.z = line[1].z;
-            line_list6.points.push_back(p2);
-        }
-    }
 
     lists.markers.push_back(line_list1);
     lists.markers.push_back(line_list2);
@@ -860,55 +961,8 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     lists.markers.push_back(line_list4);
     lists.markers.push_back(line_list5);
 
-
-    visualization_msgs::Marker centers;
-    centers.header.frame_id = PUBLISH_FRAME;
-    centers.header.stamp = ros::Time::now();
-    centers.ns = "pile_centers";
-    centers.action = visualization_msgs::Marker::ADD;
-    centers.pose.orientation.w = 1.0;
-    centers.id = 0;
-    centers.type = visualization_msgs::Marker::SPHERE_LIST;
-    centers.scale.x = 0.25;
-    centers.scale.y = 0.25;
-    centers.scale.z = 0.25;
-    centers.color.a = 1.0;
-    centers.color.g = 1.0;
-
-    for (int i = 0; i < 4; i++) {
-        if (pile_centers[i].x != 0 and pile_centers[i].y != 0) {
-            geometry_msgs::Point pt;
-            pt.x = pile_centers[i].x;
-            pt.y = pile_centers[i].y;
-            pt.z = 0.0;
-            centers.points.push_back(pt);
-        }
-    }
-
-    if (way_point[0].x != 0 and way_point[0].y != 0 and way_point[0].z < 1.0) {
-        if (way_point[0].z > way_point_back[0].z) {
-            way_point = way_point_back;
-        }
-
-        sensor_msgs::PointCloud origin_line1;
-        origin_line1.header.frame_id = PUBLISH_FRAME;
-        origin_line1.header.stamp = ros::Time::now();
-        // fill with points
-        geometry_msgs::Point32 pub_pt1;
-        pub_pt1.x = way_point[0].x;
-        pub_pt1.y = way_point[0].y;
-        pub_pt1.z = way_point[0].z;
-        origin_line1.points.push_back(pub_pt1);
-        geometry_msgs::Point32 pub_pt2;
-        pub_pt2.x = way_point[1].x;
-        pub_pt2.y = way_point[1].y;
-        pub_pt2.z = 0;
-        origin_line1.points.push_back(pub_pt2);
-        origin_pcl_pub.publish(origin_line1);
-    }
-
-    center_pub.publish(centers);
     vis_pub.publish(lists);
+    */
 
     /// --------------------------------------------------------------------------------------
 }
@@ -916,9 +970,10 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 void init_velodyne_subscriber(int argc, char **argv) {
     ros::init(argc, argv, "detector");
     ros::NodeHandle n;
-    n = ros::NodeHandle("~");
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tfListener(tfBuffer);
 
-    BrickDetector detector(n);
+    BrickDetector detector(n, &tfBuffer);
 
     vis_pub = n.advertise<visualization_msgs::MarkerArray>("/visualization_marker", 5);
     center_pub = n.advertise<visualization_msgs::Marker>("/pile_centers", 5);

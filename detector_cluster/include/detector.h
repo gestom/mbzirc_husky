@@ -4,6 +4,8 @@
 #include "ros/ros.h"
 #include <cmath>
 #include <geometry_msgs/Point32.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <iostream>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/conversions.h>
@@ -22,8 +24,11 @@
 #include <opencv2/core.hpp>
 #include <random>
 #include <iterator>
-#include <std_msgs/builtin_string.h>
 #include <string>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <mbzirc_husky/setPoi.h>
 
 #define LEN_MULTIPLIER (0.03271908282177614)    // SPECIFIC FOR VLP16
 #define INV_SQRT_2PI (0.3989422804014327)
@@ -38,14 +43,21 @@ class BrickDetector {
 public:
 
     ros::NodeHandle *n;
+    tf2_ros::Buffer *tf_buffer;
+
     std::array<std::vector<MyPoint>, 4> wall_setup;
     std::array<std::vector<MyPoint>, 4> wall_setup_back;
 
-    BrickDetector(ros::NodeHandle node) {
+    BrickDetector(ros::NodeHandle node, tf2_ros::Buffer *tf_buff) {
         n = &node;
+        tf_buffer = tf_buff;
         fetch_parameters();
         build_walls();
     }
+
+    geometry_msgs::Point transform_point(MyPoint pt, geometry_msgs::TransformStamped tf);
+
+    std::vector<MyPoint> get_wall_centers(std::vector<BrickLine> &lines);
 
     std::array<std::vector<BrickLine>, 5> find_brick_segments(std::vector<MyPoint> *filtered_ptcl);
 
@@ -91,8 +103,10 @@ private:
     float MAX_DIST;                 // maximal possible distance of a detection
     float MAX_BRICK_DIST;           // maximal possible distance of brick detection
     float MAX_HEIGHT;               // maximal possible height of a detection
+    float RANSAC_TOLERANCE;         // tolerance of fitting distance per brick
     double BRICK_HEIGHT = 0.2;
-    std::string PUBLISH_FRAME = "velodyne";      // frame in which you publish the results
+    std::string LIDAR_FRAME = "velodyne";      // frame in which you publish the results
+    std::string TARGET_FRAME = "map";
 
     void fetch_parameters();
 
