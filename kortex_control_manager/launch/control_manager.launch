@@ -41,6 +41,7 @@
     <remap from="~raise_camera_in" to="kinova/arm_manager/raise_camera" />
     <remap from="~unload_brick_in" to="kinova/arm_manager/unload_brick" />
     <remap from="~lift_brick_storage_in" to="kinova/arm_manager/lift_brick_storage" />
+    <remap from="~lower_brick_in" to="kinova/arm_manager/lower_brick" />
 
     
   </node>

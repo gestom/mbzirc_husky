@@ -16,6 +16,7 @@
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
+#include <mbzirc_husky_msgs/LowerBrick.h>
 
 #include <sensor_msgs/JointState.h>
 #include <kortex_driver/TwistCommand.h>
@@ -201,6 +202,7 @@ ros::ServiceServer service_server_pickup_brick;
 ros::ServiceServer service_server_raise_camera;
 ros::ServiceServer service_server_store_brick;
 ros::ServiceServer service_server_unload_brick;
+ros::ServiceServer service_server_lower_brick;
 
 // called services
 ros::ServiceClient service_client_grip;
@@ -722,6 +724,50 @@ bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hus
 
   res.success = goal_reached;
   return goal_reached;
+}
+//}
+
+/* callbackLowerBrickService //{ */
+bool callbackLowerBrickService(mbzirc_husky_msgs::LowerBrickRequest &req, mbzirc_husky_msgs::LowerBrickResponse &res) {
+
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Putting brick down", ros::this_node::getName().c_str());
+  status = MOVING;
+
+  double placemenet_height = -0.2 + camera_offset.z() + (0.2 * req.layer);
+  Pose3d goal_pose         = end_effector_pose;
+  goal_pose.pos.z()        = placemenet_height;
+
+  bool goal_reached = goToAction(goal_pose);
+
+  if (req.ungrip) {
+    ungrip();
+  }
+
+  if (brick_attached) {
+    ROS_ERROR("[%s]: Did not release the brick!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+  res.success = true;
+  return true;
 }
 //}
 
@@ -1311,6 +1357,7 @@ int main(int argc, char **argv) {
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
   service_server_unload_brick         = nh.advertiseService("unload_brick_in", &callbackUnloadBrickService);
   service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
+  service_server_lower_brick          = nh.advertiseService("lower_brick_in", &callbackLowerBrickService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");

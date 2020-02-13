@@ -30,6 +30,7 @@ add_service_files(DIRECTORY srv/ FILES
   EndEffectorPose.srv
   brickDetect.srv
   StoragePosition.srv
+  LowerBrick.srv
 )
 
 generate_messages(DEPENDENCIES
