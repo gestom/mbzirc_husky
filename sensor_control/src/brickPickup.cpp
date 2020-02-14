@@ -218,6 +218,7 @@ int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg)
 	float dy = anchorPose.pose.position.y-robotPose.pose.position.y;
 	float dist = sqrt(dx*dx+dy*dy);
 	spd.linear.x = (fabs(moveDistance) - dist + 0.1);
+	printf("Movement done: %.3f %.3f\n",dist,moveDistance); 
 	if (moveDistance < 0) spd.linear.x = -spd.linear.x;
 	if (dist > fabs(moveDistance)) {
 		spd.linear.x = spd.angular.z = 0;
@@ -414,6 +415,7 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 int moveRobot(float distance,EBehaviour nextBeh = NONE)
 {
+	updateRobotPosition();
 	anchorPose = robotPose;
 	moveDistance = distance;
 	printf("Move command:  %.3f\n",distance); 
@@ -620,8 +622,8 @@ int storeBrick()
 	if (brickStoreClient.call(srv)) {
 		ROS_INFO("BRICK STORED IN POSITION %d", activeStorage);
 		mbzirc_husky::addInventory inventSrv;
-		inventSrv.request.position = 0;	
-		inventSrv.request.layer = 0;	
+		inventSrv.request.position = srv.request.position;	
+		inventSrv.request.layer = srv.request.layer;	
 		if (inventSrv.request.position == 3) inventSrv.request.brickType = 2;
 		if (inventSrv.request.position == 2) inventSrv.request.brickType = 1;
 		if (inventoryClient.call(inventSrv)){
@@ -681,7 +683,7 @@ int alignRobot()
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
-	state = TEST1;//TODO
+	state = TEST2;//TODO
 	state = ARMRESET;//TODO
 	EState nextState = state;
 	EState recoveryState = state;
@@ -692,7 +694,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 			state = nextState;
 			switch (state){
 				case TEST1: if (moveRobot(-2.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
-				case TEST2: if (moveRobot(+2.5) == 0) nextState = TEST1; else nextState = IDLE; break;
+				case TEST2: if (moveRobot(-7.5) == 0) nextState = ARMRESET; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
@@ -710,7 +712,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 							 if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
 							 if (activeStorage == 7)  {nextState = FINAL;}
 						 }else { nextState = ARMRESET;} break;
-				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.75); robotXYMove = +1; /*pushBricks();*/ nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.75); robotXYMove = +1; positionArm();pushBricks(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_BLUE_BRICK: moveRobot(3.45); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;

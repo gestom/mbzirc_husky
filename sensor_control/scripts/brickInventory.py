@@ -36,6 +36,8 @@ def readBlueprint():
 
 def addToInventoryCB(req):
     global invBricks, invLayers, invPositions
+    print("Message received:")
+    print(req)
     if req.brickType < 0 or req.brickType > 3 or math.isnan(req.brickType):
         print("Bad brick type added to inventory, ignoring")
         return
@@ -50,7 +52,7 @@ def addToInventoryCB(req):
     invBricks.append(req.brickType)
     invLayers.append(req.layer)
     invPositions.append(req.position)
-    print("Brick added t-%f l-%f p-%f", req.brickType, req.layer, req.position) 
+    print("Brick added t-" + str(req.brickType) + " l-" + str(req.layer) + " p-" + str(req.position)) 
     return addInventoryResponse()
 
 def getInventoryCB(req):
@@ -102,7 +104,10 @@ def nextBrickPlacementCB(req):
     print("Sending next brick to be placed")
 
     if len(invBricks) < 1:
-        return nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print("No bricks")
+        reply = nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print(reply)
+        return reply
 
     if 2 in invBricks:
         #if a blue is present, put this down first
@@ -117,7 +122,9 @@ def nextBrickPlacementCB(req):
                     #test if its already been put down
                     if bricksCompleted[lineIdx][brickIdx] == False:
                         wallOffset += 0.6
-                        return nextBrickPlacementResponse(brickType=2, position=invPositions[bluepos], layer=invLayers[bluepos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                        reply = nextBrickPlacementResponse(brickType=2, position=invPositions[bluepos], layer=invLayers[bluepos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                        print(reply)
+                        return reply
                     else:
                         wallOffset += 1.2 + req.offset
                 else:
@@ -164,10 +171,14 @@ def nextBrickPlacementCB(req):
                         break
     else:
         print("Error selecting brick")
-        return nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        reply = nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print(reply)
+        return reply
 
     if nextBrickIdx == None:
-        return nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        reply = nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print(reply)
+        return reply
 
     brickType = invBricks[nextBrickIdx]
     for lineIdx in range(len(blueprint)):
@@ -180,7 +191,9 @@ def nextBrickPlacementCB(req):
                         wallOffset += 0.15
                     else:
                         wallOffset += 0.3
-                    return nextBrickPlacementResponse(brickType=brickType, position=invPositions[nextBrickIdx], layer=invLayers[nextBrickIdx], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                    reply = nextBrickPlacementResponse(brickType=brickType, position=invPositions[nextBrickIdx], layer=invLayers[nextBrickIdx], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                    print(reply)
+                    return reply
                 else:
                     if brickType == 0:
                         wallOffset += 0.15 + req.offset
