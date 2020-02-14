@@ -1,14 +1,16 @@
 <launch>
 
-	<group ns="husky">
-		<!--Launch husky-->
+	<!--bricks tasks-->
+	<node name="brickStateMachine" type="brickStateMachine" pkg="mbzirc_husky" respawn="true" output="screen"/>
+	
+	<!--Not run: the action servers-->
+	<!--<node name="brickExplore" type="brickExplore" pkg="mbzirc_husky" respawn="true" output="screen"/>
+	<node name="brickPickup" type="brickPickup" pkg="mbzirc_husky" respawn="true" output="screen"/>
+	<node name="brickRearrange" type="brickRearrange" pkg="mbzirc_husky" respawn="true" output="screen"/>
+	<node name="brickStack" type="brickStack" pkg="mbzirc_husky" respawn="true" output="screen"/>-->
 
-		<!--bricks tasks-->
-		<node name="brickStateMachine" type="brickStateMachine" pkg="mbzirc_husky" respawn="true" output="screen"/>
-		<node name="brickExplore" type="brickExplore" pkg="mbzirc_husky" respawn="true" output="screen"/>
-		<node name="brickPickup" type="brickPickup" pkg="mbzirc_husky" respawn="true" output="screen"/>
-		<node name="brickRearrange" type="brickRearrange" pkg="mbzirc_husky" respawn="true" output="screen"/>
-		<node name="brickStack" type="brickStack" pkg="mbzirc_husky" respawn="true" output="screen"/>
-	</group>
+	<!--Additional services-->
+	<node pkg="mbzirc_husky" name="inventory" type="brickInventory.py" output="screen" />
+
     
 </launch>
