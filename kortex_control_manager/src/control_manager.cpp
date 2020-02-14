@@ -270,7 +270,7 @@ bool ungrip() {
 
 /* arm action monitoring //{ */
 void actionDoneCb(const actionlib::SimpleClientGoalState &state, const pouring_msgs::MoveGroupResultConstPtr &result) {
-  ROS_INFO("Finished in state [%s]", state.toString().c_str());
+  // ROS_INFO("Finished in state [%s]", state.toString().c_str());
 
   if (result->result) {
     action_status_ = COMPLETED;
@@ -283,12 +283,12 @@ void actionDoneCb(const actionlib::SimpleClientGoalState &state, const pouring_m
 
 // Called once when the goal becomes active
 void actionActiveCb() {
-  ROS_INFO("Goal just went active");
+  // ROS_INFO("Goal just went active");
 }
 
 // Called every time feedback is received for the goal
 void actionFeedbackCb([[maybe_unused]] const pouring_msgs::MoveGroupFeedbackConstPtr &feedback) {
-  ROS_INFO("Got Feedback");
+  // ROS_INFO("Got Feedback");
 }
 //}
 
@@ -630,7 +630,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     res.success = false;
     return false;
   }
-  
+
   int storage_index = getStorageIndex(req.position, req.layer);
 
   ROS_INFO("[%s]: Waypoint 1/3 - going higher", ros::this_node::getName().c_str());
@@ -646,9 +646,9 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
 
   // first go to the blue brick position but offset the first joint for positions 0 and 1!
   std::vector<double> goal_angles = storage_poses_jointspace[6];
-  if(req.position == 0){
+  if (req.position == 0) {
     goal_angles[0] -= 0.5;
-  }else if(req.position == 1){
+  } else if (req.position == 1) {
     goal_angles[0] += 0.5;
   }
 
@@ -672,7 +672,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   ROS_INFO("[%s]: Returning to original goal: storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
 
   // then go to the correct position
-  goal_angles       = storage_poses_jointspace[storage_index];
+  goal_angles = storage_poses_jointspace[storage_index];
 
   bool goal_reached = goToAnglesAction(goal_angles);
 
@@ -735,7 +735,7 @@ bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hus
   ROS_INFO("[%s]: Lifting brick up", ros::this_node::getName().c_str());
   status = MOVING;
 
-  Pose3d goal_pose = gripping_pose;
+  Pose3d goal_pose  = gripping_pose;
   goal_pose.pos.z() = 0.63;
 
   bool goal_reached = goToAction(goal_pose);
@@ -814,9 +814,9 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 
   double ascent;
   if (req.layer == 0) {
-    ascent = 0.2;
+    ascent = 0.3;
   } else if (req.layer == 1) {
-    ascent = 0.1;
+    ascent = 0.27;
   } else {
     ascent = 0.05;
   }
@@ -1244,8 +1244,8 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
     effort_difference_samples.clear();
     std_msgs::Float64 msg;
     msg.data = accumulated_effort_difference;
-    if(accumulated_effort_difference > 5.0){
-    	ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
+    if (accumulated_effort_difference > 5.0) {
+      ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
     }
     publisher_effort_changes.publish(msg);
   }
