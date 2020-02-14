@@ -51,4 +51,6 @@ sleep 0.2
 tmux send-keys 'rosrun mbzirc_husky brickStateMachine'
 tmux split-window -h
 tmux send-keys 'rostopic echo /kinova/arm_manager/status'
+tmux split-window -h
+tmux send-keys 'roslaunch mbzirc_husky inventory.launch'
 tmux select-layout tiled
