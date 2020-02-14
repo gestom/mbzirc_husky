@@ -1,10 +1,28 @@
-obstacle_range: 8.0
-raytrace_range: 10.5
-footprint: [[0.495, 0.335], [0.495, -0.335], [-0.495, -0.335], [-0.495, 0.335]]
-map_topic: /map
-subscribe_to_updates: true
-observation_sources: laser_scan_sensor
-laser_scan_sensor: {sensor_frame: velodyne, data_type: LaserScan, topic: scan, marking: true, clearing: true}
-global_frame: map
-robot_base_frame: base_link
-always_send_full_costmap: true
+global_frame: /map
+robot_base_frame: /base_link
+
+footprint: [[-0.3, -0.4],
+            [0.3, -0.4],
+            [0.3, 0.4],
+            [-0.3, -0.4]]
+
+footprint_padding: 0.01
+
+map_layer:
+    map_topic: /map
+
+no_go_layer:
+    map_topic: /nogo/no_go
+
+inflation_layer:
+    inflation_radius: 0.25
+    cost_scaling_factor: 5
+
+obstacle_layer:
+    max_obstacle_height: 1.2
+    obstacle_range: 4.0
+    raytrace_range: 3.0
+    observation_sources: laser
+
+    laser: {sensor_frame: velodyne, data_type: LaserScan, topic: scan, marking: true, clearing: true}
+    track_unknown_space: true

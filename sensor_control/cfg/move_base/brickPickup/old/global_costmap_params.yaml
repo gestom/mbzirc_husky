@@ -1,0 +1,18 @@
+global_costmap:
+  update_frequency: 1
+  publish_frequency: 2.5
+  transform_tolerance: 0.5
+  width: 30
+  height: 30
+  origin_x: -15.0
+  origin_y: -15.0
+  static_map: false
+  rolling_window: true
+  inflation_radius: 0.3
+  resolution: 0.1
+
+  no_go_layer:
+      map_topic: /nogo/no_go
+
+  plugins:
+      - {name: no_go_layer, type: "costmap_2d::ObstacleLayer"}
