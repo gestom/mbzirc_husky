@@ -1020,7 +1020,7 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
 //}
 
 /* callbackRaiseCameraService //{ */
-bool callbackRaiseCameraService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!getting_joint_angles) {
     ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
@@ -1035,8 +1035,10 @@ bool callbackRaiseCameraService([[maybe_unused]] std_srvs::Trigger::Request &req
   }
 
   ROS_INFO("[%s]: Assuming a raised camera pose", ros::this_node::getName().c_str());
-  status            = MOVING;
-  bool goal_reached = goToAnglesAction(raised_camera_angles);
+  status                          = MOVING;
+  std::vector<double> goal_angles = raised_camera_angles;
+  goal_angles[0] += req.data;
+  bool goal_reached = goToAnglesAction(goal_angles);
 
   res.success = goal_reached;
   return goal_reached;
