@@ -9,3 +9,8 @@ int32 position
 int32 layer
 #desired wall posiotion
 float64 wallOriginOffset
+#height of brick position (0=floor, 1= first layer)
+int32 wallLayer
+
+#please keep this and position and layer and walllayer for telling the brick was placed successfully
+int32 wallIndex

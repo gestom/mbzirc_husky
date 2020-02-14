@@ -56,6 +56,8 @@ add_service_files(
   getInventory.srv
   removeInventory.srv
   nextBrickPlacement.srv
+  brickBuilt.srv
+  debugFillInventory.srv
 )
 
 

@@ -6,6 +6,8 @@ from mbzirc_husky.srv import getInventory, getInventoryResponse
 from mbzirc_husky.srv import removeInventory, removeInventoryResponse
 from mbzirc_husky.srv import accessibleInventory, accessibleInventoryResponse
 from mbzirc_husky.srv import nextBrickPlacement, nextBrickPlacementResponse
+from mbzirc_husky.srv import brickBuilt, brickBuiltResponse
+from mbzirc_husky.srv import debugFillInventory, debugFillInventoryResponse
 
 blueprint = []
 bricksCompleted = []
@@ -93,9 +95,12 @@ def removeFromInventoryCB(req):
     return removeInventoryResponse()
 
 def nextBrickPlacementCB(req):
+    global invBricks, invLayers, invPositions
+
+    print("Sending next brick to be placed")
 
     if len(invBricks) < 1:
-        return nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1)
+        return nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
 
     if 2 in invBricks:
         #if a blue is present, put this down first
@@ -110,7 +115,7 @@ def nextBrickPlacementCB(req):
                     #test if its already been put down
                     if bricksCompleted[lineIdx][brickIdx] == False:
                         wallOffset += 0.6
-                        return nextBrickPlacementResponse(brickType=2, position=invPositions[bluepos], layer=invLayers[bluepos], wallOriginOffset=wallOffset)
+                        return nextBrickPlacementResponse(brickType=2, position=invPositions[bluepos], layer=invLayers[bluepos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
                     else:
                         wallOffset += 1.2 + req.offset
                 else:
@@ -122,10 +127,10 @@ def nextBrickPlacementCB(req):
                         print("Unrecornigsed brick type")
         
     #find top layer bricks
-    elif 1 in invLayer:
+    elif 1 in invLayers:
         brickPos = -1
         for i in range(len(invBricks)):
-            if invLayer[i] == 1:
+            if invLayers[i] == 1:
                 brickpos = i
         brickType = invBricks[i]
         for lineIdx in range(len(blueprint)):
@@ -138,7 +143,7 @@ def nextBrickPlacementCB(req):
                             wallOffset += 0.15
                         else:
                             wallOffset += 0.3
-                        return nextBrickPlacementResponse(brickType=brickType, position=invPositions[brickpos], layer=invLayers[brickpos], wallOriginOffset=wallOffset)
+                        return nextBrickPlacementResponse(brickType=brickType, position=invPositions[brickpos], layer=invLayers[brickpos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
                     else:
                         if brickType == 0:
                             wallOffset += 0.15 + req.offset
@@ -153,10 +158,10 @@ def nextBrickPlacementCB(req):
                         print("Unrecornigsed brick type")
 
     #handle bottom layer of bricks
-    elif 0 in invLayer:
+    elif 0 in invLayers:
         brickPos = -1
         for i in range(len(invBricks)):
-            if invLayer[i] == 0:
+            if invLayers[i] == 0:
                 brickpos = i
         brickType = invBricks[i]
         for lineIdx in range(len(blueprint)):
@@ -169,7 +174,7 @@ def nextBrickPlacementCB(req):
                             wallOffset += 0.15
                         else:
                             wallOffset += 0.3
-                        return nextBrickPlacementResponse(brickType=brickType, position=invPositions[brickpos], layer=invLayers[brickpos], wallOriginOffset=wallOffset)
+                        return nextBrickPlacementResponse(brickType=brickType, position=invPositions[brickpos], layer=invLayers[brickpos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
                     else:
                         if brickType == 0:
                             wallOffset += 0.15 + req.offset
@@ -185,6 +190,38 @@ def nextBrickPlacementCB(req):
     else:
         print("Error checking layer variables")
 
+def brickBuiltCB(req):
+    global invBricks, invLayers, invPositions
+   
+    print("Brick Completed")
+
+    #delete from inventory
+    delIndex = None
+    for i in range(len(invBricks)):
+        if invLayers[i] == req.fromLayer:
+            if invPositions[i] == req.fromPosition:
+                delIndex = i
+    try:
+        del invBricks[delIndex]
+        del invLayers[delIndex]
+        del invPositions[delIndex]
+    except:
+        print("Exception deleteing brick from inv on completion")
+
+    bricksCompleted[req.buildLayer][req.buildIndex] = True 
+    return brickBuiltResponse()
+
+def debugFillInventoryCB(req):
+    global invBricks, invLayers, invPositions
+
+    print("Debug filling inventory with all bricks")
+
+    invBricks = [0, 1, 0, 0, 1, 0, 2]
+    invLayers = [0, 0, 0, 1, 1, 1, 2]
+    invPositions = [0, 2, 1, 0, 2, 1, 3]
+    
+    return debugFillInventoryResponse()
+
 if __name__ == "__main__":
     rospy.init_node("brickInventory")
     readBlueprint()
@@ -193,5 +230,6 @@ if __name__ == "__main__":
     getInventoryService = rospy.Service("/inventory/get", getInventory, getInventoryCB)
     removeFromInventoryService = rospy.Service("/inventory/remove", removeInventory, removeFromInventoryCB)
     nextBrickPlacementService = rospy.Service("/inventory/nextBrickPlacement", nextBrickPlacement, nextBrickPlacementCB)
-    brickBuiltService = rospy.Service("/inventory/brickBuilt", nextBrickPlacement, nextBrickPlacementCB)
+    brickBuiltService = rospy.Service("/inventory/brickBuilt", brickBuilt, brickBuiltCB)
+    debugFillInventoryService = rospy.Service("/inventory/debugFillInventory", debugFillInventory, debugFillInventoryCB)
     rospy.spin()
