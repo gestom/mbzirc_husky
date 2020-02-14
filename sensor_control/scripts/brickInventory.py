@@ -15,11 +15,13 @@ invBricks = []
 invLayers = []
 invPositions = []
 
+fn = rospy.get_param('/inventory/filename')
+
 def readBlueprint():
-    global blueprint, bricksCompleted
+    global blueprint, bricksCompleted, fn
 
     file = None
-    with open("../bricks/bricks-difficult.txt", "r") as f:
+    with open(fn, "r") as f:
         file = f.read()
     file = file.split("\n")
     file = filter(None, file)

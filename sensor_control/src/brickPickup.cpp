@@ -710,7 +710,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 							 if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
 							 if (activeStorage == 7)  {nextState = FINAL;}
 						 }else { nextState = ARMRESET;} break;
-				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.75); robotXYMove = +1; pushBricks(); nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.75); robotXYMove = +1; /*pushBricks();*/ nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_BLUE_BRICK: moveRobot(3.45); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
