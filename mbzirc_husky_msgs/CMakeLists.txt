@@ -32,6 +32,7 @@ add_service_files(DIRECTORY srv/ FILES
   brickDetect.srv
   StoragePosition.srv
   wallPatternDetect.srv
+  LowerBrick.srv
 )
 
 generate_messages(DEPENDENCIES
