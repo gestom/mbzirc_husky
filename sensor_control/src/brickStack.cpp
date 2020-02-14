@@ -26,6 +26,7 @@ ros::ServiceClient liftBrickClient;
 ros::ServiceClient prepareClient;
 ros::ServiceClient releaseClient;
 ros::ServiceClient placeClient;
+ros::ServiceClient inventoryQuery;
 
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
@@ -362,6 +363,8 @@ int main(int argc, char** argv)
 	graspBrickClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/pickup_brick_storage");
 	liftBrickClient     = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/lift_brick_storage");
 	releaseClient     = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
+
+	inventoryClient     = n.serviceClient<mbzirc_husky::addInventory>("/inventory/nextBrickPlacement");
 
 	server = new Server(n, "brickStackServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();
