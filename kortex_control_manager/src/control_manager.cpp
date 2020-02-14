@@ -630,6 +630,8 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     res.success = false;
     return false;
   }
+  
+  int storage_index = getStorageIndex(req.position, req.layer);
 
   ROS_INFO("[%s]: Waypoint 1/3 - going higher", ros::this_node::getName().c_str());
   if (brick_attached) {
@@ -642,13 +644,19 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   bool have_brick = brick_attached;
   status          = MOVING;
 
-  // first go to the blue brick position
+  // first go to the blue brick position but offset the first joint for positions 0 and 1!
   std::vector<double> goal_angles = storage_poses_jointspace[6];
+  if(req.position == 0){
+    goal_angles[0] -= 0.5;
+  }else if(req.position == 1){
+    goal_angles[0] += 0.5;
+  }
+
   if (goToAnglesAction(goal_angles)) {
     ROS_INFO("[%s]: Waypoint 2/3 reached - high above cargo bay", ros::this_node::getName().c_str());
   }
   if (have_brick != brick_attached) {
-    ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
@@ -664,13 +672,12 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   ROS_INFO("[%s]: Returning to original goal: storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
 
   // then go to the correct position
-  int storage_index = getStorageIndex(req.position, req.layer);
   goal_angles       = storage_poses_jointspace[storage_index];
 
   bool goal_reached = goToAnglesAction(goal_angles);
 
   if (have_brick != brick_attached) {
-    ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
