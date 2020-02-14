@@ -1,0 +1,4 @@
+#remove brick from inventory (ie. its been placed)
+int32 position
+int32 layer
+---

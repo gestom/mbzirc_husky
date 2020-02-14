@@ -4,80 +4,143 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/nogotest/map.pgm"
-mapRes = 0.1
-x = 2000
-y = 2000
-w = 60
-h = 40
-r = 0
-maxObservableDistance = 4
+filename = "../maps/romance/romance.yaml"
+maxObservableDistance = 4.0
 
 rotAmount = 0.02
 mvAmount = 10
 resizeAmount = 10
 
+#don't need to adjust vars below
+foldername = "/".join(filename.split("/")[:-1])
+#to account for diagonal distance of radius (1 over root 2)
+maxObservableDistance = maxObservableDistance * (1/(2.0**0.5))
+imagefn = ""
+resolution = 1
+origin = [0, 0]
+boxX = 0
+boxY = 0
+boxW = 60
+boxH = 40
+boxR = 0
 running = True
-mapmul = 1/mapRes
-w = w * mapmul
-h = h * mapmul
+mapmul = 0
 
 if __name__ == "__main__":
 
-    rawimg = cv2.imread(filename)
+    mapdata = []
+    with open(filename, "r") as f:
+        mapdata = f.read()
+    mapdata = mapdata.split("\n")
+
+    for line in mapdata:
+        line = filter(None, line).replace(" ", "").split(":")
+        if "image" in line[0]:
+            imagefn = line[1]
+        elif "resolution" in line[0]:
+            resolution = line[1]
+            mapmul = 1/float(resolution)
+        elif "origin" in line[0]:
+            line[1] = line[1].replace("[", "")
+            line[1] = line[1].replace("]", "")
+            origin[0] = float(line[1].split(",")[0])
+            origin[1] = float(line[1].split(",")[1])
+
+    fullfn = foldername + "/" + imagefn
+    print("Opening: " + fullfn)
+    rawimg = cv2.imread(fullfn)
     cv2.namedWindow("Map")
+    
+    boxW = boxW * mapmul
+    boxH = boxH * mapmul
+    boxX = (rawimg.shape[0]/2)
+    boxY = (rawimg.shape[1]/2)
 
     while running:
 
         k = cv2.waitKey(33)
-
+        
         if k == 27:
             #esc
             running = False
         elif k == 97: 
             #a
-            x -= mvAmount
+            boxX -= mvAmount
         elif k == 100:
             #d
-            x += mvAmount
+            boxX += mvAmount
         elif k == 119:
             #w
-            y -= mvAmount
+            boxY -= mvAmount
         elif k == 115:
             #s
-            y += mvAmount
+            boxY += mvAmount
         elif k == 113:
             #q
-            r -= rotAmount
+            boxR -= rotAmount
         elif k == 101:
             #e
-            r += rotAmount
+            boxR += rotAmount
         elif k == 114:
             #r
-            w += resizeAmount
+            boxW += resizeAmount
         elif k == 116:
             #t
-            w -= resizeAmount
+            boxW -= resizeAmount
         elif k == 102:
             #f
-            h += resizeAmount
+            boxH += resizeAmount
         elif k == 103:
             #g
-            h -= resizeAmount
+            boxH -= resizeAmount
 
         img = rawimg.copy()
 
-        width = 5
+        tl = (int(boxX - ((boxW/2) * math.cos(boxR)) + ((boxH/2) * math.sin(boxR))), int(boxY - ((boxH/2) * math.cos(boxR)) - ((boxW/2) * math.sin(boxR))))
+        tr = (int(boxX + ((boxW/2) * math.cos(boxR)) + ((boxH/2) * math.sin(boxR))), int(boxY - ((boxH/2) * math.cos(boxR)) + ((boxW/2) * math.sin(boxR))))
+        bl = (int(boxX - ((boxW/2) * math.cos(boxR)) - ((boxH/2) * math.sin(boxR))), int(boxY + ((boxH/2) * math.cos(boxR)) - ((boxW/2) * math.sin(boxR))))
+        br = (int(boxX + ((boxW/2) * math.cos(boxR)) - ((boxH/2) * math.sin(boxR))), int(boxY + ((boxH/2) * math.cos(boxR)) + ((boxW/2) * math.sin(boxR)))) 
+        
+        lineWidth = 5
         colour = (0, 255, 255)
-        tl = (int(x - (w * math.cos(r)) + (h * math.sin(r))), int(y - (h * math.cos(r)) - (w * math.sin(r))))
-        tr = (int(x + (w * math.cos(r)) + (h * math.sin(r))), int(y - (h * math.cos(r)) + (w * math.sin(r))))
-        bl = (int(x - (w * math.cos(r)) - (h * math.sin(r))), int(y + (h * math.cos(r)) - (w * math.sin(r))))
-        br = (int(x + (w * math.cos(r)) - (h * math.sin(r))), int(y + (h * math.cos(r)) + (w * math.sin(r))))
+        img = cv2.line(img, tl, tr, colour, lineWidth)
+        img = cv2.line(img, tr, br, colour, lineWidth)
+        img = cv2.line(img, br, bl, colour, lineWidth)
+        img = cv2.line(img, bl, tl, colour, lineWidth)
+            
+        nWaypointsY = 0
+        nWaypointsX = 0
+        xDistCovered = 0
+        yDistCovered = 0
 
-        img = cv2.line(img, tl, tr, colour, width)
-        img = cv2.line(img, tr, br, colour, width)
-        img = cv2.line(img, br, bl, colour, width)
-        img = cv2.line(img, bl, tl, colour, width)
+        while xDistCovered < (boxW/mapmul):
+            nWaypointsX += 1
+            xDistCovered += maxObservableDistance * 2
+        while yDistCovered < (boxH/mapmul):
+            nWaypointsY += 1
+            yDistCovered += maxObservableDistance * 2
+
+        xOffset = (boxW/mapmul) / float(nWaypointsX + 1)
+        yOffset = (boxH/mapmul) / float(nWaypointsY + 1)
+
+        wp = []
+        for i in range(nWaypointsY):
+            for j in range(nWaypointsX):
+                px = (xOffset * j) + xOffset
+                py = (yOffset * i) + yOffset
+                px -= (boxW/mapmul)/2
+                py -= (boxH/mapmul)/2
+                rx = (px * math.cos(boxR)) - (py * math.sin(boxR))
+                ry = (px * math.sin(boxR)) + (py * math.cos(boxR))
+                rx += (boxX / mapmul)
+                ry += (boxY / mapmul)
+                wp.append((rx, ry))
+
+        colour = (255, 0, 255)
+        lineWidth = 20
+        for i in wp:
+            pos = (int(i[0]*mapmul), int(i[1]*mapmul))
+            img = cv2.line(img, pos, pos, colour, lineWidth)
 
         cv2.imshow("Map", img)
 
@@ -89,14 +152,13 @@ if __name__ == "__main__":
 
             img2 = np.ones(img.shape)
             img2 = img2 * 255
-            width = 3
+            lineWidth = 3
             colour = (0, 0, 0)
         
-            img2 = cv2.line(img2, tl, tr, colour, width)
-            img2 = cv2.line(img2, tr, br, colour, width)
-            img2 = cv2.line(img2, br, bl, colour, width)
-            img2 = cv2.line(img2, bl, tl, colour, width)
-            #img2 = cv2.floodFill(img2, None, (x, y), colour)
+            img2 = cv2.line(img2, tl, tr, colour, lineWidth)
+            img2 = cv2.line(img2, tr, br, colour, lineWidth)
+            img2 = cv2.line(img2, br, bl, colour, lineWidth)
+            img2 = cv2.line(img2, bl, tl, colour, lineWidth)
 
             cv2.imwrite(folder + "/" + newFilename + "-nogo.png", img2) 
 
@@ -107,12 +169,8 @@ if __name__ == "__main__":
             with open(folder + "/" + newFilename + "-nogo.yaml", "w") as f:
                 f.write(yaml)
 
-            wp = []
-            wp.append((x, y))
-
             with open(folder + "/" + newFilename + "-waypoints.txt", "w") as f:
-                for i in wp:
+                for i in wp:        
                     f.write(str(i[0]) + " " + str(i[1]) + "\n")
-
 
     cv2.destroyAllWindows()

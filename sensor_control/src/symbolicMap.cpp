@@ -22,8 +22,6 @@ double map_rotation;
 
 std::vector<cv::Point2d> waypoints;
 
-
-
 void callback(mbzirc_husky::boundsConfig &config, uint32_t level) {
         map_width=config.w;
         map_height=config.h;
@@ -36,8 +34,37 @@ void callback(mbzirc_husky::boundsConfig &config, uint32_t level) {
 // Point type - 0 waypoint, 1 Drone Pile, 2 Drone delivery, 3 robot delivery, 4 red bricks, 5 green, 6 blue, 7 orange 
 bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::Response &res)
 {
+	int type;
+
+	cv::Point2d point;
+	point.x = req.x;
+	point.y = req.y;
  	switch (req.type){
-		case 0: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);break;
+		case 0: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			waypoints.push_back(point);
+			break;
+		case 1: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
+		case 2: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
+		case 3: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
+		case 4: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
+		case 5: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
+		case 6: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
+		case 7: ROS_INFO("Setting point for the symbolic map, point type %i", req.type);
+			type = req.type;
+			break;
 	}		
         res.res = true;
 	return true;
@@ -56,12 +83,9 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 }
 
 void loadWaypoints(){
-	std::ifstream loadFile;
-	loadFile.open("./src/mbzirc_husky/sensor_control/bricks/bricks.txt");
-	int i=0;
+	std::ifstream loadFile("./src/mbzirc_husky/sensor_control/maps/romance-waypoints.txt");
 	float x,y;
-	while(loadFile >> x >> y)
-	{
+	while(loadFile >> x >> y){
 		cv::Point2d tmp;
 		tmp.x = x;
 		tmp.y = y;
@@ -89,6 +113,7 @@ int main(int argc, char** argv)
 	dynamic_reconfigure::Server<mbzirc_husky::boundsConfig>::CallbackType f = boost::bind(&callback, _1, _2);
 	dynServer.setCallback(f);
 
+	loadWaypoints();
 	ros::spin();
 
 }

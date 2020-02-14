@@ -1,0 +1,6 @@
+#brick type 0 = red....3 = orange
+#position and layer are inventory positions according to petr's code
+int32 brickType
+int32 position
+int32 layer
+---

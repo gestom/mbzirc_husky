@@ -1,0 +1,5 @@
+#type of brick you want, 0 = red, 1 green etc
+int32 brickType
+---
+#-1 = no carrying brick type, 0 = inaccessible, 1 = accessible
+int32 accessible

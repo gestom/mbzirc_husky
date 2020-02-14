@@ -1,0 +1,6 @@
+---
+#brick types 0=red, 1 green etc
+int32[] brickTypes
+#position and layer of intentory according to petrs code
+int32[] position
+int32[] layer
