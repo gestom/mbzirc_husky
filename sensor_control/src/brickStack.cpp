@@ -31,6 +31,7 @@ ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 
 int activeStorage = 5;
+float currentPosition = 0;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickStackAction> Server;
 Server *server;
