@@ -1,0 +1,11 @@
+#use this to add gaps between the bricks for suggested positions
+#all units meters
+float offset
+---
+#brick type 0 = red, 1 green etc
+int32 brickType
+#belived position in inventory
+int32 position
+int32 layer
+#desired wall posiotion
+float wallOriginOffset
