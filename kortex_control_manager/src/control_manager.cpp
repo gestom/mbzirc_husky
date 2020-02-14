@@ -16,7 +16,6 @@
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
-#include <mbzirc_husky_msgs/LowerBrick.h>
 
 #include <sensor_msgs/JointState.h>
 #include <kortex_driver/TwistCommand.h>
@@ -179,6 +178,7 @@ Pose3d              gripping_pose;
 
 std::vector<Pose3d>              storage_poses;
 std::vector<std::vector<double>> storage_poses_jointspace;
+std::vector<double> push1, push2, push3;
 
 // arm status
 bool is_initialized            = false;
@@ -222,7 +222,8 @@ ros::ServiceServer service_server_pickup_brick;
 ros::ServiceServer service_server_raise_camera;
 ros::ServiceServer service_server_store_brick;
 ros::ServiceServer service_server_pickup_storage;
-ros::ServiceServer service_server_lower_brick;
+ros::ServiceServer service_server_place_brick;
+ros::ServiceServer service_server_push_bricks_aside;
 
 // called services
 ros::ServiceClient service_client_grip;
@@ -648,6 +649,13 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     return false;
   }
 
+  ROS_INFO("[%s]: Waypoint 1/3 - going higher", ros::this_node::getName().c_str());
+  if(brick_attached){
+  	Pose3d goal_pose = end_effector_pose;
+  	goal_pose.pos.z() = 0.63;
+  	goToAction(goal_pose);
+  }
+
   ROS_INFO("[%s]: Moving arm to storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
   bool have_brick = brick_attached;
   status          = MOVING;
@@ -655,13 +663,23 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   // first go to the blue brick position
   std::vector<double> goal_angles = storage_poses_jointspace[6];
   if (goToAnglesAction(goal_angles)) {
-    ROS_INFO("[%s]: Waypoint reached", ros::this_node::getName().c_str());
+    ROS_INFO("[%s]: Waypoint 2/3 reached - high above cargo bay", ros::this_node::getName().c_str());
   }
   if (have_brick != brick_attached) {
     ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
+  
+  if(req.layer < 2){
+  	ROS_INFO("[%s]: Waypoint 3/3 - turning brick", ros::this_node::getName().c_str());
+  	goal_angles = joint_angles;
+  	goal_angles[DOF-1] += 0.8;
+  	goToAnglesAction(goal_angles);
+  }
+ 
+  
+  ROS_INFO("[%s]: Returning to original goal: storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
 
   // then go to the correct position
   int storage_index = getStorageIndex(req.position, req.layer);
@@ -746,8 +764,8 @@ bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hus
 }
 //}
 
-/* callbackLowerBrickService //{ */
-bool callbackLowerBrickService(mbzirc_husky_msgs::LowerBrickRequest &req, mbzirc_husky_msgs::LowerBrickResponse &res) {
+/* callbackPlaceBrickService //{ */
+bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -767,31 +785,22 @@ bool callbackLowerBrickService(mbzirc_husky_msgs::LowerBrickRequest &req, mbzirc
     return false;
   }
 
-  ROS_INFO("[%s]: Putting brick down", ros::this_node::getName().c_str());
   status = MOVING;
 
-  double placemenet_height = camera_offset.z() + (0.2 * req.layer);
-  Pose3d goal_pose         = end_effector_pose;
-  goal_pose.pos.z()        = placemenet_height;
-
+  double placement_height = (camera_offset.z() + req.data + 0.05) - arm_base_to_ground;
+  ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f", ros::this_node::getName().c_str(), placement_height);
+  
+  Pose3d goal_pose  = end_effector_pose;
+  goal_pose.pos.z() = placement_height;
   bool goal_reached = goToAction(goal_pose);
 
-  if (req.ungrip) {
-    ungrip();
-  }
-
-  if (brick_attached) {
-    ROS_ERROR("[%s]: Did not release the brick!", ros::this_node::getName().c_str());
-    res.success = false;
-    return false;
-  }
-  res.success = true;
-  return true;
+  res.success = goal_reached;
+  return goal_reached;
 }
 //}
 
 /* callbackLiftBrickStorageService //{ */
-bool callbackLiftBrickStorageService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &req, mbzirc_husky_msgs::StoragePositionResponse &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -815,7 +824,17 @@ bool callbackLiftBrickStorageService(std_srvs::TriggerRequest &req, std_srvs::Tr
   status = MOVING;
 
   Pose3d goal_pose = end_effector_pose;
-  goal_pose.pos.z() = 0.55;
+
+  double ascent;
+  if(req.layer == 0){
+  	ascent = 0.2;
+  }else if(req.layer == 1){
+  	ascent = 0.1;
+  }else{
+	  ascent = 0.05;
+  }
+
+  goal_pose.pos.z() += ascent;
   bool goal_reached = goToAction(goal_pose);
 
   if (!brick_attached) {
@@ -966,12 +985,12 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
 
-  goToAnglesAction(gripping_angles);
+  bool goal_reached = goToAnglesAction(gripping_angles);
 
   Pose3d goal_pose = gripping_pose;
   goal_pose.pos.z() += req.data;
 
-  bool goal_reached = goToAction(goal_pose);
+  goToAction(goal_pose);
   res.success       = goal_reached;
   return goal_reached;
 }
@@ -1051,6 +1070,42 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   return false;
 }
 //}
+
+/* callbackPushBricksAsideService //{ */
+bool callbackPushBricksAsideService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot push bricks, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot push bricks, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot push bricks, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Pushing bricks aside", ros::this_node::getName().c_str());
+  goToAnglesAction(storage_poses_jointspace[2]);
+  Pose3d goal_pose = end_effector_pose;
+  goal_pose.pos.z() -= 0.2;
+  goToAction(goal_pose);
+  goToAnglesAction(push1);
+  goToAnglesAction(push2);
+  goToAnglesAction(push3);
+  bool goal_reached = goToAnglesAction(storage_poses_jointspace[2]);
+
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
 
 /* callbackPickupStorageService //{ */
 bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
@@ -1171,8 +1226,8 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
 
   if (effort_difference_samples.size() >= EFFORT_SAMPLES) {
     accumulated_effort_difference = 0;
-    for (unsigned int i = 0; i < effort_difference_samples.size(); i++) {
-      accumulated_effort_difference += 0;
+    for (unsigned int i = 1; i < effort_difference_samples.size(); i++) {
+      accumulated_effort_difference += effort_difference_samples[i]-effort_difference_samples[i-1];
     }
     effort_difference_samples.clear();
     std_msgs::Float64 msg;
@@ -1301,7 +1356,7 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
   publisher_arm_status.publish(status_msg);
 
   std_msgs::Float64 cam_to_ground;
-  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground;
+  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground - 0.08;
   publisher_camera_to_ground.publish(cam_to_ground);
   /* publishVisualMarkers(); */
 }
@@ -1345,6 +1400,9 @@ int main(int argc, char **argv) {
   nh.getParam("raised_camera_angles", raised_camera_angles);
   nh.getParam("gripper_threshold", gripper_threshold);
   nh.getParam("brick_storage_jointspace", storage_joints_raw);
+  nh.getParam("push1", push1);
+  nh.getParam("push2", push2);
+  nh.getParam("push3", push3);
 
   nh.getParam("align_x_min", align_x_min);
   nh.getParam("align_x_max", align_x_max);
@@ -1426,7 +1484,8 @@ int main(int argc, char **argv) {
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
   service_server_pickup_storage       = nh.advertiseService("pickup_storage_in", &callbackPickupStorageService);
   service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
-  service_server_lower_brick          = nh.advertiseService("lower_brick_in", &callbackLowerBrickService);
+  service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
+  service_server_push_bricks_aside = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");
