@@ -653,7 +653,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   if (req.position == 0) {
     goal_angles[0] -= 0.5;
   } else if (req.position == 1) {
-    goal_angles[0] += 0.5;
+    goal_angles[0] += 0.7;
   }
 
   ROS_INFO("[%s]: Waypoint: High above cargo bay", ros::this_node::getName().c_str());
@@ -673,7 +673,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     ROS_INFO("[%s]: Waypoint: Turning brick", ros::this_node::getName().c_str());
     goal_angles = joint_angles;
     if (req.position == 1) {
-      goal_angles[DOF - 1] += 1.97;
+      goal_angles[DOF - 1] += 2.17;
     } else {
       goal_angles[DOF - 1] += 0.8;
     }
@@ -1075,7 +1075,8 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   } else if (req.layer == 1) {
     descent = 0.1;
   } else {
-    descent = 0.05;
+    //descent = 0.05;
+    // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK
   }
 
   Pose3d goal_pose = end_effector_pose;
