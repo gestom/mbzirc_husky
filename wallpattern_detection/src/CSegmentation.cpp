@@ -359,6 +359,7 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 			segmentArray[numSegments-1].warning = 0; 
 			segmentArray[numSegments-1].x = i%width; 
 			segmentArray[numSegments-1].y = i/width; 
+			segmentArray[numSegments-1].valid = 0; 
 			//a umistime souradnice pixelu na vrchol zasobniku
 			stack[queueEnd++] = i;
 			//dokud neni zasobnik prazdny
@@ -507,17 +508,12 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 				}
 				segmentArray[numSegments-1].contourPoints = min(contourPoints,MAX_CONTOUR_POINTS);
 				segmentArray[numSegments-1].combo = 1; 
+				segmentArray[numSegments-1].valid = 1; 
 				for (int ii = 0;ii<4;ii++){
 					segmentArray[numSegments-1].cornerX[ii] = cX[ii]+fsx;//-minX;
 					segmentArray[numSegments-1].cornerY[ii] = cY[ii]+fsy;//-minY;
 				}
-
-                                //std::cout << "S "<<numSegments << "qEnd "<<queueEnd<<" fsx "<<fsx<<" cx "<<segmentArray[numSegments-1].x<<" fsy "<<fsy<<" cy "<<segmentArray[numSegments-1].y<< " seg size "<<(maxX-minX)<<","<<(maxY-minY)<< "combo " << segmentArray[numSegments-1].combo << std::endl;
-				//if (peak > 0 && peak > queueEnd/100 && peak < queueEnd/10 && fabs(fsx-segmentArray[numSegments-1].x) < 5 && fabs(fsy-segmentArray[numSegments-1].y) < 5) segmentArray[numSegments-1].combo = 1; else segmentArray[numSegments-1].combo = 0;
-				//segmentArray[numSegments-1].combo = peak;
-				//if (segmentArray[numSegments-1].roundness >  1.0) segmentArray[numSegments-1].roundness  = 1.0/segmentArray[numSegments-1].roundness;
-				/*real 'roundness' */
-				//if (segmentArray[numSegments-1].roundness > minCircularity) segmentArray[numSegments-1].roundness = 4*sqrt(queueEnd)/contourPoints;
+			
 			}else{
 				numSegments--;
 			}

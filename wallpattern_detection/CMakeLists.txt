@@ -5,7 +5,17 @@ set(CMAKE_CXX_FLAGS "-ggdb -std=c++0x ${CMAKE_C_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS  image_transport roscpp std_msgs geometry_msgs dynamic_reconfigure  cv_bridge tf message_generation)
+find_package(catkin REQUIRED COMPONENTS  
+	image_transport 
+	roscpp 
+	std_msgs 
+	geometry_msgs 
+	dynamic_reconfigure  
+	cv_bridge 
+	tf 
+	message_generation
+	mbzirc_husky_msgs
+	)
 find_package(OpenCV REQUIRED)
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -61,7 +71,7 @@ generate_messages(
 catkin_package(
 #   INCLUDE_DIRS include
 #  LIBRARIES charging
-  CATKIN_DEPENDS message_runtime # image_transport roscpp rospy std_msgs
+   CATKIN_DEPENDS message_runtime mbzirc_husky_msgs
 #  DEPENDS system_lib
 )
 
