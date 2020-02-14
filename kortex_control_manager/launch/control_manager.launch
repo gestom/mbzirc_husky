@@ -43,6 +43,7 @@
     <remap from="~goto_storage_in" to="kinova/arm_manager/goto_storage" />
     <remap from="~pickup_storage_in" to="kinova/arm_manager/pickup_brick_storage" />
     <remap from="~lift_brick_storage_in" to="kinova/arm_manager/lift_brick_storage" />
+    <remap from="~prepare_placing_in" to="kinova/arm_manager/prepare_placing" />
     <remap from="~place_brick_in" to="kinova/arm_manager/place_brick" />
     <remap from="~push_bricks_in" to="kinova/arm_manager/push_bricks" />
 

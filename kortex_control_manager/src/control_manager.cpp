@@ -178,7 +178,7 @@ Pose3d              gripping_pose;
 
 std::vector<Pose3d>              storage_poses;
 std::vector<std::vector<double>> storage_poses_jointspace;
-std::vector<double> push1, push2, push3;
+std::vector<double>              push1, push2, push3;
 
 // arm status
 bool is_initialized            = false;
@@ -222,6 +222,7 @@ ros::ServiceServer service_server_pickup_brick;
 ros::ServiceServer service_server_raise_camera;
 ros::ServiceServer service_server_store_brick;
 ros::ServiceServer service_server_pickup_storage;
+ros::ServiceServer service_server_prepare_placing;
 ros::ServiceServer service_server_place_brick;
 ros::ServiceServer service_server_push_bricks_aside;
 
@@ -650,10 +651,10 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   }
 
   ROS_INFO("[%s]: Waypoint 1/3 - going higher", ros::this_node::getName().c_str());
-  if(brick_attached){
-  	Pose3d goal_pose = end_effector_pose;
-  	goal_pose.pos.z() = 0.63;
-  	goToAction(goal_pose);
+  if (brick_attached) {
+    Pose3d goal_pose  = end_effector_pose;
+    goal_pose.pos.z() = 0.63;
+    goToAction(goal_pose);
   }
 
   ROS_INFO("[%s]: Moving arm to storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
@@ -670,15 +671,15 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     res.success = false;
     return false;
   }
-  
-  if(req.layer < 2){
-  	ROS_INFO("[%s]: Waypoint 3/3 - turning brick", ros::this_node::getName().c_str());
-  	goal_angles = joint_angles;
-  	goal_angles[DOF-1] += 0.8;
-  	goToAnglesAction(goal_angles);
+
+  if (req.layer < 2) {
+    ROS_INFO("[%s]: Waypoint 3/3 - turning brick", ros::this_node::getName().c_str());
+    goal_angles = joint_angles;
+    goal_angles[DOF - 1] += 0.8;
+    goToAnglesAction(goal_angles);
   }
- 
-  
+
+
   ROS_INFO("[%s]: Returning to original goal: storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
 
   // then go to the correct position
@@ -789,7 +790,7 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
 
   double placement_height = (camera_offset.z() + req.data + 0.05) - arm_base_to_ground;
   ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f", ros::this_node::getName().c_str(), placement_height);
-  
+
   Pose3d goal_pose  = end_effector_pose;
   goal_pose.pos.z() = placement_height;
   bool goal_reached = goToAction(goal_pose);
@@ -826,12 +827,12 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
   Pose3d goal_pose = end_effector_pose;
 
   double ascent;
-  if(req.layer == 0){
-  	ascent = 0.2;
-  }else if(req.layer == 1){
-  	ascent = 0.1;
-  }else{
-	  ascent = 0.05;
+  if (req.layer == 0) {
+    ascent = 0.2;
+  } else if (req.layer == 1) {
+    ascent = 0.1;
+  } else {
+    ascent = 0.05;
   }
 
   goal_pose.pos.z() += ascent;
@@ -991,7 +992,35 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   goal_pose.pos.z() += req.data;
 
   goToAction(goal_pose);
-  res.success       = goal_reached;
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
+/* callbackPreparePlacingService //{ */
+bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Turning arm", ros::this_node::getName().c_str());
+  status = MOVING;
+
+  std::vector<double> goal_angles = joint_angles;
+  goal_angles[0]                  = 0.0;
+
+  bool goal_reached = goToAnglesAction(goal_angles);
+
+  res.success = goal_reached;
   return goal_reached;
 }
 //}
@@ -1058,9 +1087,13 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
     ROS_INFO("[%s]: Descent successful, releasing the brick", ros::this_node::getName().c_str());
     ungrip();
   }
+
   ros::spinOnce();
   ros::Duration(0.2).sleep();
   ros::spinOnce();
+  goal_pose = end_effector_pose;
+  goal_pose.pos.z() += 0.05;
+
 
   if (!brick_attached) {
     res.success = true;
@@ -1105,7 +1138,6 @@ bool callbackPushBricksAsideService(std_srvs::TriggerRequest &req, std_srvs::Tri
   return goal_reached;
 }
 //}
-
 
 /* callbackPickupStorageService //{ */
 bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
@@ -1227,7 +1259,7 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
   if (effort_difference_samples.size() >= EFFORT_SAMPLES) {
     accumulated_effort_difference = 0;
     for (unsigned int i = 1; i < effort_difference_samples.size(); i++) {
-      accumulated_effort_difference += effort_difference_samples[i]-effort_difference_samples[i-1];
+      accumulated_effort_difference += effort_difference_samples[i] - effort_difference_samples[i - 1];
     }
     effort_difference_samples.clear();
     std_msgs::Float64 msg;
@@ -1356,7 +1388,7 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
   publisher_arm_status.publish(status_msg);
 
   std_msgs::Float64 cam_to_ground;
-  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground - 0.08;
+  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground - 0.03;
   publisher_camera_to_ground.publish(cam_to_ground);
   /* publishVisualMarkers(); */
 }
@@ -1484,8 +1516,9 @@ int main(int argc, char **argv) {
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
   service_server_pickup_storage       = nh.advertiseService("pickup_storage_in", &callbackPickupStorageService);
   service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
+  service_server_prepare_placing      = nh.advertiseService("prepare_placing_in", &callbackPreparePlacingService);
   service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
-  service_server_push_bricks_aside = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
+  service_server_push_bricks_aside    = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");
