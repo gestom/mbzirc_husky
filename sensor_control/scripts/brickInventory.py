@@ -136,7 +136,7 @@ def nextBrickPlacementCB(req):
         for lineIdx in range(len(blueprint)):
             wallOffset = 0
             for brickIdx in range(len(blueprint[lineIdx])):
-                if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "B" and brickType == 1):
+                if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "G" and brickType == 1):
                     #test if its already been put down
                     if bricksCompleted[lineIdx][brickIdx] == False:
                         if brickType == 0:
@@ -154,6 +154,8 @@ def nextBrickPlacementCB(req):
                         wallOffset += 0.3 + req.offset
                     elif blueprint[lineIdx][brickIdx] == "G":
                         wallOffset += 0.6 + req.offset
+                    elif blueprint[lineIdx][brickIdx] == "B":
+                        wallOffset += 1.2 + req.offset
                     else:
                         print("Unrecornigsed brick type")
 
@@ -167,7 +169,7 @@ def nextBrickPlacementCB(req):
         for lineIdx in range(len(blueprint)):
             wallOffset = 0
             for brickIdx in range(len(blueprint[lineIdx])):
-                if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "B" and brickType == 1):
+                if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "G" and brickType == 1):
                     #test if its already been put down
                     if bricksCompleted[lineIdx][brickIdx] == False:
                         if brickType == 0:
@@ -185,6 +187,8 @@ def nextBrickPlacementCB(req):
                         wallOffset += 0.3 + req.offset
                     elif blueprint[lineIdx][brickIdx] == "G":
                         wallOffset += 0.6 + req.offset
+                    elif blueprint[lineIdx][brickIdx] == "B":
+                        wallOffset += 1.2 + req.offset
                     else:
                         print("Unrecornigsed brick type")
     else:
