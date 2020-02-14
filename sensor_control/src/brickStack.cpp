@@ -26,7 +26,8 @@ ros::ServiceClient liftBrickClient;
 ros::ServiceClient prepareClient;
 ros::ServiceClient releaseClient;
 ros::ServiceClient placeClient;
-ros::ServiceClient inventoryQuery;
+ros::ServiceClient inventoryQueryClient;
+ros::ServiceClient inventoryBuiltClient;
 
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
@@ -294,16 +295,38 @@ int placeBrick(float position = 0.25)
 
 int releaseBrick()
 {
-	ROS_INFO("RESETTING ARM INTO POSITION");
+	ROS_INFO("RELEASING BRICK");
 	std_srvs::Trigger srv;
 	if (releaseClient.call(srv)){
-		ROS_INFO("ARM RESET");
+		ROS_INFO("BRICK RELEASE");
+		mbzirc_husky::brickBuilt inventSrv;
+		mbzirc_husky_msgs::StoragePosition srv = getStoragePosition(activeStorage);
+		inventSrv.request.fromLayer = srv.request.layer;	
+		inventSrv.request.fromPosition = srv.request.position;	
+		if (inventoryBuiltClient.call(inventSrv)){
+			ROS_INFO("Brick from pos %i and layer %i was placed",inventSrv.request.position,inventSrv.request.layer);
+		}else{
+			ROS_INFO("INVENTORY UPDATE FAILED");
+		}
+
 		return 0;
 	}
 	ROS_INFO("ARM RESET FAILED");
 	return -1;
 }
 
+float decideMovement(int stored)
+{
+	mbzirc_husky::nextBrickPlacement inventSrv;
+	inventSrv.request.offset = 0.1;
+	if (inventoryQueryClient.call(inventSrv)){
+			ROS_INFO("Brick from pos %i and layer %i was placed",inventSrv.request.position,inventSrv.request.layer);
+			return inventSrv.response.wallOriginOffset-currentPosition; 
+	}else{
+			ROS_INFO("INVENTORY QUERY FAILED");
+			return 0;
+	}
+}
 
 void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Server* as)
 {
@@ -320,7 +343,7 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 				case TEST1: if (moveRobot(-2.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
 				case TEST2: if (moveRobot(+2.5) == 0) nextState = TEST1; else nextState = IDLE; break;
 				case ARMRESET:  if (resetArm() == 0) nextState = ARMTOSTORAGE; else nextState = ARMRESET; break;
-				case ARMTOSTORAGE:moveRobot(0.7); if (armToStorage() == 0) {nextState = ARMGRASP;} else nextState = ARMTOSTORAGE; break;
+				case ARMTOSTORAGE:moveRobot(decideMovement(activeStorage)); if (armToStorage() == 0) {nextState = ARMGRASP;} else nextState = ARMTOSTORAGE; break;
 				case ARMGRASP: if (graspBrick() == 0) {nextState = ARMPICKUP;} else nextState = ARMTOSTORAGE; break;
 				case ARMPICKUP: if (liftBrick() == 0) {nextState = ARMTOPLACEMENT;} else nextState = ARMTOSTORAGE; break;
 				case ARMTOPLACEMENT: if (positionArm() == 0) {nextState = BRICKPLACE;} else nextState = ARMTOSTORAGE; break;
@@ -367,7 +390,8 @@ int main(int argc, char** argv)
 	liftBrickClient     = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/lift_brick_storage");
 	releaseClient     = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
 
-	inventoryClient     = n.serviceClient<mbzirc_husky::addInventory>("/inventory/nextBrickPlacement");
+	inventoryQueryClient     = n.serviceClient<mbzirc_husky::addInventory>("/inventory/nextBrickPlacement");
+	inventoryBuiltClient     = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
 
 	server = new Server(n, "brickStackServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();

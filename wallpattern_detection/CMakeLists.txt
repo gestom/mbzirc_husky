@@ -150,14 +150,15 @@ add_library(mbzirc_imgtransform src/CTransformation.cpp)
 add_library(mbzirc_timer src/CTimer.cpp)
 
 add_executable(mbzirc_detector src/detection.cpp)
+add_executable(mbzirc_fardetector src/fardetection.cpp)
 #add_executable(mbzirc_fardetector src/far_detection.cpp)
 #add_executable(mbzirc_detect_calib src/calibration.cpp)
 
 add_dependencies(mbzirc_detector ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg ${OpenCV_LIBS})
-#add_dependencies(mbzirc_fardetector ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg ${OpenCV_LIBS})
+add_dependencies(mbzirc_fardetector ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg ${OpenCV_LIBS})
 #add_dependencies(mbzirc_detect_calib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
-#target_link_libraries(mbzirc_fardetector mbzirc_timer mbzirc_sysmat mbzirc_imgtransform mbzirc_segmentation mbzirc_image ${catkin_LIBRARIES}  ${OpenCV_LIBS})
+target_link_libraries(mbzirc_fardetector mbzirc_timer mbzirc_sysmat mbzirc_imgtransform mbzirc_segmentation mbzirc_image ${catkin_LIBRARIES}  ${OpenCV_LIBS})
 target_link_libraries(mbzirc_detector mbzirc_timer mbzirc_sysmat mbzirc_imgtransform mbzirc_segmentation mbzirc_image ${catkin_LIBRARIES}  ${OpenCV_LIBS})
 target_link_libraries(mbzirc_imgtransform mbzirc_timer mbzirc_sysmat mbzirc_segmentation mbzirc_image ${catkin_LIBRARIES}  ${OpenCV_LIBS})
 #target_link_libraries(mbzirc_detect_calib  mbzirc_timer mbzirc_image ${catkin_LIBRARIES})
