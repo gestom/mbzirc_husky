@@ -664,7 +664,11 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   if (req.layer < 2) {
     ROS_INFO("[%s]: Waypoint 3/3 - turning brick", ros::this_node::getName().c_str());
     goal_angles = joint_angles;
+    if(req.position == 1){
+	    goal_angles[DOF-1]+= 1.5708;
+  }else{
     goal_angles[DOF - 1] += 0.8;
+  }
     goToAnglesAction(goal_angles);
   }
 

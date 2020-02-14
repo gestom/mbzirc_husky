@@ -30,7 +30,7 @@ ros::ServiceClient placeClient;
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 
-int active_storage = 5;
+int activeStorage = 5;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickStackAction> Server;
 Server *server;
@@ -131,6 +131,18 @@ geometry_msgs::Twist spd;
 float anchorAngle = 0;
 float wallAngleOffset = 0;
 
+mbzirc_husky_msgs::StoragePosition getStoragePosition(int storage)
+{
+	int storePosition[] = {0,1,2,2,0,1,3};
+	int storeLevel[] = {0,0,0,1,1,1,2};
+	mbzirc_husky_msgs::StoragePosition srv;
+	if (storage >= 0 && storage < 8){
+		srv.request.position = storePosition[storage];	
+		srv.request.layer = storeLevel[storage];	
+	} 
+	return srv;
+}
+
 void setSpeed(geometry_msgs::Twist speed)
 {
 	float maxX = 0.20;
@@ -205,10 +217,7 @@ bool isTerminal(EState state)
 
 int armToStorage()
 {
-	mbzirc_husky_msgs::StoragePosition srv;
-	srv.request.position = active_storage%3;
-	srv.request.layer    = active_storage/3;
-	if (active_storage == 7) srv.request.position = 3; 
+	mbzirc_husky_msgs::StoragePosition srv = getStoragePosition(activeStorage);
 	srv.request.num_of_waypoints = 1;
 	ROS_INFO("PREPARING ARM TO %d, LAYER %d", srv.request.position , srv.request.layer);
 	if (armStorageClient.call(srv)) {
@@ -220,10 +229,7 @@ int armToStorage()
 
 int graspBrick()
 {
-	mbzirc_husky_msgs::StoragePosition srv;
-	srv.request.position = active_storage%3;
-	srv.request.layer    = active_storage/3;
-	if (active_storage == 6) srv.request.position = 3; 
+	mbzirc_husky_msgs::StoragePosition srv = getStoragePosition(activeStorage);
 	srv.request.num_of_waypoints = 1;
 	ROS_INFO("PICKUP FROM %d, LAYER %d", srv.request.position , srv.request.layer);
 	if (graspBrickClient.call(srv)) {
@@ -236,9 +242,7 @@ int graspBrick()
 int liftBrick()
 {
 	ROS_INFO("LIFTING BRICK");
-	mbzirc_husky_msgs::StoragePosition srv;
-	srv.request.position = active_storage%3;
-	srv.request.layer    = active_storage/3;
+	mbzirc_husky_msgs::StoragePosition srv = getStoragePosition(activeStorage);
 
 	if (liftBrickClient.call(srv)){
 		ROS_INFO("BRICK LIFTED");
@@ -299,7 +303,6 @@ int releaseBrick()
 	return -1;
 }
 
-int activeStorage = 0;
 
 void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Server* as)
 {
@@ -321,7 +324,7 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 				case ARMPICKUP: if (liftBrick() == 0) {nextState = ARMTOPLACEMENT;} else nextState = ARMTOSTORAGE; break;
 				case ARMTOPLACEMENT: if (positionArm() == 0) {nextState = BRICKPLACE;} else nextState = ARMTOSTORAGE; break;
 				case BRICKPLACE: if (placeBrick() == 0){nextState = BRICKRELEASE;} else {nextState = ARMRESET;} break;
-				case BRICKRELEASE: if (releaseBrick() == 0){nextState = ARMTOSTORAGE;active_storage--;} else {nextState = ARMTOSTORAGE;}
+				case BRICKRELEASE: if (releaseBrick() == 0){nextState = ARMTOSTORAGE;activeStorage--;} else {nextState = ARMTOSTORAGE;}
 			}
 		}
 		usleep(1200000);
