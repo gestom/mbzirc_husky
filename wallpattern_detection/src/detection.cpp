@@ -34,6 +34,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <nav_msgs/Odometry.h>
+#include <random>
 
 using namespace std;
 using namespace cv;
@@ -53,6 +54,7 @@ mbzirc_husky_msgs::wallPatternPosition patternPose;
 image_transport::ImageTransport *it;
 ros::NodeHandle *n;
 int groundPlaneDistance = 0;
+random_device rd;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
@@ -208,6 +210,141 @@ void saveColors()
 		fclose(file);
 	}
 }
+
+
+static array<int, 2> twoLargest(const int *values, int len, int mid_idx){
+    int largestA = -1, largestB = -1;
+    int idx1 = -1;
+    int idx2 = -1;
+
+    for (int idx = 0; idx < len; idx++) {
+        if (idx != mid_idx){
+            if(values[idx] >= largestA) {
+                largestB = largestA;
+                idx2 = idx1;
+                largestA = values[idx];
+                idx1 = idx;
+            } else if (values[idx] >= largestB) {
+                largestB = values[idx];
+                idx2 = idx;
+            }
+        }
+    }
+
+    if (largestA == 0) idx1 = 0;
+    if (largestB == 0) idx2 = 0;
+    return { idx1, idx2 };
+}
+
+array<vector<Point2d>, 3> runRansac(SSegment *inSegments, int arr_len){
+
+    int RANSAC_ITERATIONS = 2000;
+    double HIST_SIZE = 20;
+    int BINS_NUM = 25;          /// this has to be odd
+    int top_inliers = 0;
+    array<Point2d, 2> top_result;
+    double area_diff = 500;
+    double circularity_diff = 3;
+    int top_bin_idx = 0;
+    int center_bin = int(BINS_NUM/2);
+    double max_dist = HIST_SIZE*center_bin - HIST_SIZE/2;           /// beware segfault
+
+    // prepare points and random number generator
+    mt19937 rng(rd());
+    uniform_int_distribution<int> uni(0, arr_len);
+    Point2d all_points[arr_len];
+    for (int el = 0; el < arr_len; el++){
+        all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
+        cout << "roundess: " << inSegments[el].roundness << endl;
+        cout << "circularity: " << inSegments[el].circularity << endl;
+        cout << "size: " << inSegments[el].size << endl;
+    }
+
+    for (int it_num = 0; it_num < RANSAC_ITERATIONS; it_num++){
+        // init round
+        int id1 = uni(rng);
+        int id2 = uni(rng);
+        if (abs(inSegments[id1].size - inSegments[id2].size) < area_diff and
+            abs(inSegments[id1].roundness - inSegments[id2].roundness) < circularity_diff){
+            int curr_hist[BINS_NUM];
+            for (int i = 0; i < BINS_NUM; i++){
+                curr_hist[i] = 0;
+            }
+            Point2d pt1 = all_points[uni(rng)];
+            Point2d pt2 = all_points[uni(rng)];
+            Point2d vec = pt1 - pt2;
+            Point2d norm_vec(-vec.y, vec.x);
+            double c = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
+            Point3d line_eq(norm_vec.x, norm_vec.y, c);
+            double line_size = norm(norm_vec);
+
+            // compute all distances a fill the bins
+            for (int el = 0; el < arr_len; el++){
+                double curr_size = inSegments[el].size;
+                Point2d curr_pt = all_points[el];
+                double dist = (line_eq.x*curr_pt.x + line_eq.y*curr_pt.y + line_eq.z)/line_size;
+                if (dist < max_dist and abs(inSegments[id1].size - inSegments[el].size) < area_diff and
+                    abs(inSegments[id1].roundness - inSegments[el].roundness) < circularity_diff){
+                    int curr_bin = int(round(dist/HIST_SIZE)) + center_bin;
+                    curr_hist[curr_bin]++;
+                }
+            }
+            cout << it_num << ": ";
+            for (int i = 0; i < BINS_NUM; i++){
+                cout << curr_hist[i] << " ";
+            }
+            cout << endl;
+
+            // compute inliers
+            array<int, 2> two_top_idxs = twoLargest(curr_hist, BINS_NUM, center_bin);
+            int idx1 = two_top_idxs[0] - center_bin;
+            int idx2 = two_top_idxs[1] - center_bin;
+            int inlier_num = curr_hist[center_bin];
+            if (idx1 == -idx2 and idx1 != 0){
+                inlier_num += curr_hist[two_top_idxs[0]] + curr_hist[two_top_idxs[1]];
+
+
+
+                // set top fits
+                if (inlier_num > top_inliers){
+                    top_inliers = inlier_num;
+                    top_bin_idx = abs(idx1);
+                    top_result = {pt1, pt2};
+                }
+            }
+        }
+    }
+
+    /// get all inliers
+
+    array<vector<Point2d>, 3> ret;
+    // compute distances
+    Point2d pt1 = top_result[0];
+    Point2d pt2 = top_result[1];
+    Point2d vec = pt1 - pt2;
+    Point2d norm_vec(-vec.y, vec.x);
+    double c = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
+    Point3d line_eq(norm_vec.x, norm_vec.y, c);
+    double line_size = norm(norm_vec);
+    for (int el = 0; el < arr_len; el++){
+        Point2d curr_pt = all_points[el];
+        double dist = (line_eq.x*curr_pt.x + line_eq.y*curr_pt.y + line_eq.z)/line_size;
+        if (dist < max_dist){
+            int curr_bin = int(round(dist/HIST_SIZE));
+            if (curr_bin == -top_bin_idx){
+                ret[0].push_back(curr_pt);
+            } else if (curr_bin == 0){
+                ret[1].push_back(curr_pt);
+            } else if (curr_bin == top_bin_idx){
+                ret[2].push_back(curr_pt);
+            }
+        }
+    }
+
+    return ret;
+
+}
+
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
