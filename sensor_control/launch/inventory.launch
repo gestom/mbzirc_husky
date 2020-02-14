@@ -1,0 +1,4 @@
+<launch>
+	<!--Additional services-->
+	<node pkg="mbzirc_husky" name="inventory" type="brickInventory.py" output="screen" /> 
+</launch>

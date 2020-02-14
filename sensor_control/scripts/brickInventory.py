@@ -30,12 +30,14 @@ def addToInventoryCB(req):
                 return
     invBricks.append(req.brickType)
     invLayers.append(req.layer)
-    invPositions.append(req.layer)
+    invPositions.append(req.position)
+    print("Brick added t-%f l-%f p-%f", req.brickType, req.layer, req.position) 
     return addInventoryResponse()
 
 def getInventoryCB(req):
     global invBricks, invLayers, invPositions
     reply = getInventoryResponse(brickTypes=invBricks,position=invPositions,layer=invLayers)
+    print("Request for inventory received")
     return reply
 
 def accessibleInventoryCB(req):
@@ -45,15 +47,19 @@ def accessibleInventoryCB(req):
         print("Bad brick type for accessiblity test")
         return
     if req.brickType not in invBricks:
+        print("Brick accessibility test t-%f: not present", req.brickType)
         return accessibleInventoryResponse(accessible=-1)
 
     if req.brickType == 2:
         #blue brick
+        print("Brick accessibility test t-%f: accessible", req.brickType)
         return accessibleInventoryResponse(accessible=1)
 
     if 2 in invBricks:
+        print("Brick accessibility test t-%f: inaccessible", req.brickType)
         return accessibleInventoryResponse(accessible=0)
     else:
+        print("Brick accessibility test t-%f: accessible", req.brickType)
         return accessibleInventoryResponse(accessible=1)
 
 def removeFromInventoryCB(req):
