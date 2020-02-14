@@ -1,0 +1,8 @@
+bool activate
+int32 groundPlaneDistance
+int32 x
+int32 y
+---
+bool activated
+bool detected 
+geometry_msgs/PoseStamped patternPose 

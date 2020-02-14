@@ -34,17 +34,17 @@ typedef struct{
 class CTransformation
 {
 	public:
-		CTransformation(int widthi,int heighti,float diam,bool fullUnbarreli = false);
+		CTransformation(int widthi = 640,int heighti = 480,float diam=0.08,bool fullUnbarreli = false);
 		~CTransformation();
 
-		int calibrate2D(STrackedObject *inp,STrackedObject *r);
+		int calibrate2D(const char* name);
 
 		void saveCalibration(const char *str);
 		void loadCalibration(const char *str);
 
-	private:
 		STrackedObject  normalize(STrackedObject o);
-		STrackedObject transform2D(STrackedObject o);
+		STrackedObject  transform2D(STrackedObject o);
+		STrackedObject transform2D(SSegment o);
 		float *xArray;
 		float *yArray;
 		float *gArrayX;

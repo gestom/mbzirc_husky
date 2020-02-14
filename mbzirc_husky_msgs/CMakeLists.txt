@@ -21,6 +21,7 @@ add_message_files(DIRECTORY msg/ FILES
   brickPosition.msg
   brickGoal.msg
   brickCompleted.msg
+  wallPatternPosition.msg
 )
 
 add_service_files(DIRECTORY srv/ FILES
@@ -30,6 +31,7 @@ add_service_files(DIRECTORY srv/ FILES
   EndEffectorPose.srv
   brickDetect.srv
   StoragePosition.srv
+  wallPatternDetect.srv
   LowerBrick.srv
 )
 

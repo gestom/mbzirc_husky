@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <ros/ros.h>
+#include <std_msgs/Float64.h>
 #include "CTimer.h"
 #include "CSegmentation.h"
 #include "CTransformation.h"
@@ -17,6 +18,10 @@
 #include <ros/package.h>
 #include <tf/transform_listener.h>
 #include "opencv2/ml/ml.hpp"
+#include <mbzirc_husky_msgs/wallPatternDetect.h>
+#include <wallpattern_detection/wallpattern_detectionConfig.h>
+#include <mbzirc_husky_msgs/wallPatternPosition.h>
+
 
 #include <sys/time.h>
 #include <stdlib.h>
@@ -36,7 +41,26 @@ using namespace cv;
 VideoCapture *capture;
 int key = 0;
 
+int numDetections = 0;
+int numDetectionAttempts = 0;
 string uav_name;
+image_transport::Subscriber imageSub;
+ros::Subscriber subHeight, subInfo;
+ros::Publisher command_pub;
+ros::Publisher posePub;
+image_transport::Publisher imagePub;
+mbzirc_husky_msgs::wallPatternPosition patternPose;
+image_transport::ImageTransport *it;
+ros::NodeHandle *n;
+int groundPlaneDistance = 0;
+
+int  defaultImageWidth= 640;
+int  defaultImageHeight = 480;
+float cX = defaultImageWidth/2.0;
+float cY = defaultImageHeight/2.0;
+float fPix = 1.0;
+bool gotCameraInfo = false;
+
 
 String colorMap;
 int segmentType = 1;
@@ -89,23 +113,12 @@ Mat mask,frame,rframe,inFrame;
 SSegment segments[MAX_SEGMENTS];
 wallpattern_detection::detectedobject objectDescriptionArray[MAX_SEGMENTS];
 
-//Mat intrinsic = (Mat_<double>(3,3) << 625.219075, 0, 632.236555, 0, 706.250879, 336.779350, 0, 0, 1);	
-//Mat distCoeffs = (Mat_<double>(1,5) << -0.253495, 0.042364, 0.000613, -0.000920, 0.000000);	
-// Mat intrinsic 	= (Mat_<double>(3,3) << 606.215365, 0.000000, 632.285550, 0.000000, 679.696865, 373.770687, 0.000000, 0.000000, 1.000000);
-// Mat distCoeffs 	= (Mat_<double>(1,5) << 0.045539, -0.057822, 0.001451, -0.000487, 0.006539, 0.438100, -0.135970, 0.011170);
-//Mat intrinsic = (Mat_<double>(3,3) << 1107.6160762785566, 0.0, 632.4826638563202, 0.0, 1107.3567062825502, 317.79353662516013, 0.0, 0.0, 1.0);	
-//Mat distCoeffs = (Mat_<double>(1,5) << 0.3845641974142865, 0.22682988616601898, -0.00030113687455135237, 0.00018768010994024782, -0.10262501137410977);	
-// Mat distCoeffs = (Mat_<double>(1,5) << 0, 0, 0, 0, 0);	
-// Mat intrinsic = (Mat_<double>(3,3) << 640.5, 0, 640.5, 0, 640, 360, 0, 0, 1);	
-
 // LATER FILL FROM CONFIG FILE
 Mat distCoeffs = Mat_<double>(1,5);	
 Mat intrinsic = Mat_<double>(3,3);	
 
 cv_bridge::CvImage cv_ptr;
 
-int defaultImageWidth= 640;
-int defaultImageHeight = 480;
 int minSegmentSize = 10;
 int maxSegmentSize = 1000000;
 int circleDetections = 0;
@@ -202,10 +215,31 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	inFrame.copyTo(frame);
 	timer.reset();
 	timer.start();
-	segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
-	
-	if (altTransform != NULL) delete altTransform;
-	if (debug) {
+
+	numDetectionAttempts++;
+	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
+	STrackedObject object = altTransform->transform2D(segment);
+	printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
+
+
+	if (segment.valid == 1){
+		/*pZ = segment.z/1000;
+		pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+
+		patternPose.pose.pose.position.x = pX;
+		patternPose.pose.pose.position.y = pY;
+		patternPose.pose.pose.position.z = pZ;
+		patternPose.type = segment.type;
+		tf2::Quaternion quat_tf;
+		quat_tf.setRPY(0,0,segment.angle);
+		patternPose.pose.pose.orientation = tf2::toMsg(quat_tf);
+		patternPose.detected = true;
+		patternPose.completelyVisible = (segment.warning == false);*/
+		numDetections++;
+	}
+	posePub.publish(patternPose);
+	if (imagePub.getNumSubscribers() != 0){
 		frame.copyTo(videoFrame);
 		cv_ptr.encoding = "bgr8";
 		cv_ptr.image = videoFrame;
@@ -218,9 +252,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 			ROS_ERROR("Exception caught during publishing topic %s.", frame_pub.getTopic().c_str());
 		}
 	}
-
 	//END of segmentation - START calculating global frame coords
-	if (gui) imshow("frame",frame);
+	if (gui){
+	       	imshow("frame",frame);
 
 	/*processing user input*/
 	key = waitKey(1)%256;
@@ -234,16 +268,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	if (key == 's') segmentation.saveColorMap(colorMap.c_str());
 	if (key == 'c') saveColors();
 	if (key >= '1' && key < '9') segmentType = (key-'0');
+	}
 	imageNumber++;
-}
-
-void learnNegative()
-{
-
-}
-
-void learnSegments(int number)
-{
 }
 
 void mainMouseCallback(int event, int x, int y, int flags, void* userdata)
@@ -325,14 +351,73 @@ void termHandler(int s){
   exit(1); 
 }
 
+void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
+{
+	groundPlaneDistance = msg->data*1000+20;
+	printf("Ground plane: %i\n",groundPlaneDistance);
+}
+
+void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
+{
+	gotCameraInfo = true;
+	cX = msg->K[2];
+	cY = msg->K[5];
+	fPix = msg->K[0];
+}
+
+bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
+{
+
+	if (req.activate)
+	{
+		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
+		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
+
+		groundPlaneDistance = req.groundPlaneDistance;
+		numDetections = 0;
+		numDetectionAttempts = 0;
+		int attempts = 0;
+		while (numDetectionAttempts == 0 && attempts < 20){
+			ros::spinOnce();
+			usleep(100000);
+			attempts++;
+		}
+		if (numDetections > 0){
+			ROS_INFO("Brick detected.");
+			res.patternPose = patternPose.pose;
+			res.detected = true;
+			res.activated = true;
+		}else if (numDetectionAttempts > 0){
+			ROS_INFO("Brick not detected.");
+			res.detected = false;
+			res.activated = true;
+		}else{
+			ROS_INFO("Depth image not incoming. Is realsense on?");
+			res.detected = false;
+			res.activated = false;
+		}
+	}else
+	{
+		res.detected = false;
+		res.activated = false;
+		subHeight.shutdown();
+		imageSub.shutdown();
+		subInfo.shutdown();
+	}
+	return true;
+}
+
+
 int main(int argc, char** argv) 
 {
 	offset.x = offset.y = diffPose.x = diffPose.y = 0;
 
 	ros::init(argc, argv, "wallpattern_detector");
-	ros::NodeHandle n = ros::NodeHandle("~");
+	n = new ros::NodeHandle();
+	it = new image_transport::ImageTransport(*n);
 
-	n.param("uav_name", uav_name, string());
+	n->param("uav_name", uav_name, string());
 	/*n.param("gui", gui, false);
 	n.param("debug", debug, false);*/
 	if (gui) {
@@ -340,57 +425,30 @@ int main(int argc, char** argv)
 		signal (SIGINT,termHandler);
 	}
 
-	/*if (uav_name.empty()) {
-
-		ROS_ERROR("UAV_NAME is empty");
-		ros::shutdown();
-	}*/
-
-	n.param("camera_yaw_offset", camera_yaw_offset, 0.0);
-	n.param("camera_phi_offset", camera_phi_offset, 0.0);
-	n.param("camera_psi_offset", camera_psi_offset, 0.0);
-	n.param("max_segment_size", maxSegmentSize, 1000);
-	n.param("camera_delay", camera_delay, 0.0);
-	n.param("camera_offset", camera_offset, 0.17);
-	n.param("wallpattern_height", wallpattern_height, 0.20);
-	n.param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
-	std::vector<double> tempList;
-	int tempIdx = 0;
-
-	n.getParam("camera_distCoeffs", tempList);
-	/*for (int i = 0; i < 5; i++) {
-		distCoeffs.at<double>(i) = tempList[i];
-	}
-
-	n.getParam("camera_intrinsic", tempList);
-	tempIdx = 0;
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
-			intrinsic.at<double>(i, j) = tempList[tempIdx++];
-		}
-	}*/
-
-	ROS_INFO_STREAM("Node initiated with params: camera_offset " << camera_offset << ", maxSegmentSize = " << maxSegmentSize << ", camera_delay = " << camera_delay << ", colormap_filename = " << colormap_filename);
-
-	ROS_INFO_STREAM("Distortion matrix: \n" << distCoeffs);
-	ROS_INFO_STREAM("Intrinsic matrix: \n" << intrinsic);
-
-	int aa = 0;
-	histogram = Mat::zeros(hbins,sbins,CV_32FC1);
-	gaussianSamples = Mat::zeros(0,2,CV_32FC1);
-	storedSamples = Mat::zeros(0,3,CV_32FC1);
-
+	n->param("camera_yaw_offset", camera_yaw_offset, 0.0);
+	n->param("camera_phi_offset", camera_phi_offset, 0.0);
+	n->param("camera_psi_offset", camera_psi_offset, 0.0);
+	n->param("max_segment_size", maxSegmentSize, 1000);
+	n->param("camera_delay", camera_delay, 0.0);
+	n->param("camera_offset", camera_offset, 0.17);
+	n->param("wallpattern_height", wallpattern_height, 0.20);
+	n->param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
+	
 	if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
 	if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
 	if (gui) namedWindow("roi", CV_WINDOW_AUTOSIZE);
-	//colorMap = ros::package::getPath("wallpattern_detection")+"/etc/"+colormap_filename;
+
 	colorMap = colormap_filename;
 	segmentation.loadColorMap(colorMap.c_str());
 	segmentation.loadColors((colorMap+".col").c_str());
-	String maskPath = ros::package::getPath("wallpattern_detection")+"/etc/mask.png";
-	mask = imread(maskPath);
-	image_transport::ImageTransport it(n);
-	listener = new tf::TransformListener();
+
+	altTransform = new CTransformation();
+
+
+	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
+	altTransform->calibrate2D(calibrationFile.c_str());
+	ros::ServiceServer service = n->advertiseService("detectWallpattern", detect);
+	imagePub = it->advertise("/wallDetectResult", 1);
 
 	// initialize dynamic reconfiguration feedback
 	dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig> server;
@@ -399,22 +457,13 @@ int main(int argc, char** argv)
 	server.setCallback(dynSer);
 
 	// SUBSCRIBERS
-	image_transport::Subscriber image = it.subscribe("/camera/color/image_raw", 1, &imageCallback);
-	ros::Subscriber subGrasp = n.subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
-
-	// PUBLISHERS
-	objectWithTypeArrayPub = n.advertise<wallpattern_detection::ObjectWithTypeArray>("wallpattern_array", 1); // landing object estimator needs it
-	objectPublisher = n.advertise<wallpattern_detection::detectedobject>("objects", 1);          // mapping needs it
-	errorPub = n.advertise<geometry_msgs::Pose>("error", 1);
+	ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
 
 	// Debugging PUBLISHERS
 	if (debug) {
-		poseArrayPub = n.advertise<geometry_msgs::PoseArray>("objectPositions", 1);
-		pose_pub = n.advertise<geometry_msgs::PoseStamped>("objectRelative", 1);
-		imdebug = it.advertise("processedimage", 1);
-		objectImages = it.advertise("objectImages", 1);
-		imhist = it.advertise("histogram", 1);
-		frame_pub = it.advertise("frame", 1);
+		poseArrayPub = n->advertise<geometry_msgs::PoseArray>("objectPositions", 1);
+		pose_pub = n->advertise<geometry_msgs::PoseStamped>("objectRelative", 1);
+		imdebug = it->advertise("processedimage", 1);
 	}
 
 	sensor_msgs::Image msg;
