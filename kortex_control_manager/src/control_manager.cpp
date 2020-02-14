@@ -27,7 +27,7 @@
 #include <tf2_ros/transform_listener.h>
 
 #define DOF 7
-#define EFFORT_SAMPLES 25
+#define EFFORT_SAMPLES 10
 
 #define ZERO_VELOCITY Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(0.0, 0.0, 0.0)
 
@@ -147,8 +147,8 @@ double no_move_joint_velocity;
 double move_down_speed_faster;
 double move_down_speed_slower;
 double move_down_speed_mega_slow;
-double nearby_rot_threshold;
-double nearby_pos_threshold;
+double align_pos_threshold;
+double align_rot_threshold;
 double linear_vel_modifier;
 double linear_vel_max;
 double linear_vel_min;
@@ -249,31 +249,6 @@ std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 ActionStatus action_status_;
 bool         action_successful_;
 
-//}
-
-/* nearbyAngle //{ */
-bool nearbyAngle(double a, double b, double threshold = nearby_rot_threshold) {
-  return std::abs(a - b) < threshold;
-}
-//}
-
-/* nearbyAngles //{ */
-bool nearbyAngles(std::vector<double> u, std::vector<double> v, double threshold = nearby_rot_threshold) {
-  for (int i = 0; i < DOF; i++) {
-    if (std::abs(u[i] - v[i]) > threshold) {
-      return false;
-    }
-  }
-  return true;
-}
-//}
-
-/* nearbyPose //{ */
-bool nearbyPose(Pose3d p, Pose3d q) {
-  double pos_diff     = (p.pos - q.pos).norm();
-  double angular_diff = p.rot.angularDistance(q.rot);
-  return (pos_diff < nearby_pos_threshold) && (angular_diff < nearby_rot_threshold);
-}
 //}
 
 /* grip //{ */
@@ -445,6 +420,8 @@ bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std
 
   bool aligned = false;
 
+  ROS_INFO("[%s]: Aligning arm...", ros::this_node::getName().c_str());
+
   Eigen::Vector3d linear_vel;
   Eigen::Vector3d angular_vel;
 
@@ -474,17 +451,21 @@ bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std
       linear_vel.normalize();
       linear_vel = linear_vel_max * linear_vel;
     }
-    if (linear_vel.norm() < 0.03) {
+    if (linear_vel.norm() < linear_vel_min) {
       linear_vel.normalize();
-      linear_vel = linear_vel * 0.03;
+      linear_vel = linear_vel * linear_vel_min;
     }
     if (angular_vel.norm() > angular_vel_max) {
       angular_vel.normalize();
       angular_vel = angular_vel_max * angular_vel;
     }
+    if (angular_vel.norm() < angular_vel_min) {
+      angular_vel.normalize();
+      angular_vel = angular_vel_min * angular_vel;
+    }
 
     setCartesianVelocity(linear_vel, angular_vel);
-    aligned = std::abs(align_x) < nearby_pos_threshold && std::abs(align_y) < nearby_pos_threshold && std::abs(brick_euler.z()) < nearby_rot_threshold;
+    aligned = std::abs(align_x) < align_pos_threshold && std::abs(align_y) < align_pos_threshold && std::abs(brick_euler.z()) < align_rot_threshold;
     ros::spinOnce();
     ros::Duration(0.1).sleep();
   }
@@ -747,10 +728,8 @@ bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hus
   ROS_INFO("[%s]: Lifting brick up", ros::this_node::getName().c_str());
   status = MOVING;
 
-  Pose3d goal_pose;
-  goal_pose.pos = gripping_pose.pos;
-  goal_pose.pos.z() += req.data;
-  goal_pose.rot = gripping_pose.rot;
+  Pose3d goal_pose = gripping_pose;
+  goal_pose.pos.z() = 0.63;
 
   bool goal_reached = goToAction(goal_pose);
 
@@ -971,13 +950,6 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
 
   if (status != IDLE) {
 
-    if (nearbyPose(gripping_pose, end_effector_pose)) {
-      ROS_INFO("[%s]: Assumed a default gripping pose", ros::this_node::getName().c_str());
-      status      = IDLE;
-      res.success = true;
-      return true;
-    }
-
     ROS_ERROR("[%s]: Cannot move, arm is not IDLE", ros::this_node::getName().c_str());
     res.success = false;
     return false;
@@ -1092,7 +1064,8 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   ros::Duration(0.2).sleep();
   ros::spinOnce();
   goal_pose = end_effector_pose;
-  goal_pose.pos.z() += 0.05;
+  goal_pose.pos.z() += descent;
+  goToAction(goal_pose);
 
 
   if (!brick_attached) {
@@ -1259,11 +1232,14 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
   if (effort_difference_samples.size() >= EFFORT_SAMPLES) {
     accumulated_effort_difference = 0;
     for (unsigned int i = 1; i < effort_difference_samples.size(); i++) {
-      accumulated_effort_difference += effort_difference_samples[i] - effort_difference_samples[i - 1];
+      accumulated_effort_difference += std::abs(effort_difference_samples[i] - effort_difference_samples[i - 1]);
     }
     effort_difference_samples.clear();
     std_msgs::Float64 msg;
     msg.data = accumulated_effort_difference;
+    if(accumulated_effort_difference > 5.0){
+    	ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
+    }
     publisher_effort_changes.publish(msg);
   }
 
@@ -1388,7 +1364,7 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
   publisher_arm_status.publish(status_msg);
 
   std_msgs::Float64 cam_to_ground;
-  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground - 0.03;
+  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground - camera_offset.z();
   publisher_camera_to_ground.publish(cam_to_ground);
   /* publishVisualMarkers(); */
 }
@@ -1414,8 +1390,8 @@ int main(int argc, char **argv) {
   nh.getParam("move_down_speed_faster", move_down_speed_faster);
   nh.getParam("move_down_speed_slower", move_down_speed_slower);
   nh.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
-  nh.getParam("nearby_pos_threshold", nearby_pos_threshold);
-  nh.getParam("nearby_rot_threshold", nearby_rot_threshold);
+  nh.getParam("align_pos_threshold", align_pos_threshold);
+  nh.getParam("align_rot_threshold", align_rot_threshold);
   nh.getParam("home_angles", home_angles);
   nh.getParam("gripping_angles", gripping_angles);
   nh.getParam("gripping_pose", gripping_pose_raw);
