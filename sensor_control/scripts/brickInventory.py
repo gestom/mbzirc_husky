@@ -214,7 +214,7 @@ def brickBuiltCB(req):
     except:
         print("Exception deleteing brick from inv on completion")
 
-    bricksCompleted[req.buildLayer][req.buildIndex] = True 
+    bricksCompleted[req.wallLayer][req.wallIndex] = True 
     return brickBuiltResponse()
 
 def debugFillInventoryCB(req):

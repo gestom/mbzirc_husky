@@ -157,6 +157,7 @@ double angular_vel_max;
 double angular_vel_min;
 double align_timeout;
 double gripper_threshold;
+double effort_threshold;
 double align_x_min, align_x_max, align_y_min, align_y_max;
 
 Eigen::Vector3d camera_offset;
@@ -633,18 +634,21 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
 
   int storage_index = getStorageIndex(req.position, req.layer);
 
-  ROS_INFO("[%s]: Waypoint 1/3 - going higher", ros::this_node::getName().c_str());
-  if (brick_attached) {
-    Pose3d goal_pose  = end_effector_pose;
-    goal_pose.pos.z() = 0.63;
-    goToAction(goal_pose);
-  }
-
-  ROS_INFO("[%s]: Moving arm to storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
   bool have_brick = brick_attached;
   status          = MOVING;
 
-  // first go to the blue brick position but offset the first joint for positions 0 and 1!
+  ROS_INFO("[%s]: Waypoint: Going higher", ros::this_node::getName().c_str());
+  Pose3d goal_pose  = end_effector_pose;
+  goal_pose.pos.z() = 0.63;
+  if (goToAction(goal_pose)) {
+    ROS_INFO("[%s]: Waypoint OK", ros::this_node::getName().c_str());
+  } else {
+    ROS_ERROR("[%s]: Waypoint FAILED", ros::this_node::getName().c_str());
+  }
+
+  ROS_INFO("[%s]: Moving arm to storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
+
+  // first go to the blue brick position but offset the first joint value for positions 0 and 1
   std::vector<double> goal_angles = storage_poses_jointspace[6];
   if (req.position == 0) {
     goal_angles[0] -= 0.5;
@@ -652,9 +656,13 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     goal_angles[0] += 0.5;
   }
 
+  ROS_INFO("[%s]: Waypoint: High above cargo bay", ros::this_node::getName().c_str());
   if (goToAnglesAction(goal_angles)) {
-    ROS_INFO("[%s]: Waypoint 2/3 reached - high above cargo bay", ros::this_node::getName().c_str());
+    ROS_INFO("[%s]: Waypoint OK", ros::this_node::getName().c_str());
+  } else {
+    ROS_ERROR("[%s]: Waypoint FAILED", ros::this_node::getName().c_str());
   }
+
   if (have_brick != brick_attached) {
     ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
@@ -662,16 +670,19 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
   }
 
   if (req.layer < 2) {
-    ROS_INFO("[%s]: Waypoint 3/3 - turning brick", ros::this_node::getName().c_str());
+    ROS_INFO("[%s]: Waypoint: Turning brick", ros::this_node::getName().c_str());
     goal_angles = joint_angles;
-    if(req.position == 1){
-	    goal_angles[DOF-1]+= 1.5708;
-  }else{
-    goal_angles[DOF - 1] += 0.8;
+    if (req.position == 1) {
+      goal_angles[DOF - 1] += 1.3;
+    } else {
+      goal_angles[DOF - 1] += 0.8;
+    }
+    if (goToAnglesAction(goal_angles)) {
+      ROS_INFO("[%s]: Waypoint OK", ros::this_node::getName().c_str());
+    } else {
+      ROS_ERROR("[%s]: Waypoint FAILED", ros::this_node::getName().c_str());
+    }
   }
-    goToAnglesAction(goal_angles);
-  }
-
 
   ROS_INFO("[%s]: Returning to original goal: storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
 
@@ -1009,7 +1020,7 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
 //}
 
 /* callbackRaiseCameraService //{ */
-bool callbackRaiseCameraService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!getting_joint_angles) {
     ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
@@ -1024,8 +1035,10 @@ bool callbackRaiseCameraService([[maybe_unused]] std_srvs::Trigger::Request &req
   }
 
   ROS_INFO("[%s]: Assuming a raised camera pose", ros::this_node::getName().c_str());
-  status            = MOVING;
-  bool goal_reached = goToAnglesAction(raised_camera_angles);
+  status                          = MOVING;
+  std::vector<double> goal_angles = raised_camera_angles;
+  goal_angles[0] += req.data;
+  bool goal_reached = goToAnglesAction(goal_angles);
 
   res.success = goal_reached;
   return goal_reached;
@@ -1248,7 +1261,7 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
     effort_difference_samples.clear();
     std_msgs::Float64 msg;
     msg.data = accumulated_effort_difference;
-    if (accumulated_effort_difference > 5.0) {
+    if (brick_attached && accumulated_effort_difference > effort_threshold) {
       ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
     }
     publisher_effort_changes.publish(msg);

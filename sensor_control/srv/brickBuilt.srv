@@ -1,5 +1,5 @@
-int32 buildIndex
-int32 buildLayer
+int32 wallIndex
+int32 wallLayer
 int32 fromLayer
 int32 fromPosition
 ---
