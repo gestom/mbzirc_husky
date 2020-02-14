@@ -19,18 +19,18 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
 
-ros::ServiceClient prepareClient;
-ros::ServiceClient liftClient;
-ros::ServiceClient alignClient;
-ros::ServiceClient pickupClient;
 ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
-ros::ServiceClient brickStoreClient;
-ros::ServiceClient brickDetectorClient;
-ros::ServiceClient storageUnloadClient;
+ros::ServiceClient graspBrickClient;
+ros::ServiceClient liftBrickClient;
+ros::ServiceClient prepareClient;
+ros::ServiceClient releaseClient;
+ros::ServiceClient placeClient;
+
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 
+int active_storage = 5;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickStackAction> Server;
 Server *server;
@@ -205,17 +205,98 @@ bool isTerminal(EState state)
 
 int armToStorage()
 {
- 	return -1;
+	mbzirc_husky_msgs::StoragePosition srv;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_storage/3;
+	if (active_storage == 7) srv.request.position = 3; 
+	srv.request.num_of_waypoints = 1;
+	ROS_INFO("PREPARING ARM TO %d, LAYER %d", srv.request.position , srv.request.layer);
+	if (armStorageClient.call(srv)) {
+		ROS_INFO("ARM READY FOR PICKUP");
+		return 0;
+	}
+	return -1;
 }
+
+int graspBrick()
+{
+	mbzirc_husky_msgs::StoragePosition srv;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_storage/3;
+	if (active_storage == 6) srv.request.position = 3; 
+	srv.request.num_of_waypoints = 1;
+	ROS_INFO("PICKUP FROM %d, LAYER %d", srv.request.position , srv.request.layer);
+	if (graspBrickClient.call(srv)) {
+		ROS_INFO("BRICK PICKED UP");
+		return 0;
+	}
+	return -1;
+}
+
+int liftBrick()
+{
+	ROS_INFO("LIFTING BRICK");
+	mbzirc_husky_msgs::StoragePosition srv;
+	srv.request.position = active_storage%3;
+	srv.request.layer    = active_storage/3;
+
+	if (liftBrickClient.call(srv)){
+		ROS_INFO("BRICK LIFTED");
+		return 0;
+	}
+	ROS_INFO("BRICK LIFT FAILED");
+	return -1;
+}
+
 
 int resetArm()
 {
- 	return -1;
+	ROS_INFO("RESETTING ARM INTO POSITION");
+	std_srvs::Trigger srv;
+	if (homeClient.call(srv)){
+		ROS_INFO("ARM RESET");
+		return 0;
+	}
+	ROS_INFO("ARM RESET FAILED");
+	return -1;
 }
 
-int storeBrick()
+int positionArm(bool high = true)
 {
- 	return -1;
+	ROS_INFO("MOVING ARM INTO WALL POSITION");
+	mbzirc_husky_msgs::Float64 srv;
+	srv.request.data = 0;
+	if (prepareClient.call(srv)) {
+		ROS_INFO("ARM POSITIONED");
+		return 0;
+	}
+	ROS_INFO("ARM POSITION FAILED");
+	return -1;
+}
+
+int placeBrick(float position = 0.25)
+{
+	ROS_INFO("MOVING ARM TO PLACE THE BRICK ");
+	mbzirc_husky_msgs::Float64 srv;
+	srv.request.data = position;
+	if (placeClient.call(srv)) {
+		ROS_INFO("ARM POSITIONED");
+		return 0;
+	}
+	ROS_INFO("ARM POSITION FAILED");
+	return -1;
+}
+
+int releaseBrick()
+{
+	ROS_INFO("RESETTING ARM INTO POSITION");
+	std_srvs::Trigger srv;
+	if (releaseClient.call(srv)){
+		ROS_INFO("ARM RESET");
+		return 0;
+	}
+	ROS_INFO("ARM RESET FAILED");
+	return -1;
 }
 
 int activeStorage = 0;
@@ -224,7 +305,7 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 {
 	mbzirc_husky::brickStackResult result;
 
-	state = ARMRESET;
+	nextState = ARMTOSTORAGE;
 
 	while (isTerminal(state) == false && ros::ok()) 
 	{
@@ -234,13 +315,13 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 			switch (state){
 				case TEST1: if (moveRobot(-2.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
 				case TEST2: if (moveRobot(+2.5) == 0) nextState = TEST1; else nextState = IDLE; break;
-				case ARMRESET: moveRobot(1.0); if (resetArm() == 0) nextState = ARMTOSTORAGE; else nextState = ARMRESET; break;
-				case ARMTOSTORAGE: if (armToStorage() == 0) {nextState = ARMGRASP;} else recoveryState = ARMTOSTORAGE; break;
-				case ARMGRASP: if (armToStorage() == 0) {nextState = ARMPICKUP;} else recoveryState = ARMTOSTORAGE; break;
-				case ARMPICKUP: if (armToStorage() == 0) {nextState = ARMTOPLACEMENT;} else recoveryState = ARMTOSTORAGE; break;
-				case ARMTOPLACEMENT: if (armToStorage() == 0) {nextState = BRICKPLACE;} else recoveryState = ARMTOSTORAGE; break;
-				case BRICKPLACE: if (storeBrick() == 0){ printf("STORAGE status %i\n",activeStorage);}
-				case BRICKRELEASE: if (storeBrick() == 0){ printf("STORAGE status %i\n",activeStorage);}
+				case ARMRESET:  if (resetArm() == 0) nextState = ARMTOSTORAGE; else nextState = ARMRESET; break;
+				case ARMTOSTORAGE:moveRobot(0.7); if (armToStorage() == 0) {nextState = ARMGRASP;} else nextState = ARMTOSTORAGE; break;
+				case ARMGRASP: if (graspBrick() == 0) {nextState = ARMPICKUP;} else nextState = ARMTOSTORAGE; break;
+				case ARMPICKUP: if (liftBrick() == 0) {nextState = ARMTOPLACEMENT;} else nextState = ARMTOSTORAGE; break;
+				case ARMTOPLACEMENT: if (positionArm() == 0) {nextState = BRICKPLACE;} else nextState = ARMTOSTORAGE; break;
+				case BRICKPLACE: if (placeBrick() == 0){nextState = BRICKRELEASE;} else {nextState = ARMRESET;} break;
+				case BRICKRELEASE: if (releaseBrick() == 0){nextState = ARMTOSTORAGE;active_storage--;} else {nextState = ARMTOSTORAGE;}
 			}
 		}
 		usleep(1200000);
@@ -252,6 +333,16 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 	state = IDLE;	
 }
 
+void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
+{
+	if (updateRobotPosition() < 0) return;
+	//if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg); 
+	//if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
+	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
+	return;
+}
+
+
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "brickStack");
@@ -261,8 +352,17 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   	dynServer.setCallback(f);*/
 
+	listener = new tf::TransformListener();
+	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
 	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+	placeClient         = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/place_brick");
+	homeClient          = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
+	graspBrickClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/pickup_brick_storage");
+	liftBrickClient     = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/lift_brick_storage");
+	releaseClient     = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
+
 	server = new Server(n, "brickStackServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();
 
