@@ -15,7 +15,7 @@ invBricks = []
 invLayers = []
 invPositions = []
 
-fn = "/home/husky/mbzirc_ws/src/mbzirc_husky/sensor_control/bricks/bricks-difficult.txt"
+fn = rospy.get_param('/inventory/filename')
 
 def readBlueprint():
     global blueprint, bricksCompleted, fn
