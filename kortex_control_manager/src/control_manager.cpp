@@ -673,7 +673,7 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     ROS_INFO("[%s]: Waypoint: Turning brick", ros::this_node::getName().c_str());
     goal_angles = joint_angles;
     if (req.position == 1) {
-      goal_angles[DOF - 1] += 1.3;
+      goal_angles[DOF - 1] += 1.97;
     } else {
       goal_angles[DOF - 1] += 0.8;
     }
@@ -789,7 +789,7 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
 
   status = MOVING;
 
-  double placement_height = (camera_offset.z() + req.data + 0.05) - arm_base_to_ground;
+  double placement_height = (camera_offset.z() + req.data + 0.02) - arm_base_to_ground;
   ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f", ros::this_node::getName().c_str(), placement_height);
 
   Pose3d goal_pose  = end_effector_pose;
@@ -829,7 +829,7 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 
   double ascent;
   if (req.layer == 0) {
-    ascent = 0.3;
+    ascent = 0.35;
   } else if (req.layer == 1) {
     ascent = 0.27;
   } else {
@@ -1013,6 +1013,8 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
   goal_angles[0]                  = 0.0;
 
   bool goal_reached = goToAnglesAction(goal_angles);
+  goal_angles[DOF-1] = gripping_angles[DOF-1];
+  goToAnglesAction(goal_angles);
 
   res.success = goal_reached;
   return goal_reached;
@@ -1037,7 +1039,7 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
   ROS_INFO("[%s]: Assuming a raised camera pose", ros::this_node::getName().c_str());
   status                          = MOVING;
   std::vector<double> goal_angles = raised_camera_angles;
-  goal_angles[0] += req.data;
+  goal_angles[4] += req.data;
   bool goal_reached = goToAnglesAction(goal_angles);
 
   res.success = goal_reached;
