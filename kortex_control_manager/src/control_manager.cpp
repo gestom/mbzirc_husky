@@ -27,6 +27,8 @@
 #include <tf2_ros/transform_listener.h>
 
 #define DOF 7
+#define EFFORT_SAMPLES 25
+
 #define ZERO_VELOCITY Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(0.0, 0.0, 0.0)
 
 typedef enum
@@ -70,6 +72,26 @@ std::string statusToString(MotionStatus ms) {
       return "HOMING";
     case ALIGNING:
       return "ALIGNING";
+  }
+}
+//}
+
+/* getStorageIndex //{ */
+int getStorageIndex(int position, int layer) {
+  if (position == 0 && layer == 0) {
+    return 0;
+  } else if (position == 0 && layer == 1) {
+    return 1;
+  } else if (position == 1 && layer == 0) {
+    return 4;
+  } else if (position == 1 && layer == 1) {
+    return 5;
+  } else if (position == 2 && layer == 0) {
+    return 2;
+  } else if (position == 2 && layer == 1) {
+    return 3;
+  } else {
+    return 6;
   }
 }
 //}
@@ -124,6 +146,7 @@ double gripper_timeout;
 double no_move_joint_velocity;
 double move_down_speed_faster;
 double move_down_speed_slower;
+double move_down_speed_mega_slow;
 double nearby_rot_threshold;
 double nearby_pos_threshold;
 double linear_vel_modifier;
@@ -133,11 +156,10 @@ double angular_vel_modifier;
 double angular_vel_max;
 double angular_vel_min;
 double align_timeout;
-double descent_to_storage;
 double gripper_threshold;
+double align_x_min, align_x_max, align_y_min, align_y_max;
 
 Eigen::Vector3d camera_offset;
-
 
 // continuous status publishing
 ros::Timer status_timer;
@@ -150,10 +172,13 @@ bool goToAnglesAction(Pose3d pose);
 
 // predefined positions
 std::vector<double> home_angles;
+std::vector<double> gripping_angles;
 std::vector<double> raised_camera_angles;
 Pose3d              gripping_pose;
 
-std::vector<Pose3d> storage_poses;
+std::vector<Pose3d>              storage_poses;
+std::vector<std::vector<double>> storage_poses_jointspace;
+std::vector<double>              push1, push2, push3;
 
 // arm status
 bool is_initialized            = false;
@@ -168,6 +193,11 @@ bool brick_reliable            = false;
 std::vector<double> joint_angles;
 Pose3d              end_effector_pose;
 
+std::vector<double> last_effort;
+std::vector<double> effort_difference_samples;
+double              accumulated_effort_difference;
+
+
 MotionStatus status;
 Brick        detected_brick;
 
@@ -179,7 +209,6 @@ std::unique_ptr<actionlib::SimpleActionClient<pouring_msgs::MoveGroupAction>> ac
 
 // advertised services
 ros::ServiceServer service_server_align_arm;
-ros::ServiceServer service_server_align_arm_goto;
 ros::ServiceServer service_server_goto;
 ros::ServiceServer service_server_goto_relative;
 ros::ServiceServer service_server_goto_angles;
@@ -187,11 +216,15 @@ ros::ServiceServer service_server_goto_angles_relative;
 ros::ServiceServer service_server_goto_storage;
 ros::ServiceServer service_server_homing;
 ros::ServiceServer service_server_lift_brick;
+ros::ServiceServer service_server_lift_brick_storage;
 ros::ServiceServer service_server_prepare_gripping;
 ros::ServiceServer service_server_pickup_brick;
 ros::ServiceServer service_server_raise_camera;
 ros::ServiceServer service_server_store_brick;
-ros::ServiceServer service_server_unload_brick;
+ros::ServiceServer service_server_pickup_storage;
+ros::ServiceServer service_server_prepare_placing;
+ros::ServiceServer service_server_place_brick;
+ros::ServiceServer service_server_push_bricks_aside;
 
 // called services
 ros::ServiceClient service_client_grip;
@@ -202,6 +235,7 @@ ros::Publisher publisher_arm_status;
 ros::Publisher publisher_camera_to_ground;
 ros::Publisher publisher_rviz_markers;
 ros::Publisher publisher_cartesian_velocity;
+ros::Publisher publisher_effort_changes;
 
 // subscribers
 ros::Subscriber subscriber_joint_state;
@@ -420,7 +454,8 @@ bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std
     double          align_x     = -(detected_brick.pose.pos.y() - camera_offset.x());
     double          align_y     = -(detected_brick.pose.pos.x() - camera_offset.y());
 
-    if (end_effector_pose.pos.x() > 0.6 || end_effector_pose.pos.x() < 0.2 || end_effector_pose.pos.y() > 0.25 || end_effector_pose.pos.y() < -0.25) {
+    if (end_effector_pose.pos.x() > align_x_max || end_effector_pose.pos.x() < align_x_min || end_effector_pose.pos.y() > align_y_max ||
+        end_effector_pose.pos.y() < align_y_min) {
       ROS_ERROR("[%s]: Brick unreachable!", ros::this_node::getName().c_str());
       status = IDLE;
       setCartesianVelocity(ZERO_VELOCITY);
@@ -615,20 +650,49 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
     return false;
   }
 
+  ROS_INFO("[%s]: Waypoint 1/3 - going higher", ros::this_node::getName().c_str());
+  if (brick_attached) {
+    Pose3d goal_pose  = end_effector_pose;
+    goal_pose.pos.z() = 0.63;
+    goToAction(goal_pose);
+  }
+
   ROS_INFO("[%s]: Moving arm to storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
   bool have_brick = brick_attached;
   status          = MOVING;
 
-  Pose3d goal_pose = storage_poses[req.position];
-
-  bool goal_reached = goToAction(goal_pose);
-
+  // first go to the blue brick position
+  std::vector<double> goal_angles = storage_poses_jointspace[6];
+  if (goToAnglesAction(goal_angles)) {
+    ROS_INFO("[%s]: Waypoint 2/3 reached - high above cargo bay", ros::this_node::getName().c_str());
+  }
   if (have_brick != brick_attached) {
-    ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
 
+  if (req.layer < 2) {
+    ROS_INFO("[%s]: Waypoint 3/3 - turning brick", ros::this_node::getName().c_str());
+    goal_angles = joint_angles;
+    goal_angles[DOF - 1] += 0.8;
+    goToAnglesAction(goal_angles);
+  }
+
+
+  ROS_INFO("[%s]: Returning to original goal: storage position %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
+
+  // then go to the correct position
+  int storage_index = getStorageIndex(req.position, req.layer);
+  goal_angles       = storage_poses_jointspace[storage_index];
+
+  bool goal_reached = goToAnglesAction(goal_angles);
+
+  if (have_brick != brick_attached) {
+    ROS_ERROR("[%s: Brick lost during motion!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
   res.success = goal_reached;
   return goal_reached;
 }
@@ -688,6 +752,90 @@ bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hus
   goal_pose.pos.z() += req.data;
   goal_pose.rot = gripping_pose.rot;
 
+  bool goal_reached = goToAction(goal_pose);
+
+  if (!brick_attached) {
+    ROS_ERROR("[%s]: Brick lost during ascent!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
+/* callbackPlaceBrickService //{ */
+bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
+
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  status = MOVING;
+
+  double placement_height = (camera_offset.z() + req.data + 0.05) - arm_base_to_ground;
+  ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f", ros::this_node::getName().c_str(), placement_height);
+
+  Pose3d goal_pose  = end_effector_pose;
+  goal_pose.pos.z() = placement_height;
+  bool goal_reached = goToAction(goal_pose);
+
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
+/* callbackLiftBrickStorageService //{ */
+bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &req, mbzirc_husky_msgs::StoragePositionResponse &res) {
+
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Lifting brick from storage", ros::this_node::getName().c_str());
+  status = MOVING;
+
+  Pose3d goal_pose = end_effector_pose;
+
+  double ascent;
+  if (req.layer == 0) {
+    ascent = 0.2;
+  } else if (req.layer == 1) {
+    ascent = 0.1;
+  } else {
+    ascent = 0.05;
+  }
+
+  goal_pose.pos.z() += ascent;
   bool goal_reached = goToAction(goal_pose);
 
   if (!brick_attached) {
@@ -777,7 +925,7 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
   grip();
   double magnet_to_ground = end_effector_pose.pos.z() - camera_offset.z() + arm_base_to_ground;
 
-while (!brick_attached){ // && magnet_to_ground > stopping_height) {
+  while (!brick_attached) {  // && magnet_to_ground > stopping_height) {
     magnet_to_ground = end_effector_pose.pos.z() + arm_base_to_ground - gripper_length;
     ROS_INFO("[%s]: Magnet to ground: %.2f", ros::this_node::getName().c_str(), magnet_to_ground);
 
@@ -838,11 +986,41 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
 
+  bool goal_reached = goToAnglesAction(gripping_angles);
+
   Pose3d goal_pose = gripping_pose;
   goal_pose.pos.z() += req.data;
 
-  bool goal_reached = goToAction(goal_pose);
-  res.success       = goal_reached;
+  goToAction(goal_pose);
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
+/* callbackPreparePlacingService //{ */
+bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Turning arm", ros::this_node::getName().c_str());
+  status = MOVING;
+
+  std::vector<double> goal_angles = joint_angles;
+  goal_angles[0]                  = 0.0;
+
+  bool goal_reached = goToAnglesAction(goal_angles);
+
+  res.success = goal_reached;
   return goal_reached;
 }
 //}
@@ -893,52 +1071,120 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
 
   status = MOVING;
 
-  Pose3d new_goal = storage_poses[req.position];
-  new_goal.pos.z() += (0.2 * req.layer) - descent_to_storage;
-  bool goal_reached = goToAction(new_goal);
-  ungrip();
+  double descent;
+  if (req.layer == 0) {
+    descent = 0.2;
+  } else if (req.layer == 1) {
+    descent = 0.1;
+  } else {
+    descent = 0.05;
+  }
+
+  Pose3d goal_pose = end_effector_pose;
+  goal_pose.pos.z() -= descent;
+
+  if (goToAction(goal_pose)) {
+    ROS_INFO("[%s]: Descent successful, releasing the brick", ros::this_node::getName().c_str());
+    ungrip();
+  }
+
+  ros::spinOnce();
   ros::Duration(0.2).sleep();
-  res.success = goal_reached;
-  return goal_reached;
+  ros::spinOnce();
+  goal_pose = end_effector_pose;
+  goal_pose.pos.z() += 0.05;
+
+
+  if (!brick_attached) {
+    res.success = true;
+    return true;
+  }
+  res.success = false;
+  return false;
 }
 //}
 
-/* callbackUnloadBrickService //{ */
-bool callbackUnloadBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+/* callbackPushBricksAsideService //{ */
+bool callbackPushBricksAsideService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
   if (!is_initialized) {
-    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, not initialized!");
+    ROS_ERROR("[%s]: Cannot push bricks, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
-    res.message = "Cannot unload brick from storage, not initialized!";
     return false;
   }
 
   if (!getting_joint_angles) {
-    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, internal arm feedback missing!");
+    ROS_ERROR("[%s]: Cannot push bricks, internal arm feedback missing!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
 
   if (status != IDLE) {
-    ROS_ERROR("[kinova_control_manager]: Cannot unload brick, arm is not IDLE!");
+    ROS_ERROR("[%s]: Cannot push bricks, arm is not IDLE!", ros::this_node::getName().c_str());
     res.success = false;
-    res.message = "Cannot unload brick, arm is not IDLE!";
+    return false;
+  }
+
+  ROS_INFO("[%s]: Pushing bricks aside", ros::this_node::getName().c_str());
+  goToAnglesAction(storage_poses_jointspace[2]);
+  Pose3d goal_pose = end_effector_pose;
+  goal_pose.pos.z() -= 0.2;
+  goToAction(goal_pose);
+  goToAnglesAction(push1);
+  goToAnglesAction(push2);
+  goToAnglesAction(push3);
+  bool goal_reached = goToAnglesAction(storage_poses_jointspace[2]);
+
+  res.success = goal_reached;
+  return goal_reached;
+}
+//}
+
+/* callbackPickupStorageService //{ */
+bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+  if (!is_initialized) {
+    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, not initialized!");
+    res.success = false;
+    res.message = "Cannot pickup brick from storage, not initialized!";
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, internal arm feedback missing!");
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, arm is not IDLE!");
+    res.success = false;
+    res.message = "Cannot pickup brick from storage, arm is not IDLE!";
     return false;
   }
 
   status = MOVING;
 
-  Pose3d new_goal = storage_poses[req.position];
-  new_goal.pos.z() += (0.2 * req.layer) - (0.75 * descent_to_storage);
-  goToAction(new_goal);
-  grip();
+  double start_height = end_effector_pose.pos.z();
+
+  double descent;
+  if (req.layer == 0) {
+    descent = 0.2;
+  } else if (req.layer == 1) {
+    descent = 0.1;
+  } else {
+    descent = 0.05;
+  }
+
+  double stopping_height = start_height - descent - 0.03;
+
   ROS_INFO("[%s]: Switching to velocity control until magnet grips a brick", ros::this_node::getName().c_str());
 
   Eigen::Vector3d linear_vel;
   Eigen::Vector3d angular_vel;
-  while (!brick_attached) {  // TODO add some safety mechanism
+  grip();
+  while (!brick_attached && end_effector_pose.pos.z() > stopping_height) {
     linear_vel.x()  = 0.0;
     linear_vel.y()  = 0.0;
-    linear_vel.z()  = -move_down_speed_slower;
+    linear_vel.z()  = -move_down_speed_mega_slow;
     angular_vel.x() = 0.0;
     angular_vel.y() = 0.0;
     angular_vel.z() = 0.0;
@@ -1001,8 +1247,24 @@ void callbackBrickPoseTopic(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
   getting_joint_angles = true;
 
+  double effort_diff = 0;
   for (int i = 0; i < DOF; i++) {
     joint_angles[i] = msg->position[i];
+    effort_diff += std::abs(last_effort[i] - msg->effort[i]);
+    last_effort[i] = msg->effort[i];
+  }
+
+  effort_difference_samples.push_back(effort_diff);
+
+  if (effort_difference_samples.size() >= EFFORT_SAMPLES) {
+    accumulated_effort_difference = 0;
+    for (unsigned int i = 1; i < effort_difference_samples.size(); i++) {
+      accumulated_effort_difference += effort_difference_samples[i] - effort_difference_samples[i - 1];
+    }
+    effort_difference_samples.clear();
+    std_msgs::Float64 msg;
+    msg.data = accumulated_effort_difference;
+    publisher_effort_changes.publish(msg);
   }
 
   try {
@@ -1021,16 +1283,6 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
   catch (tf2::LookupException ex) {
     ROS_ERROR("[%s]: %s", ros::this_node::getName().c_str(), ex.what());
   }
-
-  if (status != IDLE) {
-    bool stopped = true;
-    for (int i = 0; i < DOF; i++) {
-      stopped = stopped && msg->velocity[i] < no_move_joint_velocity;
-    }
-    if (stopped) {
-      ROS_WARN("[%s]: Motion stopped! Is the arm pushing something?", ros::this_node::getName().c_str());
-    }
-  }
 }
 //}
 
@@ -1040,12 +1292,12 @@ void callbackGripperDiagnosticsTopic(const mrs_msgs::GripperDiagnosticsConstPtr 
   if (!gripper_on && msg->gripper_on) {
     gripper_start_time = ros::Time::now();
   }
-  gripper_on     = msg->gripper_on;
+  gripper_on = msg->gripper_on;
 
-  if (msg->hall1_debug < gripper_threshold){
-  	brick_attached = true;
-  }else{
-  	brick_attached = false;
+  if (msg->hall1_debug < gripper_threshold || msg->hall2_debug < gripper_threshold) {
+    brick_attached = true;
+  } else {
+    brick_attached = false;
   }
 }
 //}
@@ -1136,7 +1388,7 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
   publisher_arm_status.publish(status_msg);
 
   std_msgs::Float64 cam_to_ground;
-  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground;
+  cam_to_ground.data = end_effector_pose.pos.z() + arm_base_to_ground - 0.03;
   publisher_camera_to_ground.publish(cam_to_ground);
   /* publishVisualMarkers(); */
 }
@@ -1151,6 +1403,7 @@ int main(int argc, char **argv) {
 
   // param containers
   std::vector<double> storage_poses_raw;
+  std::vector<double> storage_joints_raw;
   std::vector<double> camera_offset_raw;
   std::vector<double> gripping_pose_raw;
 
@@ -1160,9 +1413,11 @@ int main(int argc, char **argv) {
   nh.getParam("no_move_joint_velocity", no_move_joint_velocity);
   nh.getParam("move_down_speed_faster", move_down_speed_faster);
   nh.getParam("move_down_speed_slower", move_down_speed_slower);
+  nh.getParam("move_down_speed_mega_slow", move_down_speed_mega_slow);
   nh.getParam("nearby_pos_threshold", nearby_pos_threshold);
   nh.getParam("nearby_rot_threshold", nearby_rot_threshold);
   nh.getParam("home_angles", home_angles);
+  nh.getParam("gripping_angles", gripping_angles);
   nh.getParam("gripping_pose", gripping_pose_raw);
   nh.getParam("brick_storage", storage_poses_raw);
   nh.getParam("linear_vel_modifier", linear_vel_modifier);
@@ -1174,9 +1429,17 @@ int main(int argc, char **argv) {
   nh.getParam("camera_offset", camera_offset_raw);
   nh.getParam("align_timeout", align_timeout);
   nh.getParam("status_timer_rate", status_timer_rate);
-  nh.getParam("descent_to_storage", descent_to_storage);
   nh.getParam("raised_camera_angles", raised_camera_angles);
   nh.getParam("gripper_threshold", gripper_threshold);
+  nh.getParam("brick_storage_jointspace", storage_joints_raw);
+  nh.getParam("push1", push1);
+  nh.getParam("push2", push2);
+  nh.getParam("push3", push3);
+
+  nh.getParam("align_x_min", align_x_min);
+  nh.getParam("align_x_max", align_x_max);
+  nh.getParam("align_y_min", align_y_min);
+  nh.getParam("align_y_max", align_y_max);
 
   /* parse params //{ */
   if (gripping_pose_raw.size() != 6) {
@@ -1209,7 +1472,22 @@ int main(int argc, char **argv) {
   }
   camera_offset = Eigen::Vector3d(camera_offset_raw[0], camera_offset_raw[1], camera_offset_raw[2]);
 
+  if (storage_joints_raw.size() % DOF != 0) {
+    ROS_ERROR("[%s]: Parameter \"brick_storage_joint_space\" is expected to be divisible by %d!", ros::this_node::getName().c_str(), DOF);
+    ros::shutdown();
+  }
+  num_storage_bins = (int)(storage_joints_raw.size() / DOF);
+  std::cout << "storage bins: " << num_storage_bins << "\n";
+  for (int i = 0; i < num_storage_bins; i++) {
+    std::vector<double> single_brick_storage;
+    for (int j = 0; j < DOF; j++) {
+      single_brick_storage.push_back(storage_joints_raw[i * DOF + j]);
+    }
+    storage_poses_jointspace.push_back(single_brick_storage);
+  }
   //}
+
+  ROS_INFO("[%s]: All params parsed successfully", ros::this_node::getName().c_str());
 
   status = IDLE;
   tf_buffer_.reset(new tf2_ros::Buffer);
@@ -1217,6 +1495,7 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < DOF; i++) {
     joint_angles.push_back(0);
+    last_effort.push_back(0);
   }
 
   // action clients
@@ -1235,7 +1514,11 @@ int main(int argc, char **argv) {
   service_server_prepare_gripping     = nh.advertiseService("prepare_gripping_in", &callbackPrepareGrippingService);
   service_server_raise_camera         = nh.advertiseService("raise_camera_in", &callbackRaiseCameraService);
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
-  service_server_unload_brick         = nh.advertiseService("unload_brick_in", &callbackUnloadBrickService);
+  service_server_pickup_storage       = nh.advertiseService("pickup_storage_in", &callbackPickupStorageService);
+  service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
+  service_server_prepare_placing      = nh.advertiseService("prepare_placing_in", &callbackPreparePlacingService);
+  service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
+  service_server_push_bricks_aside    = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");
@@ -1250,6 +1533,7 @@ int main(int argc, char **argv) {
   publisher_arm_status         = nh.advertise<mbzirc_husky_msgs::Gen3ArmStatus>("arm_status_out", 1);
   publisher_camera_to_ground   = nh.advertise<std_msgs::Float64>("camera_to_ground_out", 1);
   publisher_cartesian_velocity = nh.advertise<kortex_driver::TwistCommand>("cartesian_velocity_out", 1);
+  publisher_effort_changes     = nh.advertise<std_msgs::Float64>("effort_changes_out", 1);
   publisher_rviz_markers       = nh.advertise<visualization_msgs::Marker>("markers_out", 1);
 
   ROS_INFO("[%s]: Waiting for arm feedback...", ros::this_node::getName().c_str());

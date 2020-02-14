@@ -17,3 +17,4 @@ size_tolerance: 0.04          # each brick should be size % BRICK_SIZE == 0
 max_brick_dist: 6.0           # maximal possible distance of brick detection
 max_dist: 25                  # maximal distance for detecting bigger objects
 max_height: 2                 # maximal possible height of detection
+ransac_tolerance: 0.2         # tolerance of matching distance per each brick

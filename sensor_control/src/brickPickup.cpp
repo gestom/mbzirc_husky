@@ -36,6 +36,7 @@ typedef enum{
 	ROBOT_ALIGN_PHI,
 	ROBOT_ALIGN_Y,
 	ROBOT_ALIGN_X,
+	ROBOT_MOVE_SCAN,
 	ROBOT_MOVE_ODO,
 	BEHAVIOUR_NUMBER
 }EBehaviour;
@@ -44,10 +45,11 @@ const char *behStr[] = {
 	"None",
 	"aligning x and phi",
 	"moving and turning to align y",
-	"aligining phi",
-	"moving y",
-	"moving fw/bw",
-	"moving odo",
+	"aligning to correct angle",
+	"aligning along Y",
+	"aligning along X",
+	"moving along wall",
+	"moving by odometry",
 	"number"
 };
 
@@ -106,7 +108,7 @@ typedef enum{
 	MOVE_TO_GREEN_BRICK_2,	 //
 	MOVE_TO_BLUE_BRICK,	 //
 	MOVE_TO_RED_BRICK_2,	 //
-	TERMINALSTATE,	 //marks terminal state
+	TERMINALSTATE,	 	 //marks terminal state
 	FINAL,
 	STOPPING,
 	PREEMPTED,
@@ -399,6 +401,7 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		behaviour = nextBehaviour;
 		printf("Movement done: %.3f %.3f\n",dist,moveDistance); 
 		setSpeed(spd);
+		//subscriberScan.shutdown();
 		return 0;
 	}
 	setSpeed(spd);
@@ -413,7 +416,7 @@ int moveRobot(float distance,EBehaviour nextBeh = NONE)
 	moveDistance = distance;
 	printf("Move command:  %.3f\n",distance); 
 	nextBehaviour = nextBeh;
-	behaviour = ROBOT_MOVE_ODO;
+	behaviour = ROBOT_MOVE_SCAN;
 	return 0;
 }
 
@@ -467,8 +470,9 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
 {
 	if (updateRobotPosition() < 0) return;
-	if (behaviour == ROBOT_MOVE_ODO)  robotMoveScan(msg); 
+	if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg); 
 	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
+	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
 	return;
 }
 
@@ -696,9 +700,8 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 							 if (active_storage == 4)  {nextState = ARMPOSITIONING;}
 							 if (active_storage == 5)  {nextState = MOVE_TO_GREEN_BRICK_2;}
 							 if (active_storage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
+							 if (active_storage == 7)  {nextState = FINAL;}
 						 }else { nextState = ARMRESET;} break;
-				//case ROBOT_MOVE_NEXT_BRICK: positionArm(); moveRobot(0.4); nextState = ROBOT_ALIGN_WITH_WALL; break;
-				//case ROBOT_ALIGN_WITH_WALL: switchDetection(true); robotXYMove = +1; alignRobotWithWall(0.05,NONE); nextState = MOVE_TO_GREEN_BRICK_1; break;
 				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.8); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-1.2); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(1.9); robotXYMove = +1; nextState = ARMPOSITIONING; break;
@@ -728,11 +731,10 @@ int main(int argc, char** argv)
 
 	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
+	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
 	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
-	//prepareClient       = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_gripping");
 	liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");
-	//alignClient         = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/align_arm_goto");
 	alignClient         = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/align_arm");
 	pickupClient        = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/pickup_brick");
 	homeClient          = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
@@ -740,7 +742,6 @@ int main(int argc, char** argv)
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
 	storageUnloadClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/unload_brick");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
-	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 
 	listener = new tf::TransformListener();
