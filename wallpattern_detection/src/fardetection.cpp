@@ -42,6 +42,9 @@ using namespace cv;
 VideoCapture *capture;
 int key = 0;
 
+geometry_msgs::PoseStamped anchorPose;
+geometry_msgs::PoseStamped robotPose;
+tf::TransformListener *listener;
 int numDetections = 0;
 int numDetectionAttempts = 0;
 string uav_name;
@@ -79,7 +82,6 @@ geometry_msgs::Point offset;
 MatND histogram;
 int hbins = 180;
 int sbins = 256;
-tf::TransformListener *listener;
 tf::StampedTransform lastTransform;
 bool gui = true;
 bool debug = true;
@@ -211,6 +213,31 @@ void saveColors()
 	}
 }
 
+int updateRobotPosition()
+{
+	int inc = 0;
+	geometry_msgs::PoseStamped pose;
+	geometry_msgs::PoseStamped tf_pose;
+	float az = 0;
+	try {
+		pose.header.frame_id = "base_link";
+		pose.header.stamp = ros::Time::now();
+		pose.pose.position.x = 0;
+		pose.pose.position.y = 0;
+		pose.pose.position.z = 0;
+		pose.pose.orientation.x = 0;
+		pose.pose.orientation.y = 0;
+		pose.pose.orientation.z = 0;
+		pose.pose.orientation.w = 1;
+		listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.2));
+		listener->transformPose("/map",pose,robotPose);
+		return 0;
+	}
+	catch (tf::TransformException &ex) {
+		ROS_ERROR("%s",ex.what());
+		return -1;
+	}
+}
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
@@ -224,23 +251,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
 
 
-	if (segment.valid == 1){
-		/*pZ = segment.z/1000;
-		pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
-
-		patternPose.pose.pose.position.x = pX;
-		patternPose.pose.pose.position.y = pY;
-		patternPose.pose.pose.position.z = pZ;
-		patternPose.type = segment.type;
-		tf2::Quaternion quat_tf;
-		quat_tf.setRPY(0,0,segment.angle);
-		patternPose.pose.pose.orientation = tf2::toMsg(quat_tf);
-		patternPose.detected = true;
-		patternPose.completelyVisible = (segment.warning == false);*/
+	if (segment.valid == 1)
+	{
 		numDetections++;
 	}
 	posePub.publish(patternPose);
+
 	if (imagePub.getNumSubscribers() != 0){
 		frame.copyTo(videoFrame);
 		cv_ptr.encoding = "bgr8";
@@ -371,21 +387,27 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 {
 	if (req.activate)
 	{
-		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
 		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
 		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-
 		groundPlaneDistance = req.groundPlaneDistance;
-		numDetections = 0;
-		numDetectionAttempts = 0;
-		int attempts = 0;
-		while (numDetectionAttempts == 0 && attempts < 20){
-			ros::spinOnce();
-			usleep(100000);
-			attempts++;
+		for (int i = 0;i<5;i++)
+		{
+			float angleArray[] 	= {M_PI/2,M_PI,M_PI/2,0,-M_PI/2};
+			bool doScan[] 		= {1,1,0,1,1};
+			mbzirc_husky_msgs::Float64 srv;
+			srv.request.data = angleArray[i];
+			numDetections = 0;
+			numDetectionAttempts = 0;
+			imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+			while (numDetectionAttempts < 60){
+				ros::spinOnce();
+			}
+			imageSub.shutdown();
 		}
+
+		int attempts = 0;
 		if (numDetections > 0){
-			ROS_INFO("Brick detected.");
+			ROS_INFO("Wall pattern detected.");
 			res.patternPose = patternPose.pose;
 			res.detected = true;
 			res.activated = true;
@@ -403,7 +425,6 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 		res.detected = false;
 		res.activated = false;
 		subHeight.shutdown();
-		imageSub.shutdown();
 		subInfo.shutdown();
 	}
 	return true;

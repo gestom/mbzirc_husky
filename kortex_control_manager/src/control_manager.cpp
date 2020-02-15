@@ -1012,8 +1012,8 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
   std::vector<double> goal_angles = joint_angles;
   goal_angles[0]                  = 0.0;
 
-  bool goal_reached = goToAnglesAction(goal_angles);
-  goal_angles[DOF-1] = gripping_angles[DOF-1];
+  bool goal_reached    = goToAnglesAction(goal_angles);
+  goal_angles[DOF - 1] = gripping_angles[DOF - 1];
   goToAnglesAction(goal_angles);
 
   res.success = goal_reached;
@@ -1075,8 +1075,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   } else if (req.layer == 1) {
     descent = 0.1;
   } else {
-    //descent = 0.05;
-    // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK
+    descent = 0.05;
   }
 
   Pose3d goal_pose = end_effector_pose;
@@ -1091,7 +1090,10 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   ros::Duration(0.2).sleep();
   ros::spinOnce();
   goal_pose = end_effector_pose;
-  goal_pose.pos.z() += descent;
+  if (req.layer != 2) { // keep blue brick pressed
+    goal_pose.pos.z() += descent;
+  }
+  // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK
   goToAction(goal_pose);
 
 
