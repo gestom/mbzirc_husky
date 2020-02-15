@@ -154,6 +154,7 @@ def nextBrickPlacementCB(req):
                     if invLayers[i] == 1 and invPositions[i] == 1:
                         nextBrickIdx = i
                         break
+    elif 0 in invLayers:
         for i in range(len(invPositions)):
             if invLayers[i] == 0 and invPositions[i] == 0:
                 nextBrickIdx = i
