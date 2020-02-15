@@ -401,7 +401,7 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 int main(int argc, char** argv) 
 {
 	offset.x = offset.y = diffPose.x = diffPose.y = 0;
-
+	printf("AAAA\n");
 	ros::init(argc, argv, "wallpattern_detector");
 	n = new ros::NodeHandle();
 	it = new image_transport::ImageTransport(*n);
@@ -434,6 +434,7 @@ int main(int argc, char** argv)
 	altTransform = new CTransformation();
 
 
+	printf("AAAB\n");
 	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
 	altTransform->calibrate2D(calibrationFile.c_str());
 	ros::ServiceServer service = n->advertiseService("searchForWallpattern", detect);
