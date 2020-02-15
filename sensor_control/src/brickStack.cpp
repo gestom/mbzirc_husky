@@ -2,6 +2,8 @@
 #include <tf/tf.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
+#include <mbzirc_husky/brickBuilt.h>
+#include <mbzirc_husky/nextBrickPlacement.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
@@ -33,6 +35,7 @@ ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 
 int activeStorage = 5;
+float currentPosition = 0;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickStackAction> Server;
 Server *server;
@@ -193,6 +196,8 @@ int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg)
 	if (dist > fabs(moveDistance)) {
 		spd.linear.x = spd.angular.z = 0;
 		behaviour = nextBehaviour;
+		if (moveDistance > 0) currentPosition = currentPosition + dist;
+		if (moveDistance < 0) currentPosition = currentPosition - dist;
 		printf("Movement done: %.3f %.3f\n",dist,moveDistance); 
 		return 0;
 	}
@@ -304,7 +309,7 @@ int releaseBrick()
 		inventSrv.request.fromLayer = srv.request.layer;	
 		inventSrv.request.fromPosition = srv.request.position;	
 		if (inventoryBuiltClient.call(inventSrv)){
-			ROS_INFO("Brick from pos %i and layer %i was placed",inventSrv.request.position,inventSrv.request.layer);
+			ROS_INFO("Brick from pos %i and layer %i was placed",inventSrv.request.fromPosition,inventSrv.request.fromLayer);
 		}else{
 			ROS_INFO("INVENTORY UPDATE FAILED");
 		}
@@ -320,7 +325,7 @@ float decideMovement(int stored)
 	mbzirc_husky::nextBrickPlacement inventSrv;
 	inventSrv.request.offset = 0.1;
 	if (inventoryQueryClient.call(inventSrv)){
-			ROS_INFO("Brick from pos %i and layer %i was placed",inventSrv.request.position,inventSrv.request.layer);
+			ROS_INFO("Brick from pos %i and layer %i was placed",inventSrv.response.position,inventSrv.response.layer);
 			return inventSrv.response.wallOriginOffset-currentPosition; 
 	}else{
 			ROS_INFO("INVENTORY QUERY FAILED");
@@ -375,9 +380,9 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "brickStack");
 	ros::NodeHandle n;
 	// Dynamic reconfiguration server
-	/*dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
-  	dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
-  	dynServer.setCallback(f);*/
+	//dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
+  	//dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
+  	//dynServer.setCallback(f);
 
 	listener = new tf::TransformListener();
 	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
@@ -388,9 +393,9 @@ int main(int argc, char** argv)
 	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
 	graspBrickClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/pickup_brick_storage");
 	liftBrickClient     = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/lift_brick_storage");
-	releaseClient     = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
+	releaseClient     =   n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
 
-	inventoryQueryClient     = n.serviceClient<mbzirc_husky::addInventory>("/inventory/nextBrickPlacement");
+	inventoryQueryClient     = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
 	inventoryBuiltClient     = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
 
 	server = new Server(n, "brickStackServer", boost::bind(&actionServerCallback, _1, server), false);

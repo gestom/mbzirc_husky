@@ -36,6 +36,8 @@ def readBlueprint():
 
 def addToInventoryCB(req):
     global invBricks, invLayers, invPositions
+    print("Message received:")
+    print(req)
     if req.brickType < 0 or req.brickType > 3 or math.isnan(req.brickType):
         print("Bad brick type added to inventory, ignoring")
         return
@@ -50,7 +52,7 @@ def addToInventoryCB(req):
     invBricks.append(req.brickType)
     invLayers.append(req.layer)
     invPositions.append(req.position)
-    print("Brick added t-%f l-%f p-%f", req.brickType, req.layer, req.position) 
+    print("Brick added t-" + str(req.brickType) + " l-" + str(req.layer) + " p-" + str(req.position)) 
     return addInventoryResponse()
 
 def getInventoryCB(req):
@@ -102,7 +104,10 @@ def nextBrickPlacementCB(req):
     print("Sending next brick to be placed")
 
     if len(invBricks) < 1:
-        return nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print("No bricks")
+        reply = nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print(reply)
+        return reply
 
     if 2 in invBricks:
         #if a blue is present, put this down first
@@ -117,7 +122,9 @@ def nextBrickPlacementCB(req):
                     #test if its already been put down
                     if bricksCompleted[lineIdx][brickIdx] == False:
                         wallOffset += 0.6
-                        return nextBrickPlacementResponse(brickType=2, position=invPositions[bluepos], layer=invLayers[bluepos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                        reply = nextBrickPlacementResponse(brickType=2, position=invPositions[bluepos], layer=invLayers[bluepos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                        print(reply)
+                        return reply
                     else:
                         wallOffset += 1.2 + req.offset
                 else:
@@ -125,76 +132,81 @@ def nextBrickPlacementCB(req):
                         wallOffset += 0.3 + req.offset
                     elif blueprint[lineIdx][brickIdx] == "G":
                         wallOffset += 0.6 + req.offset
-                    else:
-                        print("Unrecornigsed brick type")
-        
-    #find top layer bricks
-    elif 1 in invLayers:
-        brickPos = -1
-        for i in range(len(invBricks)):
-            if invLayers[i] == 1:
-                brickpos = i
-        brickType = invBricks[i]
-        for lineIdx in range(len(blueprint)):
-            wallOffset = 0
-            for brickIdx in range(len(blueprint[lineIdx])):
-                if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "G" and brickType == 1):
-                    #test if its already been put down
-                    if bricksCompleted[lineIdx][brickIdx] == False:
-                        if brickType == 0:
-                            wallOffset += 0.15
-                        else:
-                            wallOffset += 0.3
-                        return nextBrickPlacementResponse(brickType=brickType, position=invPositions[brickpos], layer=invLayers[brickpos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
-                    else:
-                        if brickType == 0:
-                            wallOffset += 0.15 + req.offset
-                        else:
-                            wallOffset += 0.3 + req.offset
-                else:
-                    if blueprint[lineIdx][brickIdx] == "R":
-                        wallOffset += 0.3 + req.offset
-                    elif blueprint[lineIdx][brickIdx] == "G":
-                        wallOffset += 0.6 + req.offset
-                    elif blueprint[lineIdx][brickIdx] == "B":
-                        wallOffset += 1.2 + req.offset
                     else:
                         print("Unrecornigsed brick type")
 
-    #handle bottom layer of bricks
-    elif 0 in invLayers:
-        brickPos = -1
-        for i in range(len(invBricks)):
-            if invLayers[i] == 0:
-                brickpos = i
-        brickType = invBricks[i]
-        for lineIdx in range(len(blueprint)):
-            wallOffset = 0
-            for brickIdx in range(len(blueprint[lineIdx])):
-                if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "G" and brickType == 1):
-                    #test if its already been put down
-                    if bricksCompleted[lineIdx][brickIdx] == False:
-                        if brickType == 0:
-                            wallOffset += 0.15
-                        else:
-                            wallOffset += 0.3
-                        return nextBrickPlacementResponse(brickType=brickType, position=invPositions[brickpos], layer=invLayers[brickpos], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
-                    else:
-                        if brickType == 0:
-                            wallOffset += 0.15 + req.offset
-                        else:
-                            wallOffset += 0.3 + req.offset
-                else:
-                    if blueprint[lineIdx][brickIdx] == "R":
-                        wallOffset += 0.3 + req.offset
-                    elif blueprint[lineIdx][brickIdx] == "G":
-                        wallOffset += 0.6 + req.offset
-                    elif blueprint[lineIdx][brickIdx] == "B":
-                        wallOffset += 1.2 + req.offset
-                    else:
-                        print("Unrecornigsed brick type")
+    #for red and greens
+
+    #select next brick top to bottom, left to right
+    nextBrickIdx = None
+    if 1 in invLayers:
+        for i in range(len(invPositions)):
+            if invLayers[i] == 1 and invPositions[i] == 0:
+                nextBrickIdx = i
+                break
+        if nextBrickIdx == None:
+            for i in range(len(invPositions)):
+                if invLayers[i] == 1 and invPositions[i] == 2:
+                    nextBrickIdx = i
+                    break
+            if nextBrickIdx == None:
+                for i in range(len(invPositions)):
+                    if invLayers[i] == 1 and invPositions[i] == 1:
+                        nextBrickIdx = i
+                        break
+        for i in range(len(invPositions)):
+            if invLayers[i] == 0 and invPositions[i] == 0:
+                nextBrickIdx = i
+                break
+        if nextBrickIdx == None:
+            for i in range(len(invPositions)):
+                if invLayers[i] == 0 and invPositions[i] == 2:
+                    nextBrickIdx = i
+                    break
+            if nextBrickIdx == None:
+                for i in range(len(invPositions)):
+                    if invLayers[i] == 0 and invPositions[i] == 1:
+                        nextBrickIdx = i
+                        break
     else:
-        print("Error checking layer variables")
+        print("Error selecting brick")
+        reply = nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print(reply)
+        return reply
+
+    if nextBrickIdx == None:
+        reply = nextBrickPlacementResponse(brickType=-1, position=-1, layer=-1, wallOriginOffset=-1, wallLayer=-1, wallIndex=-1)
+        print(reply)
+        return reply
+
+    brickType = invBricks[nextBrickIdx]
+    for lineIdx in range(len(blueprint)):
+        wallOffset = 0
+        for brickIdx in range(len(blueprint[lineIdx])):
+            if (blueprint[lineIdx][brickIdx] == "R" and brickType == 0) or (blueprint[lineIdx][brickIdx] == "G" and brickType == 1):
+                #test if its already been put down
+                if bricksCompleted[lineIdx][brickIdx] == False:
+                    if brickType == 0:
+                        wallOffset += 0.15
+                    else:
+                        wallOffset += 0.3
+                    reply = nextBrickPlacementResponse(brickType=brickType, position=invPositions[nextBrickIdx], layer=invLayers[nextBrickIdx], wallOriginOffset=wallOffset, wallLayer=lineIdx, wallIndex=brickIdx)
+                    print(reply)
+                    return reply
+                else:
+                    if brickType == 0:
+                        wallOffset += 0.15 + req.offset
+                    else:
+                        wallOffset += 0.3 + req.offset
+            else:
+                if blueprint[lineIdx][brickIdx] == "R":
+                    wallOffset += 0.3 + req.offset
+                elif blueprint[lineIdx][brickIdx] == "G":
+                    wallOffset += 0.6 + req.offset
+                elif blueprint[lineIdx][brickIdx] == "B":
+                    wallOffset += 1.2 + req.offset
+                else:
+                    print("Unrecornigsed brick type")
 
 def brickBuiltCB(req):
     global invBricks, invLayers, invPositions

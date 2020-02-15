@@ -30,14 +30,14 @@ find_package(PCL REQUIRED)
 #######################################
 
 add_action_files(
-  DIRECTORY action 
+	DIRECTORY action 
 	FILES spray.action
 	FILES pickup.action
 	FILES fireExplore.action
-    FILES brickExplore.action
+	FILES brickExplore.action
 	FILES brickPickup.action
-    FILES brickStack.action
-)
+	FILES brickStack.action
+	)
 
 generate_dynamic_reconfigure_options(
 	cfg/spray.cfg
