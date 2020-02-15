@@ -512,6 +512,18 @@ int robotAlignPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	setSpeed(spd);
 }
 
+void callbackOdom(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
+{
+	int inc = 0;
+	float maxX = 0.10;
+	float maxZ = 0.15;
+	float angle = tf::getYaw(msg->pose.pose.orientation);
+	if (updateRobotPosition() < 0) return;
+	if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
+	if (behaviour == ROBOT_ALIGN_PHI) behaviourResult = robotAlignPhi(msg);
+	return;
+}
+
 
 
 void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
