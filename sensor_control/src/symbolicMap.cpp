@@ -91,7 +91,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 	point.y = req.y;
 
  	switch (req.type){
-		case 0: ROS_INFO("Setting point for the waypoints symbolic map, point type %i", req.type);
+		case 0: ROS_INFO("Setting point for the waypoints symbolic map, point type %i at position X: %f Y: %f", point.x,point.y);
 			type = req.type;
 			waypoints.push_back(point);
 			break;
@@ -100,19 +100,19 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			//First Point of a type 
 			if(dronePile.empty()) {
 				dronePile.push_back(point);
-				ROS_INFO("Setting point for the Drone Pile in symbolic map");
+				ROS_INFO("Setting point for the Drone Pile in symbolic mapc at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
 				//Test Distance to center of all same points
 				if(distanceToCenter(dronePile,point)){
 				       	dronePile.push_back(point);	
-					ROS_INFO("Setting point for the Drone Pile in symbolic map");
+					ROS_INFO("Setting point for the Drone Pile in symbolic map at position X: %f Y: %f ",point.x,point.y);
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Drone Pile Way to far from previous"); 
+					ROS_INFO ("Point for Drone Pile Way to far from previous at position X: %f Y: %f", point.x,point.y);
 					res.res = false;
 					return false;	
 				}		
@@ -121,18 +121,21 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 		case 2: type = req.type;
 			if(droneDelivery.empty()) {
 				droneDelivery.push_back(point);
-				ROS_INFO("Setting first point for the Drone Delivery in symbolic map");
+				ROS_INFO("Setting first point for the Drone Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
+;
 				res.res = true;
 				return true;
 			} else {
 				if(distanceToCenter(droneDelivery,point)){
 				       	droneDelivery.push_back(point);	
-					ROS_INFO("Setting point for the Drone Delivery in symbolic map");
+					ROS_INFO("Setting point for the Drone Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
+;
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Drone Delivery way to far from previous"); 
+					ROS_INFO ("Point for Drone Delivery way to far from previous at position X: %f Y: %f", point.x,point.y);
+; 
 					res.res = false;
 					return false;	
 				}		
@@ -140,18 +143,19 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			break;
 		case 3: if(robotDelivery.empty()) {
 				robotDelivery.push_back(point);
-				ROS_INFO("Setting first point for the Robot Delivery in symbolic map");
+				ROS_INFO("Setting first point for the Robot Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
+;
 				res.res = true;
 				return true;
 			} else {
 				if(distanceToCenter(robotDelivery,point)){
 				       	robotDelivery.push_back(point);	
-					ROS_INFO("Setting point for the Robot Delivery in symbolic map");
+					ROS_INFO("Setting point for the Robot Delivery in symbolic map at position X: %f Y: %f",point.x,point.y);
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Robot Delivery way to far from previous"); 
+					ROS_INFO ("Point for Robot Delivery way to far from previous at position X: %f Y: %f",point.x,point.y);
 					res.res = false;
 					return false;	
 				}		
@@ -159,18 +163,18 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			break;
 		case 4: if(redBricks.empty()) {
 				redBricks.push_back(point);
-				ROS_INFO("Setting first point for the Red Bricks in  symbolic map");
+				ROS_INFO("Setting first point for the Red Bricks in  symbolic map at position X: %f Y: %f", point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
 				if(distanceToCenter(redBricks,point)){
 				       	redBricks.push_back(point);	
-					ROS_INFO("Setting point for the Red Bricks in  symbolic map");
+					ROS_INFO("Setting point for the Red Bricks in  symbolic map at position X: %f Y: %f", point.x,point.y);
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Red Bricks way to far from previous"); 
+					ROS_INFO ("Point for Red Bricks way to far from previous at position X: %f Y: %f", point.x,point.y);
 					res.res = false;
 					return false;	
 				}		
@@ -178,18 +182,18 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			break;
 		case 5: if(greenBricks.empty()) {
 				greenBricks.push_back(point);
-				ROS_INFO("Setting first point for the Green Bricks in symbolic map");
+				ROS_INFO("Setting first point for the Green Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
 				if(distanceToCenter(greenBricks,point)){
 				       	greenBricks.push_back(point);	
-					ROS_INFO("Setting point for the Green Bricks in symbolic map");
+					ROS_INFO("Setting point for the Green Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Green Bricks way to far from previous"); 
+					ROS_INFO ("Point for Green Bricks way to far from previous at position X: %f Y: %f", point.x,point.y);
 					res.res = false;
 					return false;	
 				}		
@@ -198,18 +202,18 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			break;
 		case 6: if(blueBricks.empty()) {
 				blueBricks.push_back(point);
-				ROS_INFO("Setting first point for the Blue Bricks in symbolic map");
+				ROS_INFO("Setting first point for the Blue Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
 				if(distanceToCenter(blueBricks,point)){
 				       	blueBricks.push_back(point);	
-					ROS_INFO("Setting point for the Blue Bricks in symbolic map");
+					ROS_INFO("Setting point for the Blue Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Blue Bricks  way to far from previous"); 
+					ROS_INFO ("Point for Blue Bricks  way to far from previous at position X: %f Y: %f",point.x,point.y);
 					res.res = false;
 					return false;	
 				}		
@@ -217,18 +221,18 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			break;
 		case 7: if(orangeBricks.empty()) {
 				orangeBricks.push_back(point);
-				ROS_INFO("Setting first point for the orange Bricks in  symbolic map");
+				ROS_INFO("Setting first point for the orange Bricks in  symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
 				if(distanceToCenter(orangeBricks,point)){
 				       	orangeBricks.push_back(point);	
-					ROS_INFO("Setting point for the Orange Bricks symbolic map");
+					ROS_INFO("Setting point for the Orange Bricks symbolic map at position X: %f Y: %f", point.x,point.y);
         				res.res = true;
 					return true;
 				}
 				else {
-					ROS_INFO ("Point for Orange Bricks  way to far from previous"); 
+					ROS_INFO ("Point for Orange Bricks  way to far from previous at position X: %f Y: %f",point.x,point.y);
 					res.res = false;
 					return false;	
 				}		
@@ -246,14 +250,14 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	cv::Point2d point;
 	
 	switch (incoming_type){
-		case 0: ROS_INFO("Retrieving the next point from the waypoints symbolic map, point type %i", req.type);
-			if(!waypoints.empty()){
+		case 0: if(!waypoints.empty()){
 				point = waypoints[waypointIdx];
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
 				waypointIdx++;
 				if(waypointIdx > (waypoints.size()-1)) waypointIdx = 0; 
+				ROS_INFO("Retrieving the next point from the waypoints symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -261,12 +265,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 				return false;
 			}	
 			break;
-		case 1: ROS_INFO("Retrieving point for the Drone Pile symbolic map, point type %i", req.type);
-			if(!dronePile.empty()){
+		case 1: if(!dronePile.empty()){
 				point = getCenter(dronePile);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving point for the Drone Pile symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 
 			}
@@ -276,12 +280,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-		case 2: ROS_INFO("Retrieving point for the Drone Delivery symbolic map, point type %i", req.type);
-			if(!droneDelivery.empty()){
+		case 2:	if(!droneDelivery.empty()){
 				point = getCenter(droneDelivery);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving point for the Drone Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -290,12 +294,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-		case 3: ROS_INFO("Retrieving point for the Robot Delivery symbolic map, point type %i", req.type);
-			if(!robotDelivery.empty()){
+		case 3: if(!robotDelivery.empty()){
 				point = getCenter(robotDelivery);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving point for the Robot Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -304,12 +308,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-		case 4: ROS_INFO("Retrieving point for the Red Bricks symbolic map, point type %i", req.type);
-			if(!redBricks.empty()){
+		case 4: if(!redBricks.empty()){
 				point = getCenter(redBricks);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving point for the Red Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -318,12 +322,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-		case 5: ROS_INFO("Retrieving  point for the Green Bricks symbolic map, point type %i", req.type);
-			if(!greenBricks.empty()){
+		case 5: if(!greenBricks.empty()){
 				point = getCenter(greenBricks);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving  point for the Green Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -332,12 +336,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-		case 6: ROS_INFO("Retrieving point for the Blue Bricks symbolic map, point type %i", req.type);
-			if(!blueBricks.empty()){
+		case 6:	if(!blueBricks.empty()){
 				point = getCenter(blueBricks);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving point for the Blue Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -346,12 +350,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-		case 7: ROS_INFO("Retrieving point for the Orange symbolic map, point type %i", req.type);
-			if(!orangeBricks.empty()){
+		case 7: if(!orangeBricks.empty()){
 				point = getCenter(orangeBricks);
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				ROS_INFO("Retrieving point for the Orange symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				return true;
 			}
 			else {
@@ -360,8 +364,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 
 			break;
-	}		
-	return true;
+	}
+	return false;	
 }
 
 void loadWaypoints(){
