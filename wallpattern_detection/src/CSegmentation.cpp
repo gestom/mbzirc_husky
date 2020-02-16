@@ -190,7 +190,11 @@ SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *out
 	int *buffer = (int*)calloc(width*height,sizeof(int));
 
 	//oznacime oblasti s hledanou barvou
+<<<<<<< HEAD
+	for (int i = 0;i<len;i++) buffer[i] = -(inBuffer[i] == 1000000 + segmentArray[0].id);
+=======
 	for (int i = 0;i<len;i++) buffer[i] = -(inBuffer[i]==(1000001/*+segmentArray[0].id*/));
+>>>>>>> 00fb45e55cdf4030ec9021ba64dae869cbb8bae7
 	int borderType = 1000;
 
 	//'ukrojime' okraje obrazu

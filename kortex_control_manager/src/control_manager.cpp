@@ -226,6 +226,7 @@ ros::ServiceServer service_server_pickup_storage;
 ros::ServiceServer service_server_prepare_placing;
 ros::ServiceServer service_server_place_brick;
 ros::ServiceServer service_server_push_bricks_aside;
+ros::ServiceServer service_server_press_bricks;
 
 // called services
 ros::ServiceClient service_client_grip;
@@ -1156,6 +1157,57 @@ bool callbackPushBricksAsideService(std_srvs::TriggerRequest &req, std_srvs::Tri
 }
 //}
 
+/* callbackPressBricksService //{ */
+bool callbackPressBricksService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot press on bricks, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot press on bricks, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot press on bricks, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  ROS_INFO("[%s]: Moving to press on bricks", ros::this_node::getName().c_str());
+  goToAnglesAction(storage_poses_jointspace[6]);
+  double start_height    = end_effector_pose.pos.z();
+  double stopping_height = start_height - 0.08;
+  grip();
+
+  Eigen::Vector3d linear_vel;
+  Eigen::Vector3d angular_vel;
+  while (!brick_attached && end_effector_pose.pos.z() > stopping_height) {
+    linear_vel.x()  = 0.0;
+    linear_vel.y()  = 0.0;
+    linear_vel.z()  = -move_down_speed_mega_slow;
+    angular_vel.x() = 0.0;
+    angular_vel.y() = 0.0;
+    angular_vel.z() = 0.0;
+    setCartesianVelocity(linear_vel, angular_vel);
+    ros::spinOnce();
+    ros::Duration(0.05).sleep();
+  }
+
+  if (brick_attached) {
+    ROS_INFO("[%s]: Bricks pressed", ros::this_node::getName().c_str());
+  }
+  ungrip();
+  setCartesianVelocity(ZERO_VELOCITY);
+
+  res.success = true;
+  return true;
+}
+//}
+
 /* callbackPickupStorageService //{ */
 bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
   if (!is_initialized) {
@@ -1281,7 +1333,7 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
     effort_difference_samples.clear();
     std_msgs::Float64 msg;
     msg.data = accumulated_effort_difference;
-    if (brick_attached && accumulated_effort_difference > effort_threshold) {
+    if (brick_attached && accumulated_effort_difference > effort_threshold && status == MOVING) {
       ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
     }
     publisher_effort_changes.publish(msg);
@@ -1452,6 +1504,7 @@ int main(int argc, char **argv) {
   nh.getParam("raised_camera_angles", raised_camera_angles);
   nh.getParam("gripper_threshold", gripper_threshold);
   nh.getParam("brick_storage_jointspace", storage_joints_raw);
+  nh.getParam("effort_threshold", effort_threshold);
   nh.getParam("push1", push1);
   nh.getParam("push2", push2);
   nh.getParam("push3", push3);
@@ -1539,6 +1592,7 @@ int main(int argc, char **argv) {
   service_server_prepare_placing      = nh.advertiseService("prepare_placing_in", &callbackPreparePlacingService);
   service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
   service_server_push_bricks_aside    = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
+  service_server_press_bricks         = nh.advertiseService("press_bricks_in", &callbackPressBricksService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");

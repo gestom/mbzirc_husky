@@ -29,18 +29,19 @@ double map_rotation;
 
 int waypointIdx = 0;
 float maxObservationDistance = 4.0f;
+int hypothesisIdx[8];
 
 //Clustering reconfigure
-double tolerance;
+double tolerance = 0.5;
 
 std::vector<cv::Point2d> waypoints;
-std::vector<cv::Point2d> robotDelivery;
-std::vector<cv::Point2d> dronePile;
-std::vector<cv::Point2d> droneDelivery;
-std::vector<cv::Point2d> redBricks;
-std::vector<cv::Point2d> blueBricks;
-std::vector<cv::Point2d> greenBricks;
-std::vector<cv::Point2d> orangeBricks;
+std::vector<std::vector<cv::Point2d>> robotDelivery;
+std::vector<std::vector<cv::Point2d>> dronePile;
+std::vector<std::vector<cv::Point2d>> droneDelivery;
+std::vector<std::vector<cv::Point2d>> redBricks;
+std::vector<std::vector<cv::Point2d>> blueBricks;
+std::vector<std::vector<cv::Point2d>> greenBricks;
+std::vector<std::vector<cv::Point2d>> orangeBricks;
 
 void publishWaypoints();
 void organisePath();
@@ -73,6 +74,8 @@ cv::Point2d getCenter(std::vector<cv::Point2d> cluster){
 	res.y= res.y/c_size;
 	return res;
 }
+
+
 double dist(double x1, double y1, double x2, double y2)
 {
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
@@ -83,7 +86,7 @@ bool distanceToCenter(std::vector<cv::Point2d> cluster,cv::Point2d query){
 	
 	center = getCenter(cluster);
 
-	if(dist(center.x,center.y,query.x,query.y) < tolerance)return true;
+	if(dist(center.x,center.y,query.x,query.y) <= tolerance)return true;
        	else  return false;	
 }	
 
@@ -97,153 +100,161 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 	cv::Point2d point;
 	point.x = req.x;
 	point.y = req.y;
-
+	std::vector<cv::Point2d> vPoint;
+	vPoint.clear();
+	vPoint.push_back(point);
  	switch (req.type){
-		case 0: ROS_INFO("Setting point for the waypoints symbolic map, point type %f at position X: %f Y: %f", point.x,point.y);
+		case 0: ROS_INFO("Setting point for the waypoints symbolic map at position X: %f Y: %f", point.x,point.y);
 			type = req.type;
 			waypoints.push_back(point);
+			res.res = true;
+			return true;
 			break;
 		case 1: type = req.type;
-
 			//First Point of a type 
 			if(dronePile.empty()) {
-				dronePile.push_back(point);
+				dronePile.push_back(vPoint);
 				ROS_INFO("Setting point for the Drone Pile in symbolic mapc at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
-				//Test Distance to center of all same points
-				if(distanceToCenter(dronePile,point)){
-				       	dronePile.push_back(point);	
-					ROS_INFO("Setting point for the Drone Pile in symbolic map at position X: %f Y: %f ",point.x,point.y);
-        				res.res = true;
-					return true;
+				//Test Distance to center of all same points to all clusters
+				//If not close to any cluster create a new one 
+				for(int i = 0; i < dronePile.size();i++){
+
+					if(distanceToCenter(dronePile[i],point)){
+						dronePile[i].push_back(point);	
+						ROS_INFO("Setting point for the Drone Pile in symbolic map at position X: %f Y: %f , cluster %i ",point.x,point.y,i);
+						res.res = true;
+						return true;
+					}
 				}
-				else {
-					ROS_INFO ("Point for Drone Pile Way to far from previous at position X: %f Y: %f", point.x,point.y);
-					res.res = false;
-					return false;	
-				}		
+				ROS_INFO ("Point for Drone Pile way to far from previous at position X: %f Y: %f setting up new cluster", point.x,point.y);	
+				dronePile.push_back(vPoint);
+				res.res = true;
+				return true;	
+
 			}
 			break;
-		case 2: type = req.type;
-			if(droneDelivery.empty()) {
-				droneDelivery.push_back(point);
+		case 2: if(droneDelivery.empty()) {
+				droneDelivery.push_back(vPoint);
 				ROS_INFO("Setting first point for the Drone Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
-;
 				res.res = true;
 				return true;
 			} else {
-				if(distanceToCenter(droneDelivery,point)){
-				       	droneDelivery.push_back(point);	
-					ROS_INFO("Setting point for the Drone Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
-;
-        				res.res = true;
-					return true;
-				}
-				else {
-					ROS_INFO ("Point for Drone Delivery way to far from previous at position X: %f Y: %f", point.x,point.y);
-; 
-					res.res = false;
-					return false;	
-				}		
+				for(int i = 0; i < droneDelivery.size();i++){
+
+					if(distanceToCenter(droneDelivery[i],point)){
+						droneDelivery[i].push_back(point);	
+						ROS_INFO("Setting point for the Drone Delivery in symbolic map at position X: %f Y: %f cluster %i", point.x,point.y,i);
+						res.res = true;
+						return true;
+					}
+				}	
+				ROS_INFO ("Point for Drone Delivery way to far from previous at position X: %f Y: %f setting up new cluster ", point.x,point.y);
+				dronePile.push_back(vPoint);
+				res.res = true;
+				return true;	
 			}
 			break;
 		case 3: if(robotDelivery.empty()) {
-				robotDelivery.push_back(point);
+				robotDelivery.push_back(vPoint);
 				ROS_INFO("Setting first point for the Robot Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
-;
 				res.res = true;
 				return true;
 			} else {
-				if(distanceToCenter(robotDelivery,point)){
-				       	robotDelivery.push_back(point);	
-					ROS_INFO("Setting point for the Robot Delivery in symbolic map at position X: %f Y: %f",point.x,point.y);
-        				res.res = true;
-					return true;
+				for(int i = 0; i < robotDelivery.size();i++){
+					if(distanceToCenter(robotDelivery[i],point)){
+						robotDelivery[i].push_back(point);	
+						ROS_INFO("Setting point for the Robot Delivery in symbolic map at position X: %f Y: %f cluster %i",point.x,point.y, i);
+						res.res = true;
+						return true;
+					}
 				}
-				else {
-					ROS_INFO ("Point for Robot Delivery way to far from previous at position X: %f Y: %f",point.x,point.y);
-					res.res = false;
-					return false;	
-				}		
-			}
+				ROS_INFO ("Point for Robot Delivery way to far from previous at position X: %f Y: %f setting up new cluster",point.x,point.y);
+				robotDelivery.push_back(vPoint);
+				res.res = true;
+				return true;	
+			}		
 			break;
 		case 4: if(redBricks.empty()) {
-				redBricks.push_back(point);
-				ROS_INFO("Setting first point for the Red Bricks in  symbolic map at position X: %f Y: %f", point.x,point.y);
+				redBricks.push_back(vPoint);
+				ROS_INFO("Setting first point for the Red Bricks in  symbolic map at position X: %f Y: %f ", point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
-				if(distanceToCenter(redBricks,point)){
-				       	redBricks.push_back(point);	
-					ROS_INFO("Setting point for the Red Bricks in  symbolic map at position X: %f Y: %f", point.x,point.y);
-        				res.res = true;
-					return true;
+				for(int i = 0; i < redBricks.size();i++){
+					if(distanceToCenter(redBricks[i],point)){
+						redBricks[i].push_back(point);	
+						ROS_INFO("Setting point for the Red Bricks in  symbolic map at position X: %f Y: %f cluster %i", point.x,point.y,i);
+						res.res = true;
+						return true;
+					}
 				}
-				else {
-					ROS_INFO ("Point for Red Bricks way to far from previous at position X: %f Y: %f", point.x,point.y);
-					res.res = false;
-					return false;	
-				}		
+				ROS_INFO ("Point for Red Bricks way to far from previous at position X: %f Y: %f setting up new cluster", point.x,point.y);
+				redBricks.push_back(vPoint);
+				res.res = true;
+				return true;	
 			}
 			break;
 		case 5: if(greenBricks.empty()) {
-				greenBricks.push_back(point);
+				greenBricks.push_back(vPoint);
 				ROS_INFO("Setting first point for the Green Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
-				if(distanceToCenter(greenBricks,point)){
-				       	greenBricks.push_back(point);	
-					ROS_INFO("Setting point for the Green Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
-        				res.res = true;
-					return true;
+				for(int i = 0; i < greenBricks.size();i++){
+					if(distanceToCenter(greenBricks[i],point)){
+						greenBricks[i].push_back(point);	
+						ROS_INFO("Setting point for the Green Bricks in symbolic map at position X: %f Y: %f cluster %i ",point.x,point.y,i);
+						res.res = true;
+						return true;
+					}
 				}
-				else {
-					ROS_INFO ("Point for Green Bricks way to far from previous at position X: %f Y: %f", point.x,point.y);
-					res.res = false;
-					return false;	
-				}		
+				ROS_INFO ("Point for Green Bricks way to far from previous at position X: %f Y: %f setting up new cluster", point.x,point.y);
+				greenBricks.push_back(vPoint);
+				res.res = true;
+				return true;	
 			}
-			greenBricks.push_back(point);	
 			break;
 		case 6: if(blueBricks.empty()) {
-				blueBricks.push_back(point);
+				blueBricks.push_back(vPoint);
 				ROS_INFO("Setting first point for the Blue Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
-				if(distanceToCenter(blueBricks,point)){
-				       	blueBricks.push_back(point);	
-					ROS_INFO("Setting point for the Blue Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
-        				res.res = true;
-					return true;
-				}
-				else {
-					ROS_INFO ("Point for Blue Bricks  way to far from previous at position X: %f Y: %f",point.x,point.y);
-					res.res = false;
-					return false;	
+				for(int i = 0; i < blueBricks.size();i++){
+					if(distanceToCenter(blueBricks[i],point)){
+						blueBricks[i].push_back(point);	
+						ROS_INFO("Setting point for the Blue Bricks in symbolic map at position X: %f Y: %f cluster %i",point.x,point.y,i);
+						res.res = true;
+						return true;
+					}
 				}		
+				ROS_INFO ("Point for Blue Bricks way to far from previous at position X: %f Y: %f setting up new cluster",point.x,point.y);
+				blueBricks.push_back(vPoint);
+				res.res = true;
+				return true;	
 			}
 			break;
 		case 7: if(orangeBricks.empty()) {
-				orangeBricks.push_back(point);
+				orangeBricks.push_back(vPoint);
 				ROS_INFO("Setting first point for the orange Bricks in  symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
 			} else {
-				if(distanceToCenter(orangeBricks,point)){
-				       	orangeBricks.push_back(point);	
-					ROS_INFO("Setting point for the Orange Bricks symbolic map at position X: %f Y: %f", point.x,point.y);
-        				res.res = true;
-					return true;
-				}
-				else {
-					ROS_INFO ("Point for Orange Bricks  way to far from previous at position X: %f Y: %f",point.x,point.y);
-					res.res = false;
-					return false;	
+				for(int i = 0; i < orangeBricks.size();i++){
+					if(distanceToCenter(orangeBricks[i],point)){
+						orangeBricks[i].push_back(point);	
+						ROS_INFO("Setting point for the Orange Bricks symbolic map at position X: %f Y: %f cluster %i", point.x,point.y,i);
+						res.res = true;
+						return true;
+					}
 				}		
+				ROS_INFO ("Point for Orange Bricks way to far from previous at position X: %f Y: %f setting up new cluster",point.x,point.y);
+				orangeBricks.push_back(vPoint);
+				res.res = true;
+				return true;	
 			}
 			break;
 	}
@@ -256,13 +267,14 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::Response &res){
 	int incoming_type = req.type;
 	cv::Point2d point;
+
 	ROS_INFO("Incomin service of type %i ", req.type);	
 	switch (incoming_type){
 		case 0: if(!waypoints.empty()){
                 		publishWaypoints();
 				point = waypoints[waypointIdx];
-				res.x = point.x;
-				res.y = point.y;
+				res.x.push_back(point.x);
+				res.y.push_back(point.y);
 				res.type = incoming_type;
 				waypointIdx++;
 				if(waypointIdx > (waypoints.size()-1)) waypointIdx = 0; 
@@ -275,11 +287,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 			break;
 		case 1: if(!dronePile.empty()){
-				point = getCenter(dronePile);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving point for the Drone Pile symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < dronePile.size();i++){
+					point = getCenter(dronePile[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving center point for the Drone Pile from symbolic map, point type %i at position X: %f Y: %f for cluster %i", req.type,point.x,point.y,i);
+				}
 				return true;
 
 			}
@@ -290,11 +304,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 2:	if(!droneDelivery.empty()){
-				point = getCenter(droneDelivery);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving point for the Drone Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < droneDelivery.size();i++){
+					point = getCenter(droneDelivery[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving point for the Drone Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				}
 				return true;
 			}
 			else {
@@ -304,11 +320,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 3: if(!robotDelivery.empty()){
-				point = getCenter(robotDelivery);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving point for the Robot Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < robotDelivery.size();i++){
+					point = getCenter(robotDelivery[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving point for the Robot Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				}
 				return true;
 			}
 			else {
@@ -318,11 +336,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 4: if(!redBricks.empty()){
-				point = getCenter(redBricks);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving point for the Red Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < redBricks.size();i++){
+					point = getCenter(redBricks[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving point for the Red Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				}
 				return true;
 			}
 			else {
@@ -332,11 +352,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 5: if(!greenBricks.empty()){
-				point = getCenter(greenBricks);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving  point for the Green Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < greenBricks.size();i++){
+					point = getCenter(greenBricks[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving  point for the Green Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				}
 				return true;
 			}
 			else {
@@ -346,11 +368,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 6:	if(!blueBricks.empty()){
-				point = getCenter(blueBricks);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving point for the Blue Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < blueBricks.size();i++){
+					point = getCenter(blueBricks[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving point for the Blue Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				}
 				return true;
 			}
 			else {
@@ -360,11 +384,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 7: if(!orangeBricks.empty()){
-				point = getCenter(orangeBricks);
-				res.x = point.x;
-				res.y = point.y;
-				res.type = incoming_type;
-				ROS_INFO("Retrieving point for the Orange symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				for(int i = 0; i < orangeBricks.size();i++){
+					point = getCenter(orangeBricks[i]);
+					res.x.push_back(point.x);
+					res.y.push_back(point.y);
+					res.type = incoming_type;
+					ROS_INFO("Retrieving point for the Orange symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
+				}
 				return true;
 			}
 			else {
@@ -373,6 +399,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 			break;
 	}
+	ROS_INFO("Wrong data format for obtaining data from symbolic map");
 	return false;	
 }
 
