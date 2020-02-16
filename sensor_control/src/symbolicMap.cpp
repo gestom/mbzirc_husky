@@ -362,14 +362,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
 				return false;
 			}	
-
 			break;
 	}
 	return false;	
 }
 
 void loadWaypoints(){
-	std::ifstream loadFile("./src/mbzirc_husky/sensor_control/maps/romance-waypoints.txt");
+	std::ifstream loadFile("./src/mbzirc_husky/sensor_control/maps/tennis-no-bricks/map-waypoints.txt");
 	float x,y;
 	while(loadFile >> x >> y){
 		cv::Point2d tmp;
