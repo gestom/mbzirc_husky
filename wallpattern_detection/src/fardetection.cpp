@@ -435,9 +435,9 @@ int main(int argc, char** argv)
 	altTransform = new CTransformation();
 
 
-	printf("AAAB\n");
-	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
-	//altTransform->calibrate2D(calibrationFile.c_str());
+	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.cal";
+	printf("AAAB: %s\n",calibrationFile.c_str());
+	altTransform->calibrate2D(calibrationFile.c_str());
 	ros::ServiceServer service = n->advertiseService("searchForWallpattern", detect);
 	armClient       = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	imagePub = it->advertise("/searchWallResult", 1);
