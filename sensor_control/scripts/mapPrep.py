@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/tennis-3/map.yaml"
+filename = "../maps/tennis-no-bricks/map.yaml"
 maxObservableDistance = 4.0
 
 rotAmount = 0.02
@@ -171,6 +171,6 @@ if __name__ == "__main__":
 
             with open(folder + "/" + newFilename + "-waypoints.txt", "w") as f:
                 for i in wp:        
-                    f.write(str(i[0]) + " " + str(i[1]) + "\n")
+                    f.write(str(i[0]/mapmul) + " " + str(i[1]/mapmul) + "\n")
 
     cv2.destroyAllWindows()

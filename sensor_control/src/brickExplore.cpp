@@ -12,6 +12,7 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PointStamped.h>
 #include <mbzirc_husky_msgs/Float64.h>
+#include <mbzirc_husky/getPoi.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
@@ -30,6 +31,7 @@ typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
 Server *server;
 
 ros::ServiceClient prepareClient;
+ros::ServiceClient symbolicClient;
 ros::Subscriber scan_sub;
 ros::Publisher ransac_pub;
 ros::Publisher point_pub;
@@ -81,7 +83,9 @@ int redBricksRequired = 0;
 int greenBricksRequired = 0;
 int blueBricksRequired = 0;
 int orangeBricksRequired = 0;
+
 int moveToBrickPosition(float x, float y, float orientationOffset);
+int moveToMapPoint(float x, float y, float orientationZ, float orientationW);
 
 ros::Subscriber preciseLocation;
 
@@ -594,9 +598,16 @@ void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
     }
 }
 
-void findBricks()
+void explore()
 {
-    usleep(1000000);
+    mbzirc_husky::getPoi srv;
+    srv.request.type = 0;
+    if(symbolicClient.call(srv))
+    {
+        moveToMapPoint(srv.res.x, srv.res.y, 0, 1);
+    }
+    
+    //state = MOVINGTOBRICKS;
 }
 
 void moveToBrickPile()
@@ -719,6 +730,36 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
     }
 }
 
+int moveToMapPoint(float x, float y, float orientationZ, float orientationW)
+{
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = x;
+    goal.target_pose.pose.position.y = y;
+
+    //goal orientation
+    goal.target_pose.pose.orientation.z = 1;
+    goal.target_pose.pose.orientation.w = 0;
+
+    movebaseAC->sendGoal(goal);
+    movebaseAC->waitForResult(ros::Duration(180, 0));
+    actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
+    ROS_INFO("Move base state %s", mbState.getText());
+
+    if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+        ROS_INFO("Move target achieved");
+        return 0;
+    }
+    else
+    {
+        ROS_INFO("Move base timed out, current state: %s", mbState.getText().c_str());
+        return -1;
+    }
+
+}
+
 void finalApproach()
 {
 	ROS_INFO("Final approach");
@@ -759,7 +800,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
             }
             else
             {
-                findBricks();
+                explore();
             }
         }
         else if(state == MOVINGTOBRICKS)
@@ -810,6 +851,7 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("symbolicMap/get_map_poi");
     scan_sub = n.subscribe("/scan",100, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);

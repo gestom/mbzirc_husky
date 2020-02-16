@@ -388,7 +388,7 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 		numDetections = 0;
 		numDetectionAttempts = 0;
 		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-		while (numDetectionAttempts < 60){
+		while (numDetectionAttempts < 60 || gui){
 			ros::spinOnce();
 		}
 		imageSub.shutdown();
@@ -401,11 +401,9 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 int main(int argc, char** argv) 
 {
 	offset.x = offset.y = diffPose.x = diffPose.y = 0;
-	printf("AAAA\n");
 	ros::init(argc, argv, "wallpattern_detector");
 	n = new ros::NodeHandle();
 	it = new image_transport::ImageTransport(*n);
-	gui = false;
 
 	n->param("uav_name", uav_name, string());
 	/*n.param("gui", gui, false);
@@ -428,16 +426,15 @@ int main(int argc, char** argv)
 	if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
 	if (gui) namedWindow("roi", CV_WINDOW_AUTOSIZE);
 
-	colorMap = colormap_filename;
+	colorMap = ros::package::getPath("wallpattern_detection")+"/etc/farDetect.colormap";
 	segmentation.loadColorMap(colorMap.c_str());
 	segmentation.loadColors((colorMap+".col").c_str());
 
 	altTransform = new CTransformation();
 
 
-	printf("AAAB\n");
-	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
-	//altTransform->calibrate2D(calibrationFile.c_str());
+	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.cal";
+	altTransform->calibrate2D(calibrationFile.c_str());
 	ros::ServiceServer service = n->advertiseService("searchForWallpattern", detect);
 	armClient       = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	imagePub = it->advertise("/searchWallResult", 1);
