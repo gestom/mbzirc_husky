@@ -796,7 +796,7 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
   goal_pose.pos.z() = placement_height;
   bool goal_reached = goToAction(goal_pose);
 
-  if (!brick_attached){
+  if (!brick_attached) {
     ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
@@ -850,12 +850,19 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
     res.success = false;
     return false;
   }
-  it (brick_attached && !goal_reached){
-  	/// TODO
+  int i = 0;
+  while (brick_attached && !goal_reached && i < 5) {
+    goal_pose.pos.z() = 0.63 - i;
+    goal_reached      = goToAction(goal_pose);
+    i++;
+  }
+  if (!goal_reached) {
+    ROS_ERROR("[%s]: Critical failure, cannot lift brick! The arm may be twisted in a crazy position!", ros::this_node::getName().c_str());
+    return false;
   }
 
-  res.success = goal_reached;
-  return goal_reached;
+  res.success = true;
+  return true;
 }
 //}
 
@@ -1528,7 +1535,7 @@ int main(int argc, char **argv) {
   service_server_raise_camera         = nh.advertiseService("raise_camera_in", &callbackRaiseCameraService);
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
   service_server_pickup_storage       = nh.advertiseService("pickup_storage_in", &callbackPickupStorageService);
-  service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackiftBrickStorageService);
+  service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
   service_server_prepare_placing      = nh.advertiseService("prepare_placing_in", &callbackPreparePlacingService);
   service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
   service_server_push_bricks_aside    = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
