@@ -796,6 +796,12 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
   goal_pose.pos.z() = placement_height;
   bool goal_reached = goToAction(goal_pose);
 
+  if (!brick_attached){
+    ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
   res.success = goal_reached;
   return goal_reached;
 }
@@ -1011,10 +1017,9 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
 
   std::vector<double> goal_angles = joint_angles;
   goal_angles[0]                  = 0.0;
+  bool goal_reached               = goToAnglesAction(goal_angles);
 
-  bool goal_reached    = goToAnglesAction(goal_angles);
-  goal_angles[DOF - 1] = gripping_angles[DOF - 1];
-  goToAnglesAction(goal_angles);
+  goToAnglesAction(gripping_angles);
 
   res.success = goal_reached;
   return goal_reached;
@@ -1090,7 +1095,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   ros::Duration(0.2).sleep();
   ros::spinOnce();
   goal_pose = end_effector_pose;
-  if (req.layer != 2) { // keep blue brick pressed
+  if (req.layer != 2) {  // keep blue brick pressed
     goal_pose.pos.z() += descent;
   }
   // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK
