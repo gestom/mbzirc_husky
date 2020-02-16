@@ -190,7 +190,7 @@ SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *out
 	int *buffer = (int*)calloc(width*height,sizeof(int));
 
 	//oznacime oblasti s hledanou barvou
-	for (int i = 0;i<len;i++) buffer[i] = -(inBuffer[i]>1000000);
+	for (int i = 0;i<len;i++) buffer[i] = -(inBuffer[i]==(1000001/*+segmentArray[0].id*/));
 	int borderType = 1000;
 
 	//'ukrojime' okraje obrazu
@@ -547,7 +547,7 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 	if (drawSegments){
 		for (int i = 0;i<len;i++){
 			j = buffer[i];
-			if (j > 1000000) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0);// else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
+			if (j == 1000001) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0); else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
 		}
 	}	
 	free(buffer);
@@ -780,32 +780,17 @@ SSegment CSegmentation::findSeparatedSegment(Mat *image,Mat *coords,SSegment *ou
 
     //Seradi segmenty podle velikosti
     qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
-    separateContours(buffer,coords,output,minSize,maxSize);
-    if (false){
-        *coords = cv::Mat::ones(0, 1, CV_32FC2);
-        Mat coord = cv::Mat::ones(1, 1, CV_32FC2);
-        int taken = -1;
-
-        //A vyhodi je do vystupni matice
-        for (int i = 0;i<numSegments;i++){
-            if (segmentArray[i].roundness > minCircularity && segmentArray[i].combo > 0 && segmentArray[i].warning == 0)
-            {
-
-                if (taken == - 1) taken = segmentArray[i].id;
-                coord.at<float>(0) = segmentArray[i].x;
-                coord.at<float>(1) = segmentArray[i].y;
-            }
-        }
+    for (int i = 0;i<numSegments;i++){
+    printf("Segment %i %i %i %f %f\n",i,segmentArray[i].size,segmentArray[i].id,segmentArray[i].x,segmentArray[i].y);
     }
+    separateContours(buffer,coords,output,minSize,maxSize);
     result = segmentArray[0];
-    int i = 0;
-    // printf("Segment %i %i %f %f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].y);
     //vykreslime vysledek
     int j = 0;
     if (drawSegments){
         for (int i = 0;i<len;i++){
             j = buffer[i];
-            if (j > 1000000) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0);// else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
+            if (j > 1000000) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0); else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
         }
     }
     free(buffer);

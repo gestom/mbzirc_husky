@@ -71,7 +71,7 @@ float fwSpeed = 0.1;
 int misdetections = 0;
 
 //brickStackLocation in map frame
-bool brickStackLocationKnown = true;
+bool brickStackLocationKnown = false;
 bool precisePositionFound = false;
 float brickStackRedX = -1.27;
 float brickStackRedY = -0.65;
@@ -605,6 +605,11 @@ void explore()
     if(symbolicClient.call(srv))
     {
         moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
+	    ROS_INFO("GOT RESPONSE");
+    }
+    else
+    {
+	ROS_INFO("Service failed");
     }
     
     //state = MOVINGTOBRICKS;
@@ -732,6 +737,7 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
 
 int moveToMapPoint(float x, float y, float orientationZ, float orientationW)
 {
+    ROS_INFO("Moving to a map point %f %f", x, y);
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
@@ -793,10 +799,11 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
         {
+		ROS_INFO("Exploring");
             //begin lidar search for bricks
-            if(brickStackLocationKnown)
+            if(brickStackLocationKnown && 1==2)
             {
-                state = MOVINGTOBRICKS;
+                //state = MOVINGTOBRICKS;
             }
             else
             {
@@ -851,7 +858,7 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
-	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("symbolicMap/get_map_poi");
+	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("/get_map_poi");
     scan_sub = n.subscribe("/scan",100, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);

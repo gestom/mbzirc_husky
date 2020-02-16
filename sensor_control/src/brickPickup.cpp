@@ -474,14 +474,23 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 }
 
 float uuu = 0;
+float uux = 0;
+float uuy = 0;
 bool first = true;
 
 void odoCallBack(const nav_msgs::OdometryConstPtr &msg) 
 {
 	float aaa = tf::getYaw(msg->pose.pose.orientation);
-	if (first) uuu = aaa;
+	if (first){
+	       	uuu = aaa;
+		uux = msg->pose.pose.position.x;
+		uuy = msg->pose.pose.position.y;
+	}
 	first = false;
-	printf("Angle: %.3f\n",aaa-uuu);
+	float dx = uux-msg->pose.pose.position.x;
+	float dy = uuy-msg->pose.pose.position.y;
+	float dist = sqrt(dx*dx+dy*dy);
+	printf("Angle: %.3f distance %.3f \n",aaa-uuu,dist);
 	return;
 }
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
