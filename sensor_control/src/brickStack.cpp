@@ -2,7 +2,6 @@
 #include <tf/tf.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
-#include <geometry_msgs/Point.h>
 #include <mbzirc_husky/nextBrickPlacement.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
@@ -23,10 +22,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
 
-#define RED 0
-#define GREEN 1
-#define BLUE 2
-
 ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
 ros::ServiceClient graspBrickClient;
@@ -40,7 +35,6 @@ ros::ServiceClient inventoryRemoveClient;
 
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
-ros::Subscriber subscriberLine;
 
 /* int   activeStorage   = 5; */
 float currentPosition = 0;
@@ -142,6 +136,7 @@ int next_storage_position;
 int next_storage_layer;
 int next_wall_index;
 int next_wall_layer;
+int grasp_attempts = 0;
 
 mbzirc_husky_msgs::StoragePosition getStoragePosition(int storage) {
   int                                storePosition[] = {0, 1, 2, 2, 0, 1, 3};
@@ -154,7 +149,19 @@ mbzirc_husky_msgs::StoragePosition getStoragePosition(int storage) {
   return srv;
 }
 
-
+void setSpeed(geometry_msgs::Twist speed) {
+  float maxX = 0.20;
+  float maxZ = 0.15;
+  if (speed.linear.x > +maxX)
+    speed.linear.x = +maxX;
+  if (speed.linear.x < -maxX)
+    speed.linear.x = -maxX;
+  if (speed.angular.z > +maxZ)
+    speed.angular.z = +maxZ;
+  if (speed.angular.z < -maxZ)
+    speed.angular.z = -maxZ;
+  twistPub.publish(speed);
+}
 int updateRobotPosition() {
   int                        inc = 0;
   geometry_msgs::PoseStamped pose;
@@ -180,16 +187,6 @@ int updateRobotPosition() {
   }
 }
 
-void setSpeed(geometry_msgs::Twist speed)
-{
-	float maxX = 0.20;
-	float maxZ = 0.15;
-	if (speed.linear.x > +maxX) speed.linear.x = +maxX;
-	if (speed.linear.x < -maxX) speed.linear.x = -maxX;
-	if (speed.angular.z > +maxZ) speed.angular.z = +maxZ;
-	if (speed.angular.z < -maxZ) speed.angular.z = -maxZ;
-	twistPub.publish(speed);
-}
 
 int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg) {
   spd.linear.x = spd.angular.z = 0;
@@ -313,15 +310,6 @@ int releaseBrick() {
   std_srvs::Trigger srv;
   if (releaseClient.call(srv)) {
     ROS_INFO("BRICK RELEASE");
-    mbzirc_husky::brickBuilt inventSrv;
-    inventSrv.request.fromLayer    = next_storage_layer;
-    inventSrv.request.fromPosition = next_storage_position;
-    if (inventoryBuiltClient.call(inventSrv)) {
-      ROS_INFO("Brick from pos %i and layer %i was placed", inventSrv.request.fromPosition, inventSrv.request.fromLayer);
-    } else {
-      ROS_INFO("INVENTORY UPDATE FAILED");
-    }
-
     return 0;
   }
   ROS_INFO("ARM RESET FAILED");
@@ -331,7 +319,7 @@ int releaseBrick() {
 int fetchNextBrickData() {
   // query inventory for next brick
   mbzirc_husky::nextBrickPlacement srv;
-  srv.request.offset = 0.1;
+  srv.request.offset = 0.0;
   if (inventoryQueryClient.call(srv.request, srv.response)) {
     if (srv.response.brickType == -1) {
       ROS_INFO("[%s]: No next brick", ros::this_node::getName().c_str());
@@ -349,10 +337,37 @@ int fetchNextBrickData() {
   return -1;
 }
 
+int eraseFromInventory() {
+  ROS_WARN("[%s]: GRASP ON POS %d, LAYER %d FAILED 3 TIMES. REMOVING IT FROM INVENTORY", ros::this_node::getName().c_str(), next_storage_position,
+           next_storage_layer);
+  mbzirc_husky::removeInventory srv;
+  srv.request.layer    = next_storage_layer;
+  srv.request.position = next_storage_position;
+  inventoryRemoveClient.call(srv);
+  return 0;
+}
+
+int placedBrickInventory() {
+  mbzirc_husky::brickBuilt inventSrv;
+  inventSrv.request.fromLayer    = next_storage_layer;
+  inventSrv.request.fromPosition = next_storage_position;
+  if (inventoryBuiltClient.call(inventSrv)) {
+    ROS_INFO("[%s]: BRICK FROM POS %d AND LAYER %d WAS PLACED", ros::this_node::getName().c_str(), inventSrv.request.fromPosition, inventSrv.request.fromLayer);
+    return 0;
+  } else {
+    ROS_INFO("INVENTORY UPDATE FAILED");
+  }
+  return -1;
+}
+
 void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Server *as) {
   mbzirc_husky::brickStackResult result;
 
   nextState = ARMTOSTORAGE;
+  if (fetchNextBrickData() == -1) {
+    ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+    nextState = SUCCESS;
+  }
 
   while (isTerminal(state) == false && ros::ok()) {
     printf("Active behaviour %s, active state %s\n", toStr(behaviour), toStr(state));
@@ -378,20 +393,30 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = ARMRESET;
           break;
         case ARMTOSTORAGE:
-          if (fetchNextBrickData() == -1) {
-            ROS_INFO("[%s]: Inventory empty or corrupted, aborting brick stack", ros::this_node::getName().c_str());
-            nextState = IDLE;
-          }
+
           if (armToStorage() == 0)
             nextState = ARMGRASP;
           else
             nextState = ARMTOSTORAGE;
           break;
         case ARMGRASP:
+          ++grasp_attempts;
           if (graspBrick() == 0) {
-            nextState = ARMPICKUP;
-          } else
+            grasp_attempts = 0;
+            nextState      = ARMPICKUP;
+          } else {
             nextState = ARMTOSTORAGE;
+          }
+          if (grasp_attempts > 3) {
+            eraseFromInventory();
+            if (fetchNextBrickData() == -1) {
+              ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+              nextState = SUCCESS;
+              break;
+            } else {
+              nextState = ARMTOSTORAGE;
+            }
+          }
           break;
         case ARMPICKUP:
           if (liftBrick() == 0) {
@@ -402,22 +427,29 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
         case ARMTOPLACEMENT:
           if (positionArm() == 0) {
             nextState = BRICKPLACE;
-          } else
+          } else {
+            eraseFromInventory();
+            fetchNextBrickData();
             nextState = ARMTOSTORAGE;
+          }
           break;
         case BRICKPLACE:
           if (placeBrick() == 0) {
             nextState = BRICKRELEASE;
           } else {
             nextState = ARMRESET;
+            eraseFromInventory();
           }
           break;
         case BRICKRELEASE:
           if (releaseBrick() == 0) {
             nextState = ARMTOSTORAGE;
+            placedBrickInventory();
           } else {
             nextState = ARMTOSTORAGE;
+            eraseFromInventory();
           }
+          fetchNextBrickData();
       }
     }
     usleep(1200000);
@@ -435,15 +467,6 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
   state = IDLE;
 }
 
-void lineCallBack(const geometry_msgs::PointConstPtr &msg) 
-{
-	float angle = atan2(msg->y,msg->x);
-	printf("ANGLE: %f\n",angle);
-	spd.linear.x = 0;
-	spd.angular.z = -angle;
-	setSpeed(spd);
-}
-
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
   if (updateRobotPosition() < 0)
     return;
@@ -458,16 +481,13 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
 int main(int argc, char **argv) {
   ros::init(argc, argv, "brickStack");
   ros::NodeHandle n;
-  printf("AA:A:\n");
-  subscriberLine   = n.subscribe("/wall_pattern_line", 1, &lineCallBack);
-  printf("AA:A:\n");
   // Dynamic reconfiguration server
   // dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
   // dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   // dynServer.setCallback(f);
 
   listener         = new tf::TransformListener();
-  //subscriberScan   = n.subscribe("/scan", 1, &scanCallBack);
+  subscriberScan   = n.subscribe("/scan", 1, &scanCallBack);
   twistPub         = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
   prepareClient    = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_placing");
   placeClient      = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/place_brick");
