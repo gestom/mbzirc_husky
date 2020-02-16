@@ -14,11 +14,13 @@
 #include <fstream>
 #include <sstream>
 #include "order.h"
+#include <geometry_msgs/Point.h>
 
 ros::NodeHandle* pn;
 
 ros::Publisher waypointVisualiser;
 ros::Publisher waypointRangeVisualiser;
+ros::Publisher waypointPathVisualiser;
 
 //Map reconfigure
 double map_width;
@@ -436,7 +438,7 @@ void organisePath()
 	}
 
 	CTSP pf(xs, ys, waypoints.size());
-	pf.solve(500);
+	pf.solve(10);
 
 	for(int i = 0; i < waypoints.size(); i++)
 	{
@@ -454,48 +456,76 @@ void publishWaypoints()
     ROS_INFO("Publishing waypoints");
     for(int i = 0; i < waypoints.size(); i++)
     {
-        visualization_msgs::Marker msg;
-        msg.header.frame_id = "map";
-        msg.header.stamp = ros::Time::now();
-        msg.id = i;
-        msg.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+	    visualization_msgs::Marker msg;
+	    msg.header.frame_id = "map";
+	    msg.header.stamp = ros::Time::now();
+	    msg.id = i;
+	    msg.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 
-        msg.pose.position.x = waypoints[i].x;
-        msg.pose.position.y = waypoints[i].y;
-        msg.pose.position.z = 0.2;
+	    msg.pose.position.x = waypoints[i].x;
+	    msg.pose.position.y = waypoints[i].y;
+	    msg.pose.position.z = 0.2;
 
-        msg.color.a = 1;
-        msg.color.r = 1;
-        msg.color.g = 0;
-        msg.color.b = 1;
+	    msg.color.a = 1;
+	    msg.color.r = 1;
+	    msg.color.g = 0;
+	    msg.color.b = 1;
 
-        msg.scale.z = 1;
-       
-       	std::ostringstream stream;
-        stream << (i - waypointIdx) % waypoints.size() ;
-     	msg.text = stream.str();	
-	waypointVisualiser.publish(msg);
+	    msg.scale.z = 1;
 
-        msg.header.frame_id = "map";
-        msg.header.stamp = ros::Time::now();
-        msg.type = visualization_msgs::Marker::CYLINDER;
+	    std::ostringstream stream;
+	    stream << (i - waypointIdx) % waypoints.size() ;
+	    msg.text = stream.str();	
+	    waypointVisualiser.publish(msg);
 
-        msg.pose.position.x = waypoints[i].x;
-        msg.pose.position.y = waypoints[i].y;
-        msg.pose.position.z = 0;
+	    msg.header.frame_id = "map";
+	    msg.header.stamp = ros::Time::now();
+	    msg.type = visualization_msgs::Marker::CYLINDER;
 
-        msg.color.a = 1;
-        msg.color.r = 1;
-        msg.color.g = 1;
-        msg.color.b = 0;
+	    msg.pose.position.x = waypoints[i].x;
+	    msg.pose.position.y = waypoints[i].y;
+	    msg.pose.position.z = 0;
 
-	msg.scale.x = maxObservationDistance*2;
-	msg.scale.y = maxObservationDistance*2;
-        msg.scale.z = 0.01;
-       
-	waypointRangeVisualiser.publish(msg);
+	    msg.color.a = 1;
+	    msg.color.r = 1;
+	    msg.color.g = 1;
+	    msg.color.b = 0;
 
+	    msg.scale.x = maxObservationDistance*2;
+	    msg.scale.y = maxObservationDistance*2;
+	    msg.scale.z = 0.01;
 
+	    waypointRangeVisualiser.publish(msg);
+
+	    msg.header.frame_id = "map";
+	    msg.header.stamp = ros::Time::now();
+	    msg.id = i;
+	    msg.type = visualization_msgs::Marker::ARROW;
+
+	    msg.pose.position.x = 0;
+	    msg.pose.position.y = 0;
+
+	    msg.color.a = 1;
+	    msg.color.r = 0;
+	    msg.color.g = 0;
+	    msg.color.b = 1;
+
+	    msg.scale.x = 0.2;
+	    msg.scale.y = 1;
+	    msg.scale.z = 0.5;
+
+	    geometry_msgs::Point p;
+	    p.x = waypoints[i].x;
+	    p.y = waypoints[i].y;
+	    p.z = 0.1;
+	    msg.points.push_back(p);
+	    
+	    p.x = waypoints[(i+1)%waypoints.size()].x;
+	    p.y = waypoints[(i+1)%waypoints.size()].y;
+	    p.z = 0.1;
+	    msg.points.push_back(p);
+	    
+	    waypointPathVisualiser.publish(msg);
     }
 }
 
@@ -508,6 +538,7 @@ int main(int argc, char** argv)
 
     waypointVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypoints", 100);
     waypointRangeVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointRanges", 100);
+    waypointPathVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointPath", 100);
 
 	// service servers
 	ros::ServiceServer set_map_srv = n.advertiseService("set_map_poi", setPointCallback);
