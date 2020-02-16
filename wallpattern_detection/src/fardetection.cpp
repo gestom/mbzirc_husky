@@ -247,14 +247,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
 	STrackedObject object = altTransform->transform2D(segment);
-	printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
-
+	printf("Object: %.2f %.2f %.2f %.2f %i\n",segment.x,segment.y,object.x,object.y,numDetectionAttempts);
 
 	if (segment.valid == 1)
 	{
 		numDetections++;
 	}
-	posePub.publish(patternPose);
+	//posePub.publish(patternPose);
 
 	if (imagePub.getNumSubscribers() != 0){
 		frame.copyTo(videoFrame);
@@ -379,12 +378,13 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
 	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-	for (int i = 0;i<5;i++)
+	for (int i = 0;i<6;i++)
 	{
-		float angleArray[] 	= {M_PI/2,M_PI,M_PI/2,0,-M_PI/2};
-		bool doScan[] 		= {1,1,0,1,1};
+		float angleArray[] 	= {M_PI/2,M_PI,M_PI/2,0,-M_PI/2,0};
+		bool doScan[] 		= {1,1,0,1,1,0};
 		mbzirc_husky_msgs::Float64 srv;
 		srv.request.data = angleArray[i];
+		armClient.call(srv);
 		numDetections = 0;
 		numDetectionAttempts = 0;
 		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
@@ -405,6 +405,7 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "wallpattern_detector");
 	n = new ros::NodeHandle();
 	it = new image_transport::ImageTransport(*n);
+	gui = false;
 
 	n->param("uav_name", uav_name, string());
 	/*n.param("gui", gui, false);
@@ -436,9 +437,9 @@ int main(int argc, char** argv)
 
 	printf("AAAB\n");
 	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
-	altTransform->calibrate2D(calibrationFile.c_str());
+	//altTransform->calibrate2D(calibrationFile.c_str());
 	ros::ServiceServer service = n->advertiseService("searchForWallpattern", detect);
-	armClient       = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_arm");
+	armClient       = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	imagePub = it->advertise("/searchWallResult", 1);
 
 	// initialize dynamic reconfiguration feedback

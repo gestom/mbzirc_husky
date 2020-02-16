@@ -35,6 +35,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <nav_msgs/Odometry.h>
 #include <random>
+#include <wallpattern_detection/wall_pattern_close.h>
 
 using namespace std;
 using namespace cv;
@@ -58,11 +59,13 @@ random_device rd;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
+Point2d camera_shift(320, 240);
 float cX = defaultImageWidth/2.0;
 float cY = defaultImageHeight/2.0;
 float fPix = 1.0;
-bool gotCameraInfo = false;
-
+bool got_img;
+bool got_height;
+bool got_params;
 
 String colorMap;
 int segmentType = 1;
@@ -82,7 +85,7 @@ int hbins = 180;
 int sbins = 256;
 tf::TransformListener *listener;
 tf::StampedTransform lastTransform;
-bool gui = true;
+bool gui;
 bool debug = true;
 bool oldbags = false;
 bool stallImage = false;
@@ -100,6 +103,7 @@ ros::Publisher pose_pub;
 ros::Publisher errorPub;
 ros::Publisher objectPublisher;
 ros::Subscriber localOdomSub;
+ros::Publisher line_pub;
 
 SSegment currentSegment;
 SSegment lastSegment;
@@ -117,7 +121,7 @@ wallpattern_detection::detectedobject objectDescriptionArray[MAX_SEGMENTS];
 
 // LATER FILL FROM CONFIG FILE
 Mat distCoeffs = Mat_<double>(1,5);	
-Mat intrinsic = Mat_<double>(3,3);	
+Mat intrinsic = Mat_<double>(3,3);
 
 cv_bridge::CvImage cv_ptr;
 
@@ -211,7 +215,6 @@ void saveColors()
 	}
 }
 
-
 static array<int, 2> twoLargest(const int *values, int len, int mid_idx){
     int largestA = -1, largestB = -1;
     int idx1 = -1;
@@ -236,11 +239,15 @@ static array<int, 2> twoLargest(const int *values, int len, int mid_idx){
     return { idx1, idx2 };
 }
 
-array<vector<Point2d>, 3> runRansac(SSegment *inSegments, int arr_len){
+static Point2d transform_using_h(Point2d pt, double fpix, double cx, double cy, double h){
+    return Point2d((pt.x -h*cx)/fpix, (pt.y - h*cy)/fpix);
+}
 
-    int RANSAC_ITERATIONS = 2000;
-    double HIST_SIZE = 20;
-    int BINS_NUM = 25;          /// this has to be odd
+array<vector<Point2d>, 3> runRansac3(SSegment *inSegments, int arr_len, int iterations, int hist_size, int bins_num){
+
+    int RANSAC_ITERATIONS = iterations;
+    double HIST_SIZE = hist_size;
+    int BINS_NUM = bins_num;          /// this has to be odd
     int top_inliers = 0;
     array<Point2d, 2> top_result;
     double area_diff = 500;
@@ -255,9 +262,11 @@ array<vector<Point2d>, 3> runRansac(SSegment *inSegments, int arr_len){
     Point2d all_points[arr_len];
     for (int el = 0; el < arr_len; el++){
         all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
+        /*
         cout << "roundess: " << inSegments[el].roundness << endl;
         cout << "circularity: " << inSegments[el].circularity << endl;
         cout << "size: " << inSegments[el].size << endl;
+        */
     }
 
     for (int it_num = 0; it_num < RANSAC_ITERATIONS; it_num++){
@@ -289,28 +298,28 @@ array<vector<Point2d>, 3> runRansac(SSegment *inSegments, int arr_len){
                     curr_hist[curr_bin]++;
                 }
             }
+            /*
             cout << it_num << ": ";
             for (int i = 0; i < BINS_NUM; i++){
                 cout << curr_hist[i] << " ";
             }
             cout << endl;
-
+            */
             // compute inliers
             array<int, 2> two_top_idxs = twoLargest(curr_hist, BINS_NUM, center_bin);
             int idx1 = two_top_idxs[0] - center_bin;
             int idx2 = two_top_idxs[1] - center_bin;
             int inlier_num = curr_hist[center_bin];
             if (idx1 == -idx2 and idx1 != 0){
+                /// this is reason why we use histogram - detect 3 colinear lines
                 inlier_num += curr_hist[two_top_idxs[0]] + curr_hist[two_top_idxs[1]];
+            }
 
-
-
-                // set top fits
-                if (inlier_num > top_inliers){
-                    top_inliers = inlier_num;
-                    top_bin_idx = abs(idx1);
-                    top_result = {pt1, pt2};
-                }
+            // set top fits
+            if (inlier_num > top_inliers){
+                top_inliers = inlier_num;
+                top_bin_idx = abs(idx1);
+                top_result = {pt1, pt2};
             }
         }
     }
@@ -346,6 +355,224 @@ array<vector<Point2d>, 3> runRansac(SSegment *inSegments, int arr_len){
 }
 
 
+array<vector<Point2d>, 2> runRansac2(SSegment *inSegments, int arr_len, int iterations, double inlier_dist){
+
+    int RANSAC_ITERATIONS = iterations;
+    int top_inliers = 0;
+    array<Point2d, 3> top_result;
+    double area_diff = 500;
+    double circularity_diff = 3;
+    int top_bin_idx = 0;
+
+    // prepare points and random number generator
+    mt19937 rng(rd());
+    uniform_int_distribution<int> uni(0, arr_len);
+    Point2d all_points[arr_len];
+    for (int el = 0; el < arr_len; el++){
+        all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
+        /*
+        cout << "roundess: " << inSegments[el].roundness << endl;
+        cout << "circularity: " << inSegments[el].circularity << endl;
+        cout << "size: " << inSegments[el].size << endl;
+        */
+    }
+
+    for (int it_num = 0; it_num < RANSAC_ITERATIONS; it_num++){
+        // init round
+        int id1 = uni(rng);
+        int id2 = uni(rng);
+        if (abs(inSegments[id1].size - inSegments[id2].size) < area_diff and
+            abs(inSegments[id1].roundness - inSegments[id2].roundness) < circularity_diff){
+            int curr_inliers = 0;
+            Point2d pt1 = all_points[uni(rng)];
+            Point2d pt2 = all_points[uni(rng)];
+            Point2d pt3 = all_points[uni(rng)];
+            Point2d vec = pt1 - pt2;
+            Point2d norm_vec(-vec.y, vec.x);
+            double c1 = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
+            double c2 = -(norm_vec.x * pt3.x + norm_vec.y * pt3.y);
+            Point3d line_eq1(norm_vec.x, norm_vec.y, c1);
+            Point3d line_eq2(norm_vec.x, norm_vec.y, c2);
+            double line_size = norm(norm_vec);
+
+            // compute all distances a fill the bins
+            for (int el = 0; el < arr_len; el++){
+                double curr_size = inSegments[el].size;
+                Point2d curr_pt = all_points[el];
+                double dist1 = (line_eq1.x*curr_pt.x + line_eq1.y*curr_pt.y + line_eq1.z)/line_size;
+                double dist2 = (line_eq2.x*curr_pt.x + line_eq2.y*curr_pt.y + line_eq2.z)/line_size;
+                if ((dist1 < inlier_dist or dist2 < inlier_dist) and abs(inSegments[id1].size - inSegments[el].size) < area_diff and
+                    abs(inSegments[id1].roundness - inSegments[el].roundness) < circularity_diff){
+                    curr_inliers++;
+                }
+            }
+
+            // set top fits
+            if (curr_inliers > top_inliers){
+                top_inliers = curr_inliers;
+                top_result = {pt1, pt2, pt3};
+            }
+        }
+    }
+
+    /// get all inliers
+
+    array<vector<Point2d>, 2> ret;
+    // compute distances
+    Point2d pt1 = top_result[0];
+    Point2d pt2 = top_result[1];
+    Point2d pt3 = top_result[3];
+    Point2d vec = pt1 - pt2;
+    Point2d norm_vec(-vec.y, vec.x);
+    double c1 = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
+    double c2 = -(norm_vec.x * pt3.x + norm_vec.y * pt3.y);
+    Point3d line_eq1(norm_vec.x, norm_vec.y, c1);
+    Point3d line_eq2(norm_vec.x, norm_vec.y, c2);
+    double line_size = norm(norm_vec);
+    for (int el = 0; el < arr_len; el++){
+        Point2d curr_pt = all_points[el];
+        double dist1 = (line_eq1.x*curr_pt.x + line_eq1.y*curr_pt.y + line_eq1.z)/line_size;
+        double dist2 = (line_eq2.x*curr_pt.x + line_eq2.y*curr_pt.y + line_eq2.z)/line_size;
+        if (dist1 < inlier_dist){
+            ret[0].push_back(curr_pt);
+        } else if (dist2 < inlier_dist){
+            ret[1].push_back(curr_pt);
+        }
+    }
+
+
+    return ret;
+
+}
+
+void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
+{
+    groundPlaneDistance = msg->data*1000+20;
+    // printf("Ground plane: %i\n",groundPlaneDistance);
+    got_height = true;
+}
+
+void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
+{
+    cX = msg->K[2];
+    cY = msg->K[5];
+    fPix = msg->K[0];
+    got_params = true;
+}
+
+void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
+{
+    // close detection from above
+    if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
+    inFrame.copyTo(frame);
+
+    segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
+
+    array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segmentation.segmentArray, segmentation.numSegments,
+            500, 15, 25);
+    array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segmentation.segmentArray, segmentation.numSegments,
+                                                       500, 10);
+
+    int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
+    int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
+
+    cout << "Found " << segmentation.numSegments << " segments" << endl;
+    int lines_num = 0;
+    if (ret_ransac3[0].size() > 1 and ret_ransac3[2].size() > 1 and ret_ransac3[1].size() > 3){
+        lines_num = 3;
+    } else if (ret_ransac2[0].size() > 2 and ret_ransac2[1].size() > 2 and r2_sum > 6) {
+        lines_num = 2;
+    } else if (ret_ransac3[1].size() > 3){
+        lines_num = 1;
+    }
+
+    if (got_height and got_img and got_params and lines_num > 0){
+        float h = (groundPlaneDistance - 20) / 1000;
+        geometry_msgs::Point pt;
+        if (lines_num == 3){
+            Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
+            Point2d pt2 = transform_using_h(ret_ransac3[1][1] - camera_shift, fPix, cX, cY, h);
+            Point2d vec = pt2 - pt1;
+            Point2d norm_vec = Point2d(-vec.y, vec.x);
+            vec = (vec/norm(vec)) * r3_sum;
+            double dist = (pt1.x*norm_vec.x + pt1.y*norm_vec.y)/norm(norm_vec);
+            pt.x = vec.x;
+            pt.y = vec.y;
+            pt.z = dist;
+        } else if (lines_num == 2){
+            Point2d pt1 = transform_using_h(ret_ransac2[1][0] - camera_shift, fPix, cX, cY, h);
+            Point2d pt2 = transform_using_h(ret_ransac2[1][1] - camera_shift, fPix, cX, cY, h);
+            Point2d vec = pt2 - pt1;
+            Point2d norm_vec = Point2d(-vec.y, vec.x);
+            vec = (vec/norm(vec)) * r2_sum;
+            pt.x = vec.x;
+            pt.y = vec.y;
+            pt.z = 0;
+        } else if (lines_num == 1){
+            Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
+            Point2d pt2 = transform_using_h(ret_ransac3[1][1] - camera_shift, fPix, cX, cY, h);
+            Point2d vec = pt2 - pt1;
+            Point2d norm_vec = Point2d(-vec.y, vec.x);
+            norm_vec = (vec/norm(vec)) * double(ret_ransac3[1].size());
+            pt.x = vec.x;
+            pt.y = vec.y;
+            pt.z = 0;
+        }
+        // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
+
+        if (pt.x < 0){
+            pt.x = -pt.x;
+            pt.y = -pt.y;
+            pt.z = -pt.z;
+        }
+        line_pub.publish(pt);
+    }
+
+    got_img = true;
+}
+
+bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
+                     wallpattern_detection::wall_pattern_close::Response &res){
+
+    if (req.activate){
+        minSegmentSize = 100;
+        /// here comes the code of subscriber
+        imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallback2);
+        subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
+        subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
+        line_pub = n->advertise<geometry_msgs::Point>("/wall_pattern_line", 1);
+
+        got_img = false;
+        got_height = false;
+        got_params = false;
+        int attempts = 0;
+        while (not(got_img and got_height and got_params) && attempts < 15){
+            ros::spinOnce();
+            usleep(300000);
+            attempts++;
+        }
+        if (got_img and got_height and got_params){
+            cout << "Service succesfully started subscribers" << endl;
+            res.success = true;
+            return true;
+        } else {
+            cout << "subs workin: " << " image " << got_img << " height " << got_height << " cam params " << got_params << endl;
+            res.success = false;
+            return false;
+        }
+    } else {
+        got_img = false;
+        got_height = false;
+        got_params = false;
+        imageSub.shutdown();
+        subHeight.shutdown();
+        subInfo.shutdown();
+        line_pub.shutdown();
+        return true;
+    }
+
+}
+
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
@@ -355,9 +582,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
+	/*
 	STrackedObject object = altTransform->transform2D(segment);
 	printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
-
+    */
 
 	if (segment.valid == 1){
 		/*pZ = segment.z/1000;
@@ -375,7 +603,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		patternPose.completelyVisible = (segment.warning == false);*/
 		numDetections++;
 	}
-	posePub.publish(patternPose);
+	// posePub.publish(patternPose);
 	if (imagePub.getNumSubscribers() != 0){
 		frame.copyTo(videoFrame);
 		cv_ptr.encoding = "bgr8";
@@ -488,20 +716,6 @@ void termHandler(int s){
   exit(1); 
 }
 
-void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
-{
-	groundPlaneDistance = msg->data*1000+20;
-	printf("Ground plane: %i\n",groundPlaneDistance);
-}
-
-void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
-{
-	gotCameraInfo = true;
-	cX = msg->K[2];
-	cY = msg->K[5];
-	fPix = msg->K[0];
-}
-
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
 
@@ -554,14 +768,6 @@ int main(int argc, char** argv)
 	n = new ros::NodeHandle();
 	it = new image_transport::ImageTransport(*n);
 
-	n->param("uav_name", uav_name, string());
-	/*n.param("gui", gui, false);
-	n.param("debug", debug, false);*/
-	if (gui) {
-		debug = true;
-		signal (SIGINT,termHandler);
-	}
-
 	n->param("camera_yaw_offset", camera_yaw_offset, 0.0);
 	n->param("camera_phi_offset", camera_phi_offset, 0.0);
 	n->param("camera_psi_offset", camera_psi_offset, 0.0);
@@ -570,6 +776,13 @@ int main(int argc, char** argv)
 	n->param("camera_offset", camera_offset, 0.17);
 	n->param("wallpattern_height", wallpattern_height, 0.20);
 	n->param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
+    n->param("uav_name", uav_name, string());
+    n->param("gui", gui, false);
+    n->param("debug", debug, false);
+    if (gui) {
+        debug = true;
+        signal (SIGINT,termHandler);
+    }
 	
 	if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
 	if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
@@ -579,22 +792,27 @@ int main(int argc, char** argv)
 	segmentation.loadColorMap(colorMap.c_str());
 	segmentation.loadColors((colorMap+".col").c_str());
 
+	/*  TODO: get calibration file
 	altTransform = new CTransformation();
-
-
 	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
 	altTransform->calibrate2D(calibrationFile.c_str());
-	ros::ServiceServer service = n->advertiseService("detectWallpattern", detect);
-	imagePub = it->advertise("/wallDetectResult", 1);
+	 */
+
+    ros::ServiceServer service2 = n->advertiseService("start_top_wall_detector", getPatternAbove);
 
 	// initialize dynamic reconfiguration feedback
+
 	dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig> server;
 	dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig>::CallbackType dynSer;
 	dynSer = boost::bind(&reconfigureCallback, _1, _2);
 	server.setCallback(dynSer);
 
-	// SUBSCRIBERS
-	ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
+	if (gui){
+        // SUBSCRIBERS
+        ros::ServiceServer service = n->advertiseService("detectWallpattern", detect);
+        imagePub = it->advertise("/wallDetectResult", 1);
+        ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
+	}
 
 	// Debugging PUBLISHERS
 	if (debug) {
