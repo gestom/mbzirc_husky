@@ -2,6 +2,7 @@
 #include <tf/tf.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
+#include <geometry_msgs/Point.h>
 #include <mbzirc_husky/nextBrickPlacement.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
@@ -39,6 +40,7 @@ ros::ServiceClient inventoryRemoveClient;
 
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
+ros::Subscriber subscriberLine;
 
 /* int   activeStorage   = 5; */
 float currentPosition = 0;
@@ -152,19 +154,7 @@ mbzirc_husky_msgs::StoragePosition getStoragePosition(int storage) {
   return srv;
 }
 
-void setSpeed(geometry_msgs::Twist speed) {
-  float maxX = 0.20;
-  float maxZ = 0.15;
-  if (speed.linear.x > +maxX)
-    speed.linear.x = +maxX;
-  if (speed.linear.x < -maxX)
-    speed.linear.x = -maxX;
-  if (speed.angular.z > +maxZ)
-    speed.angular.z = +maxZ;
-  if (speed.angular.z < -maxZ)
-    speed.angular.z = -maxZ;
-  twistPub.publish(speed);
-}
+
 int updateRobotPosition() {
   int                        inc = 0;
   geometry_msgs::PoseStamped pose;
@@ -190,6 +180,16 @@ int updateRobotPosition() {
   }
 }
 
+void setSpeed(geometry_msgs::Twist speed)
+{
+	float maxX = 0.20;
+	float maxZ = 0.15;
+	if (speed.linear.x > +maxX) speed.linear.x = +maxX;
+	if (speed.linear.x < -maxX) speed.linear.x = -maxX;
+	if (speed.angular.z > +maxZ) speed.angular.z = +maxZ;
+	if (speed.angular.z < -maxZ) speed.angular.z = -maxZ;
+	twistPub.publish(speed);
+}
 
 int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg) {
   spd.linear.x = spd.angular.z = 0;
@@ -435,6 +435,15 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
   state = IDLE;
 }
 
+void lineCallBack(const geometry_msgs::PointConstPtr &msg) 
+{
+	float angle = atan2(msg->y,msg->x);
+	printf("ANGLE: %f\n",angle);
+	spd.linear.x = 0;
+	spd.angular.z = -angle;
+	setSpeed(spd);
+}
+
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
   if (updateRobotPosition() < 0)
     return;
@@ -449,13 +458,16 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
 int main(int argc, char **argv) {
   ros::init(argc, argv, "brickStack");
   ros::NodeHandle n;
+  printf("AA:A:\n");
+  subscriberLine   = n.subscribe("/wall_pattern_line", 1, &lineCallBack);
+  printf("AA:A:\n");
   // Dynamic reconfiguration server
   // dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
   // dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
   // dynServer.setCallback(f);
 
   listener         = new tf::TransformListener();
-  subscriberScan   = n.subscribe("/scan", 1, &scanCallBack);
+  //subscriberScan   = n.subscribe("/scan", 1, &scanCallBack);
   twistPub         = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
   prepareClient    = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_placing");
   placeClient      = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/place_brick");

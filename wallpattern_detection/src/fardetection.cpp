@@ -378,10 +378,10 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
 	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-	for (int i = 0;i<6;i++)
+	for (int i = 0;i<8;i++)
 	{
-		float angleArray[] 	= {M_PI/2,M_PI,M_PI/2,0,-M_PI/2,0};
-		bool doScan[] 		= {1,1,0,1,1,0};
+		float angleArray[] 	= {M_PI/2,M_PI,2*M_PI/3,M_PI/3,0,-M_PI/3,-2*M_PI/3,0};
+		bool doScan[] 		= {1,0,1,1,1,1,1,0};
 		mbzirc_husky_msgs::Float64 srv;
 		srv.request.data = angleArray[i];
 		armClient.call(srv);
@@ -406,8 +406,8 @@ int main(int argc, char** argv)
 	it = new image_transport::ImageTransport(*n);
 
 	n->param("uav_name", uav_name, string());
-	/*n.param("gui", gui, false);
-	n.param("debug", debug, false);*/
+	n->param("gui", gui, false);
+	n->param("debug", debug, false);
 	if (gui) {
 		debug = true;
 		signal (SIGINT,termHandler);

@@ -470,9 +470,8 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     inFrame.copyTo(frame);
 
     segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
-
     array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segmentation.segmentArray, segmentation.numSegments,
-            500, 8, 35);
+            500, 18, 35);
     array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segmentation.segmentArray, segmentation.numSegments,
                                                        500, 3);
 
@@ -490,47 +489,62 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     }
 
     if (got_height and got_img and got_params and lines_num > 0){
-        float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
-        geometry_msgs::Point pt;
-        if (lines_num == 3){
-            Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-            Point2d pt2 = transform_using_h(ret_ransac3[1][1] - camera_shift, fPix, cX, cY, h);
-            Point2d vec = pt2 - pt1;
-            Point2d norm_vec = Point2d(-vec.y, vec.x);
-            vec = (vec/norm(vec)) * r3_sum;
-            double dist = (pt1.x*norm_vec.x + pt1.y*norm_vec.y)/norm(norm_vec);
-            pt.x = vec.x;
-            pt.y = vec.y;
-            pt.z = dist;
-        } else if (lines_num == 2){
-            Point2d pt1 = transform_using_h(ret_ransac2[1][0] - camera_shift, fPix, cX, cY, h);
-            Point2d pt2 = transform_using_h(ret_ransac2[1][1] - camera_shift, fPix, cX, cY, h);
-            Point2d vec = pt2 - pt1;
-            Point2d norm_vec = Point2d(-vec.y, vec.x);
-            vec = (vec/norm(vec)) * r2_sum;
-            pt.x = vec.x;
-            pt.y = vec.y;
-            pt.z = 0;
-        } else if (lines_num == 1){
-            Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-            Point2d pt2 = transform_using_h(ret_ransac3[1][1] - camera_shift, fPix, cX, cY, h);
-            Point2d vec = pt2 - pt1;
-            Point2d norm_vec = Point2d(-vec.y, vec.x);
-            norm_vec = (vec/norm(vec)) * double(ret_ransac3[1].size());
-            pt.x = vec.x;
-            pt.y = vec.y;
-            pt.z = 0;
-        }
-        // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
+	    float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
+	    geometry_msgs::Point pt;
+	    if (lines_num == 3){
+		    Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
+		    Point2d pt2 = transform_using_h(ret_ransac3[1][1] - camera_shift, fPix, cX, cY, h);
+		    Point2d vec = pt2 - pt1;
+		    Point2d norm_vec = Point2d(-vec.y, vec.x);
+		    vec = (vec/norm(vec)) * r3_sum;
+		    double dist = (pt1.x*norm_vec.x + pt1.y*norm_vec.y)/norm(norm_vec);
+		    pt.x = vec.x;
+		    pt.y = vec.y;
+		    pt.z = dist;
+	    } else if (lines_num == 2){
+		    Point2d pt1 = transform_using_h(ret_ransac2[1][0] - camera_shift, fPix, cX, cY, h);
+		    Point2d pt2 = transform_using_h(ret_ransac2[1][1] - camera_shift, fPix, cX, cY, h);
+		    Point2d vec = pt2 - pt1;
+		    Point2d norm_vec = Point2d(-vec.y, vec.x);
+		    vec = (vec/norm(vec)) * r2_sum;
+		    pt.x = vec.x;
+		    pt.y = vec.y;
+		    pt.z = 0;
+	    } else if (lines_num == 1){
+		    Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
+		    Point2d pt2 = transform_using_h(ret_ransac3[1][1] - camera_shift, fPix, cX, cY, h);
+		    Point2d vec = pt2 - pt1;
+		    Point2d norm_vec = Point2d(-vec.y, vec.x);
+		    norm_vec = (vec/norm(vec)) * double(ret_ransac3[1].size());
+		    pt.x = vec.x;
+		    pt.y = vec.y;
+		    pt.z = 0;
+	    }
+	    // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
 
-        if (pt.x < 0){
-            pt.x = -pt.x;
-            pt.y = -pt.y;
-            pt.z = -pt.z;
-        }
-        line_pub.publish(pt);
+	    if (pt.x < 0){
+		    pt.x = -pt.x;
+		    pt.y = -pt.y;
+		    pt.z = -pt.z;
+	    }
+	    line_pub.publish(pt);
     }
+	if (gui){
+		imshow("frame",frame);
 
+		/*processing user input*/
+		key = waitKey(1)%256;
+		if (key == 32) stallImage = !stallImage;
+		printf("STALL %i\n",stallImage);
+		if (key == 'r'){
+			segmentation.resetColorMap();
+			histogram = Mat::zeros(hbins,sbins,CV_32FC1);
+			storedSamples = Mat::zeros(0,3,CV_32FC1);
+		}
+		if (key == 's') segmentation.saveColorMap(colorMap.c_str());
+		if (key == 'c') saveColors();
+		if (key >= '1' && key < '9') segmentType = (key-'0');
+	}
     got_img = true;
 }
 
@@ -602,24 +616,24 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
 	/*
-	STrackedObject object = altTransform->transform2D(segment);
-	printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
-    */
+	   STrackedObject object = altTransform->transform2D(segment);
+	   printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
+	   */
 
 	if (segment.valid == 1){
 		/*pZ = segment.z/1000;
-		pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
+		  pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
+		  pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
 
-		patternPose.pose.pose.position.x = pX;
-		patternPose.pose.pose.position.y = pY;
-		patternPose.pose.pose.position.z = pZ;
-		patternPose.type = segment.type;
-		tf2::Quaternion quat_tf;
-		quat_tf.setRPY(0,0,segment.angle);
-		patternPose.pose.pose.orientation = tf2::toMsg(quat_tf);
-		patternPose.detected = true;
-		patternPose.completelyVisible = (segment.warning == false);*/
+		  patternPose.pose.pose.position.x = pX;
+		  patternPose.pose.pose.position.y = pY;
+		  patternPose.pose.pose.position.z = pZ;
+		  patternPose.type = segment.type;
+		  tf2::Quaternion quat_tf;
+		  quat_tf.setRPY(0,0,segment.angle);
+		  patternPose.pose.pose.orientation = tf2::toMsg(quat_tf);
+		  patternPose.detected = true;
+		  patternPose.completelyVisible = (segment.warning == false);*/
 		numDetections++;
 	}
 	// posePub.publish(patternPose);
@@ -638,20 +652,20 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	//END of segmentation - START calculating global frame coords
 	if (gui){
-	       	imshow("frame",frame);
+		imshow("frame",frame);
 
-	/*processing user input*/
-	key = waitKey(1)%256;
-	if (key == 32) stallImage = !stallImage;
-	printf("STALL %i\n",stallImage);
-	if (key == 'r'){
-		segmentation.resetColorMap();
-		histogram = Mat::zeros(hbins,sbins,CV_32FC1);
-		storedSamples = Mat::zeros(0,3,CV_32FC1);
-	}
-	if (key == 's') segmentation.saveColorMap(colorMap.c_str());
-	if (key == 'c') saveColors();
-	if (key >= '1' && key < '9') segmentType = (key-'0');
+		/*processing user input*/
+		key = waitKey(1)%256;
+		if (key == 32) stallImage = !stallImage;
+		printf("STALL %i\n",stallImage);
+		if (key == 'r'){
+			segmentation.resetColorMap();
+			histogram = Mat::zeros(hbins,sbins,CV_32FC1);
+			storedSamples = Mat::zeros(0,3,CV_32FC1);
+		}
+		if (key == 's') segmentation.saveColorMap(colorMap.c_str());
+		if (key == 'c') saveColors();
+		if (key >= '1' && key < '9') segmentType = (key-'0');
 	}
 	imageNumber++;
 }
@@ -800,6 +814,7 @@ int main(int argc, char** argv)
     n->param("uav_name", uav_name, string());
     n->param("gui", gui, false);
     n->param("debug", debug, false);
+    gui = true;
     if (gui) {
         debug = true;
         signal (SIGINT,termHandler);
@@ -828,12 +843,10 @@ int main(int argc, char** argv)
 	dynSer = boost::bind(&reconfigureCallback, _1, _2);
 	server.setCallback(dynSer);
 
-	if (gui){
-        // SUBSCRIBERS
-        ros::ServiceServer service = n->advertiseService("detectWallpattern", detect);
-        imagePub = it->advertise("/wallDetectResult", 1);
-        ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
-	}
+		// SUBSCRIBERS
+	ros::ServiceServer service = n->advertiseService("detectWallpattern", detect);
+	imagePub = it->advertise("/wallDetectResult", 1);
+	ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
 
 	// Debugging PUBLISHERS
 	if (debug) {
