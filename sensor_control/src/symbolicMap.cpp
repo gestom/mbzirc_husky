@@ -424,6 +424,7 @@ void loadWaypoints(){
 
 void organisePath()
 {
+	ROS_INFO("Planning path");
 	float* xs = new float[waypoints.size()];
 	float* ys = new float[waypoints.size()];
 
@@ -431,12 +432,19 @@ void organisePath()
 	{
 		xs[i] = waypoints[i].x;
 		ys[i] = waypoints[i].y;
-		printf("%f %f\n", xs[i], ys[i]);
+		//printf("%f %f\n", xs[i], ys[i]);
 	}
 
 	CTSP pf(xs, ys, waypoints.size());
-	pf.solve(3);
-	pf.print();
+	pf.solve(500);
+
+	for(int i = 0; i < waypoints.size(); i++)
+	{
+		waypoints[i].x = pf.x[i];
+		waypoints[i].y = pf.y[i];
+		printf("%f %f\n", waypoints[i].x, waypoints[i].y);
+	}
+
 	delete[] xs;
 	delete[] ys;
 }
@@ -486,6 +494,7 @@ void publishWaypoints()
         msg.scale.z = 0.01;
        
 	waypointRangeVisualiser.publish(msg);
+
 
     }
 }
