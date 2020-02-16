@@ -796,6 +796,12 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
   goal_pose.pos.z() = placement_height;
   bool goal_reached = goToAction(goal_pose);
 
+  if (!brick_attached) {
+    ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
   res.success = goal_reached;
   return goal_reached;
 }
@@ -831,7 +837,7 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
   if (req.layer == 0) {
     ascent = 0.35;
   } else if (req.layer == 1) {
-    ascent = 0.27;
+    ascent = 0.25;
   } else {
     ascent = 0.05;
   }
@@ -844,9 +850,19 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
     res.success = false;
     return false;
   }
+  int i = 0;
+  while (brick_attached && !goal_reached && i < 5) {
+    goal_pose.pos.z() = 0.63 - i;
+    goal_reached      = goToAction(goal_pose);
+    i++;
+  }
+  if (!goal_reached) {
+    ROS_ERROR("[%s]: Critical failure, cannot lift brick! The arm may be twisted in a crazy position!", ros::this_node::getName().c_str());
+    return false;
+  }
 
-  res.success = goal_reached;
-  return goal_reached;
+  res.success = true;
+  return true;
 }
 //}
 
@@ -1011,10 +1027,9 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
 
   std::vector<double> goal_angles = joint_angles;
   goal_angles[0]                  = 0.0;
+  bool goal_reached               = goToAnglesAction(goal_angles);
 
-  bool goal_reached    = goToAnglesAction(goal_angles);
-  goal_angles[DOF - 1] = gripping_angles[DOF - 1];
-  goToAnglesAction(goal_angles);
+  goToAnglesAction(gripping_angles);
 
   res.success = goal_reached;
   return goal_reached;
@@ -1090,7 +1105,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   ros::Duration(0.2).sleep();
   ros::spinOnce();
   goal_pose = end_effector_pose;
-  if (req.layer != 2) { // keep blue brick pressed
+  if (req.layer != 2) {  // keep blue brick pressed
     goal_pose.pos.z() += descent;
   }
   // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK

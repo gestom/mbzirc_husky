@@ -11,9 +11,9 @@ tmux send-keys 'roslaunch realsense2_camera rs_camera.launch'
 tmux new-window -n:"Slam"
 tmux send-keys 'roslaunch mbzirc_husky gmapping.launch'
 tmux split-window
-tmux send-keys 'roslaunch mbzirc_husky amcl.launch'
+tmux send-keys 'roslaunch mbzirc_husky pathfinding.launch'
 tmux split-window -h
-tmux send-keys 'rosrun amcl amcl'
+tmux send-keys 'roslaunch mbzirc_husky amcl.launch'
 tmux split-window
 tmux send-keys 'roslaunch mbzirc_husky laserscan.launch'
 tmux split-window

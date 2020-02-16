@@ -45,6 +45,7 @@ generate_dynamic_reconfigure_options(
 	cfg/detectBrick.cfg
 	cfg/brick_pile.cfg
 	cfg/bounds.cfg
+	cfg/symbolicMap.cfg
 	)
 
 add_service_files(

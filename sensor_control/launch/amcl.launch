@@ -1,7 +1,7 @@
 <launch>
     <node pkg="amcl" type="amcl" name="amcl" output="screen" respawn="true">
         <params name="odom_model_type" value="diff-corrected">
-        <params name="odom_alpha1" value="1.5">
-        <params name="odom_alpha2" value="0.2">
+        <!--<params name="odom_alpha1" value="1.5">
+        <params name="odom_alpha2" value="0.2">-->
     </node>
 </launch>
