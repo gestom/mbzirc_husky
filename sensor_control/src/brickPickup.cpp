@@ -13,6 +13,7 @@
 #include <dynamic_reconfigure/Config.h>
 #include <std_srvs/Trigger.h>
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Twist.h>
 #include <pcl_ros/point_cloud.h>
@@ -157,6 +158,7 @@ ros::ServiceClient brickStoreClient;
 ros::ServiceClient brickDetectorClient;
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
+ros::Subscriber subscriberOdom;
 
 int activeStorage = 0; // TODO make this an enum??;
 int active_layer = 0; // TODO make this an enum??;
@@ -471,6 +473,17 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	setSpeed(spd);
 }
 
+float uuu = 0;
+bool first = true;
+
+void odoCallBack(const nav_msgs::OdometryConstPtr &msg) 
+{
+	float aaa = tf::getYaw(msg->pose.pose.orientation);
+	if (first) uuu = aaa;
+	first = false;
+	printf("Angle: %.3f\n",aaa-uuu);
+	return;
+}
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
 {
 	if (updateRobotPosition() < 0) return;
@@ -497,6 +510,18 @@ int robotAlignPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 		}
 	}
 	setSpeed(spd);
+}
+
+void callbackOdom(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
+{
+	int inc = 0;
+	float maxX = 0.10;
+	float maxZ = 0.15;
+	float angle = tf::getYaw(msg->pose.pose.orientation);
+	if (updateRobotPosition() < 0) return;
+	if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
+	if (behaviour == ROBOT_ALIGN_PHI) behaviourResult = robotAlignPhi(msg);
+	return;
 }
 
 
@@ -742,6 +767,7 @@ int main(int argc, char** argv)
 	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
 	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
+	subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
 	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
 	liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");

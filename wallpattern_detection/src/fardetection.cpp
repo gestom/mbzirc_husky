@@ -49,14 +49,13 @@ int numDetections = 0;
 int numDetectionAttempts = 0;
 string uav_name;
 image_transport::Subscriber imageSub;
-ros::Subscriber subHeight, subInfo;
+ros::Subscriber subInfo;
 ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
 mbzirc_husky_msgs::wallPatternPosition patternPose;
 image_transport::ImageTransport *it;
 ros::NodeHandle *n;
-int groundPlaneDistance = 0;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
@@ -369,12 +368,6 @@ void termHandler(int s){
   exit(1); 
 }
 
-void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
-{
-	groundPlaneDistance = msg->data*1000+20;
-	printf("Ground plane: %i\n",groundPlaneDistance);
-}
-
 void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 {
 	gotCameraInfo = true;
@@ -385,48 +378,22 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
-	if (req.activate)
+	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
+	for (int i = 0;i<5;i++)
 	{
-		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
-		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-		groundPlaneDistance = req.groundPlaneDistance;
-		for (int i = 0;i<5;i++)
-		{
-			float angleArray[] 	= {M_PI/2,M_PI,M_PI/2,0,-M_PI/2};
-			bool doScan[] 		= {1,1,0,1,1};
-			mbzirc_husky_msgs::Float64 srv;
-			srv.request.data = angleArray[i];
-			numDetections = 0;
-			numDetectionAttempts = 0;
-			imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-			while (numDetectionAttempts < 60){
-				ros::spinOnce();
-			}
-			imageSub.shutdown();
+		float angleArray[] 	= {M_PI/2,M_PI,M_PI/2,0,-M_PI/2};
+		bool doScan[] 		= {1,1,0,1,1};
+		mbzirc_husky_msgs::Float64 srv;
+		srv.request.data = angleArray[i];
+		numDetections = 0;
+		numDetectionAttempts = 0;
+		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		while (numDetectionAttempts < 60){
+			ros::spinOnce();
 		}
-
-		int attempts = 0;
-		if (numDetections > 0){
-			ROS_INFO("Wall pattern detected.");
-			res.patternPose = patternPose.pose;
-			res.detected = true;
-			res.activated = true;
-		}else if (numDetectionAttempts > 0){
-			ROS_INFO("Brick not detected.");
-			res.detected = false;
-			res.activated = true;
-		}else{
-			ROS_INFO("Depth image not incoming. Is realsense on?");
-			res.detected = false;
-			res.activated = false;
-		}
-	}else
-	{
-		res.detected = false;
-		res.activated = false;
-		subHeight.shutdown();
-		subInfo.shutdown();
+		imageSub.shutdown();
 	}
+	subInfo.shutdown();
 	return true;
 }
 
@@ -434,7 +401,7 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 int main(int argc, char** argv) 
 {
 	offset.x = offset.y = diffPose.x = diffPose.y = 0;
-
+	printf("AAAA\n");
 	ros::init(argc, argv, "wallpattern_detector");
 	n = new ros::NodeHandle();
 	it = new image_transport::ImageTransport(*n);
@@ -467,6 +434,7 @@ int main(int argc, char** argv)
 	altTransform = new CTransformation();
 
 
+	printf("AAAB\n");
 	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
 	altTransform->calibrate2D(calibrationFile.c_str());
 	ros::ServiceServer service = n->advertiseService("searchForWallpattern", detect);
