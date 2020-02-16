@@ -48,10 +48,10 @@ generate_dynamic_reconfigure_options(
  )
 
 # Generate services in the 'srv' folder
-# add_service_files(
- #  FILES
-  # Charging.srv
- #)
+add_service_files(
+		FILES
+		wall_pattern_close.srv
+)
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
