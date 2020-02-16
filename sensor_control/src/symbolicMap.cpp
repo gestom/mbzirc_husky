@@ -12,10 +12,13 @@
 #include <opencv2/core/types.hpp>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include "order.h"
 
 ros::NodeHandle* pn;
 
 ros::Publisher waypointVisualiser;
+ros::Publisher waypointRangeVisualiser;
 
 //Map reconfigure
 double map_width;
@@ -25,6 +28,7 @@ double map_y;
 double map_rotation;
 
 int waypointIdx = 0;
+float maxObservationDistance = 4.0f;
 int hypothesisIdx[8];
 
 //Clustering reconfigure
@@ -43,6 +47,7 @@ std::vector<std::vector<cv::Point3d>> greenBricks;
 std::vector<std::vector<cv::Point3d>> orangeBricks;
 
 void publishWaypoints();
+void organisePath();
 
 void callback(mbzirc_husky::boundsConfig &config, uint32_t level) {
         map_width=config.w;
@@ -285,13 +290,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 		case 0: if(!waypoints.empty()){
 				cv::Point2d wayp;
 				wayp = waypoints[waypointIdx];				
-				res.x.push_back(point.x);
-				res.y.push_back(point.y);
+                		publishWaypoints();
+				res.x.push_back(wayp.x);
+				res.y.push_back(wayp.y);
 				res.type = incoming_type;
 				waypointIdx++;
 				if(waypointIdx > (waypoints.size()-1)) waypointIdx = 0; 
 				ROS_INFO("Retrieving the next point from the waypoints symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
-				publishWaypoints();
 				return true;
 			}
 			else {
@@ -438,7 +443,35 @@ void loadWaypoints(){
 	}
 	ROS_INFO("Loaded waypoints with %i points",(int)waypoints.size());
 	loadFile.close();
+    	organisePath();
 	publishWaypoints();
+}
+
+void organisePath()
+{
+	ROS_INFO("Planning path");
+	float* xs = new float[waypoints.size()];
+	float* ys = new float[waypoints.size()];
+
+	for(int i = 0; i < waypoints.size(); i++)
+	{
+		xs[i] = waypoints[i].x;
+		ys[i] = waypoints[i].y;
+		//printf("%f %f\n", xs[i], ys[i]);
+	}
+
+	CTSP pf(xs, ys, waypoints.size());
+	pf.solve(500);
+
+	for(int i = 0; i < waypoints.size(); i++)
+	{
+		waypoints[i].x = pf.x[i];
+		waypoints[i].y = pf.y[i];
+		printf("%f %f\n", waypoints[i].x, waypoints[i].y);
+	}
+
+	delete[] xs;
+	delete[] ys;
 }
 
 void publishWaypoints()
@@ -447,26 +480,52 @@ void publishWaypoints()
 		ROS_INFO("Empty waypoints, check the input file");
 		return;
 	}	    
-	for(int i = 0; i < waypoints.size() - 1; i++)
-	{
-		visualization_msgs::Marker msg;
-		msg.header.frame_id = "map";
-		msg.header.stamp = ros::Time::now();
-		msg.id = 0;
-		msg.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    ROS_INFO("Publishing waypoints");
+    for(int i = 0; i < waypoints.size(); i++)
+    {
+        visualization_msgs::Marker msg;
+        msg.header.frame_id = "map";
+        msg.header.stamp = ros::Time::now();
+        msg.id = i;
+        msg.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
 
-		msg.pose.position.x = waypoints[i].x;
-		msg.pose.position.y = waypoints[i].y;
-		msg.pose.position.z = 0;
+        msg.pose.position.x = waypoints[i].x;
+        msg.pose.position.y = waypoints[i].y;
+        msg.pose.position.z = 0.2;
 
-		msg.color.a = 1;
-		msg.color.r = 1;
-		msg.color.g = 0;
-		msg.color.b = 1;
+        msg.color.a = 1;
+        msg.color.r = 1;
+        msg.color.g = 0;
+        msg.color.b = 1;
 
-		msg.scale.z = 25;
-		msg.text = "1";
-	}
+        msg.scale.z = 1;
+       
+       	std::ostringstream stream;
+        stream << (i - waypointIdx) % waypoints.size() ;
+     	msg.text = stream.str();	
+	waypointVisualiser.publish(msg);
+
+        msg.header.frame_id = "map";
+        msg.header.stamp = ros::Time::now();
+        msg.type = visualization_msgs::Marker::CYLINDER;
+
+        msg.pose.position.x = waypoints[i].x;
+        msg.pose.position.y = waypoints[i].y;
+        msg.pose.position.z = 0;
+
+        msg.color.a = 1;
+        msg.color.r = 1;
+        msg.color.g = 1;
+        msg.color.b = 0;
+
+	msg.scale.x = maxObservationDistance*2;
+	msg.scale.y = maxObservationDistance*2;
+        msg.scale.z = 0.01;
+       
+	waypointRangeVisualiser.publish(msg);
+
+
+    }
 }
 
 
@@ -476,7 +535,8 @@ int main(int argc, char** argv)
 	ros::NodeHandle n;
 	pn = &n;
 
-	waypointVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypoints", 1);
+	waypointVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypoints", 100);
+	waypointRangeVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointRanges", 100);
 
 	// service servers
 	ros::ServiceServer set_map_srv = n.advertiseService("set_map_poi", setPointCallback);

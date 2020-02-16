@@ -271,7 +271,7 @@ bool ungrip() {
 //}
 
 /* arm action monitoring //{ */
-void actionDoneCb(const actionlib::SimpleClientGoalState &state, const pouring_msgs::MoveGroupResultConstPtr &result) {
+void actionDoneCb([[maybe_unused]] const actionlib::SimpleClientGoalState &state, const pouring_msgs::MoveGroupResultConstPtr &result) {
   // ROS_INFO("Finished in state [%s]", state.toString().c_str());
 
   if (result->result) {
@@ -728,7 +728,7 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
 //}
 
 /* callbackLiftBrickService //{ */
-bool callbackLiftBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
+bool callbackLiftBrickService([[maybe_unused]] mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -1123,7 +1123,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
 //}
 
 /* callbackPushBricksAsideService //{ */
-bool callbackPushBricksAsideService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+bool callbackPushBricksAsideService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot push bricks, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -1158,7 +1158,7 @@ bool callbackPushBricksAsideService(std_srvs::TriggerRequest &req, std_srvs::Tri
 //}
 
 /* callbackPressBricksService //{ */
-bool callbackPressBricksService(std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+bool callbackPressBricksService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot press on bricks, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
