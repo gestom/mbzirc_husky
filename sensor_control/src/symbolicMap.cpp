@@ -22,6 +22,8 @@ double map_x;
 double map_y;
 double map_rotation;
 
+int waypointIdx = 0;
+
 //Clustering reconfigure
 double tolerance;
 
@@ -246,10 +248,13 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	switch (incoming_type){
 		case 0: ROS_INFO("Retrieving the next point from the waypoints symbolic map, point type %i", req.type);
 			if(!waypoints.empty()){
-				point = waypoints.front();
+				point = waypoints[waypointIdx];
 				res.x = point.x;
 				res.y = point.y;
 				res.type = incoming_type;
+				waypointIdx++;
+				if(waypointIdx > (waypoints.size()-1)) waypointIdx = 0; 
+				return true;
 			}
 			else {
 				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
