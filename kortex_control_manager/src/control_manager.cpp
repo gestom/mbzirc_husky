@@ -837,7 +837,7 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
   if (req.layer == 0) {
     ascent = 0.35;
   } else if (req.layer == 1) {
-    ascent = 0.27;
+    ascent = 0.25;
   } else {
     ascent = 0.05;
   }
@@ -849,6 +849,9 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
     ROS_ERROR("[%s]: Brick lost during ascent!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
+  }
+  it (brick_attached && !goal_reached){
+  	/// TODO
   }
 
   res.success = goal_reached;
@@ -1525,7 +1528,7 @@ int main(int argc, char **argv) {
   service_server_raise_camera         = nh.advertiseService("raise_camera_in", &callbackRaiseCameraService);
   service_server_store_brick          = nh.advertiseService("store_brick_in", &callbackStoreBrickService);
   service_server_pickup_storage       = nh.advertiseService("pickup_storage_in", &callbackPickupStorageService);
-  service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackLiftBrickStorageService);
+  service_server_lift_brick_storage   = nh.advertiseService("lift_brick_storage_in", &callbackiftBrickStorageService);
   service_server_prepare_placing      = nh.advertiseService("prepare_placing_in", &callbackPreparePlacingService);
   service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
   service_server_push_bricks_aside    = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
