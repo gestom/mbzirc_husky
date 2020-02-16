@@ -49,7 +49,9 @@ class CSegmentation
 		CSegmentation();
 		~CSegmentation();
 		SSegment findSegment(Mat* image,Mat *coords,SSegment *output,int minSegmentSize,int maxSegmentSize);
-		SSegment separateContours(int *image,Mat *coords,SSegment *output,int minSize,int maxSize);
+        SSegment findSeparatedSegment(Mat* image,Mat *coords,SSegment *output,int minSegmentSize,int maxSegmentSize);
+
+        SSegment separateContours(int *image,Mat *coords,SSegment *output,int minSize,int maxSize);
 		void setColor(int i,float h,float s,float v);
 		SSegment getSegment(int type,int number);
 		void learnPixel(Vec3b a,int type = 1);
