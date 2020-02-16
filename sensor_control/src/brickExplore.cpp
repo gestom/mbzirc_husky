@@ -604,7 +604,7 @@ void explore()
     srv.request.type = 0;
     if(symbolicClient.call(srv))
     {
-        moveToMapPoint(srv.res.x, srv.res.y, 0, 1);
+        moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
     }
     
     //state = MOVINGTOBRICKS;
