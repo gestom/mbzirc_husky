@@ -248,7 +248,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::Response &res){
 	int incoming_type = req.type;
 	cv::Point2d point;
-	
+	ROS_INFO("Incomin service of type %i ", req.type);	
 	switch (incoming_type){
 		case 0: if(!waypoints.empty()){
 				point = waypoints[waypointIdx];
@@ -401,7 +401,6 @@ int main(int argc, char** argv)
 	dynamicServer.setCallback(fc);
 
 
-	loadWaypoints();
 	waypoints.clear();
 	robotDelivery.clear();
 	dronePile.clear();
@@ -410,6 +409,7 @@ int main(int argc, char** argv)
 	blueBricks.clear();
 	greenBricks.clear();
 	orangeBricks.clear();
+	loadWaypoints();
 	ros::spin();
 
 }
