@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 	tf 
 	message_generation
 	mbzirc_husky_msgs
+	mbzirc_husky
 	)
 find_package(OpenCV REQUIRED)
 set(CMAKE_BUILD_TYPE Debug)

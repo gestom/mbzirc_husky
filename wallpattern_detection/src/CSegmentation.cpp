@@ -472,46 +472,9 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 				segmentArray[numSegments-1].maxY = maxY; 
 				segmentArray[numSegments-1].roundness = M_PI*4*eigvl1*eigvl0/queueEnd;
 				segmentArray[numSegments-1].circularity = eigvl1/eigvl0;
-
-				/*calculate and puclish corner candidates*/
-				int corners = 0;
-				int cX[4];
-				int cY[4];
-				float dist,maxDist;
-				for (int cn = 0;cn<4;cn++){
-					maxDist = 0;
-					for (int s = 0;s<contourPoints;s++)
-					{
-						pos = contour[s];
-						cx = pos%width-fsx; 
-						cy = pos/width-fsy;
-						dist = 0;
-						if (cn > 0)
-						{
-							for (int c = 0;c<cn;c++) dist+=sqrt((cx-cX[c])*(cx-cX[c])+(cy-cY[c])*(cy-cY[c]));
-						}else{
-							dist = cx*cx+cy*cy;
-							if (s < MAX_CONTOUR_POINTS){
-								segmentArray[numSegments-1].contourX[s] = cx+fsx-minX;
-								segmentArray[numSegments-1].contourY[s] = cy+fsy-minY;
-							}
-						}
-						if (dist > maxDist)
-						{
-							cX[cn] = cx;	
-							cY[cn] = cy;
-							maxDist = dist;
-						}
-					}
-				}
 				segmentArray[numSegments-1].contourPoints = min(contourPoints,MAX_CONTOUR_POINTS);
 				segmentArray[numSegments-1].combo = 1; 
 				segmentArray[numSegments-1].valid = 1; 
-				for (int ii = 0;ii<4;ii++){
-					segmentArray[numSegments-1].cornerX[ii] = cX[ii]+fsx;//-minX;
-					segmentArray[numSegments-1].cornerY[ii] = cY[ii]+fsy;//-minY;
-				}
-			
 			}else{
 				numSegments--;
 			}
@@ -533,13 +496,15 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 			if (bigSegmentArray[i].id == segmentArray[j].type) bigSegmentArray[i].contours++;	
 		}	
 	}
-	for (int i = 0;i< numBigSegments;i++){
-	       	printf("Segment %i %i %i %f %f\n",i,bigSegmentArray[i].id,bigSegmentArray[i].contours,bigSegmentArray[i].x,bigSegmentArray[i].y);
+	if (debug){
+		for (int i = 0;i< numBigSegments;i++){
+			printf("Segment %i %i %i %f %f\n",i,bigSegmentArray[i].id,bigSegmentArray[i].contours,bigSegmentArray[i].x,bigSegmentArray[i].y);
+		}
+		for (int i = 0;i< numBigSegments;i++) bigSegmentArray[i].crit = bigSegmentArray[i].contours;
+		qsort(bigSegmentArray,numBigSegments,sizeof(SSegment),compareSegments);
+		int i = 0;
+		printf("Main segment %i %i %i %i %f %f\n",i,bigSegmentArray[i].valid,bigSegmentArray[i].id,bigSegmentArray[i].contours,bigSegmentArray[i].x,bigSegmentArray[i].y);
 	}
-	for (int i = 0;i< numSegments;i++) bigSegmentArray[i].crit = bigSegmentArray[i].contours;
-	int i = 0;
-       	printf("Main segment %i %i %i %f %f\n",i,bigSegmentArray[i].id,bigSegmentArray[i].contours,bigSegmentArray[i].x,bigSegmentArray[i].y);
-	qsort(bigSegmentArray,numBigSegments,sizeof(SSegment),compareSegments);
 	result = bigSegmentArray[0];
 	//vykreslime vysledek
 	int j = 0;
