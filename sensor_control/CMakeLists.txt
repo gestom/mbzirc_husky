@@ -52,6 +52,7 @@ add_service_files(
   FILES
   setPoi.srv
   getPoi.srv
+  removePoi.srv
   accessibleInventory.srv
   addInventory.srv
   getInventory.srv
