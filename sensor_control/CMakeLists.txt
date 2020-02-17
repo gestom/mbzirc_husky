@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
     dynamic_reconfigure
     rospy 
     sensor_msgs
+    velodyne_msgs
     std_msgs 
     image_transport
     tf

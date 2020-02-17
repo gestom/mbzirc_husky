@@ -36,9 +36,7 @@
     <remap from="~prepare_gripping_in" to="kinova/arm_manager/prepare_gripping" />
     <remap from="~pickup_in" to="kinova/arm_manager/pickup_brick" />
     <remap from="~lift_brick_in" to="kinova/arm_manager/lift_brick" />
-    
     <remap from="~raise_camera_in" to="kinova/arm_manager/raise_camera" />
-    
     <remap from="~store_brick_in" to="kinova/arm_manager/store_brick" />
     <remap from="~goto_storage_in" to="kinova/arm_manager/goto_storage" />
     <remap from="~pickup_storage_in" to="kinova/arm_manager/pickup_brick_storage" />
@@ -46,6 +44,7 @@
     <remap from="~prepare_placing_in" to="kinova/arm_manager/prepare_placing" />
     <remap from="~place_brick_in" to="kinova/arm_manager/place_brick" />
     <remap from="~push_bricks_in" to="kinova/arm_manager/push_bricks" />
+    <remap from="~dispose_brick_in" to="kinova/arm_manager/dispose_brick" />
 
     
   </node>

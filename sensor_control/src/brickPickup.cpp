@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include <std_msgs/String.h>
+#include <velodyne_msgs/VelodyneScan.h>
 #include <sensor_msgs/LaserScan.h>
 #include <mbzirc_husky/addInventory.h>
 #include <mbzirc_husky/brickPickupAction.h>
@@ -63,6 +64,7 @@ float ransacTolerance = 0.05;
 int behaviourResult = 0;
 int robotXYMove = 1;
 int alignMessageDelayCount = 30;
+int velodynePacketCount = 0;
 
 const char *stateStr[] = { 
 	"Idle",
@@ -131,8 +133,6 @@ const char* toStr(EBehaviour beh)
 }
 
 
-
-
 ros::NodeHandle* pn;
 
 ros::Publisher twistPub;
@@ -159,6 +159,8 @@ ros::ServiceClient brickDetectorClient;
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 ros::Subscriber subscriberOdom;
+ros::Subscriber velodyneSub;
+ros::Publisher velodynePub;
 
 int activeStorage = 0; // TODO make this an enum??;
 int active_layer = 0; // TODO make this an enum??;
@@ -173,7 +175,6 @@ bool isTerminal(EState state)
 
 float stateMove = -1;
 int alignmentOK = 0;
-
 
 void setSpeed(geometry_msgs::Twist speed)
 {
@@ -478,6 +479,7 @@ float uux = 0;
 float uuy = 0;
 bool first = true;
 
+/*this is exclusively for testing*/
 void odoCallBack(const nav_msgs::OdometryConstPtr &msg) 
 {
 	float aaa = tf::getYaw(msg->pose.pose.orientation);
@@ -493,6 +495,13 @@ void odoCallBack(const nav_msgs::OdometryConstPtr &msg)
 	printf("Angle: %.3f distance %.3f \n",aaa-uuu,dist);
 	return;
 }
+
+void velodyneCallBack(const velodyne_msgs::VelodyneScanConstPtr &msg) 
+{
+	 velodynePub.publish(msg);
+	 if (velodynePacketCount++ > 20) velodyneSub.shutdown();
+}
+
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
 {
 	if (updateRobotPosition() < 0) return;
@@ -710,7 +719,13 @@ int alignRobot()
 //	if (robotXYMove < 0) alignRobotWithWall(-0.05); 
 }
 
-
+bool shootVelodyne(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res)
+{
+	velodynePacketCount = 0;
+	velodyneSub = pn->subscribe("/velodyne_packets", 1, &velodyneCallBack);
+	res.success = true;
+	return true;
+}
 
 
 
@@ -776,7 +791,7 @@ int main(int argc, char** argv)
 	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
 	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
-	subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
+	//subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
 	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
 	liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");
@@ -789,6 +804,8 @@ int main(int argc, char** argv)
 	inventoryClient     = n.serviceClient<mbzirc_husky::addInventory>("/inventory/add");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
+	velodynePub = n.advertise<velodyne_msgs::VelodyneScan>("/velodyne_packet_shot",10);
+	ros::ServiceServer service = n.advertiseService("shootVelodyne", shootVelodyne);
 
 	listener = new tf::TransformListener();
 	// Dynamic reconfiguration server
