@@ -358,6 +358,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(dronePile[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving center point for the Drone Pile from symbolic map, point type %i at position X: %f Y: %f for cluster %i", req.type,point.x,point.y,i);
 				}
@@ -387,6 +388,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(droneDelivery[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Drone Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -414,6 +416,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(robotDelivery[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Robot Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -441,6 +444,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(redBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Red Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -468,6 +472,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(greenBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving  point for the Green Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -495,6 +500,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(blueBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Blue Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -522,6 +528,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(orangeBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Orange symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
