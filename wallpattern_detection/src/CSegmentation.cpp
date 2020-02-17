@@ -5,8 +5,8 @@
 
 int compareSegments(const void* m1,const void* m2)
 {
-	if (((SSegment*)m1)->size >  ((SSegment*)m2)->size) return -1;
-	if (((SSegment*)m1)->size <  ((SSegment*)m2)->size) return 1;
+	if (((SSegment*)m1)->crit >  ((SSegment*)m2)->crit) return -1;
+	if (((SSegment*)m1)->crit <  ((SSegment*)m2)->crit) return 1;
 	return 0;
 }
 
@@ -171,7 +171,7 @@ void CSegmentation::learnPixel(int minHue,int maxHue,int minSat,int maxSat,int m
 }
 
 
-SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *output,int minSize,int maxSize)
+SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *output, int minSize,int maxSize)
 {
 	static int run = 0;
 	SSegment result;
@@ -190,7 +190,7 @@ SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *out
 	int *buffer = (int*)calloc(width*height,sizeof(int));
 
 	//oznacime oblasti s hledanou barvou
-	for (int i = 0;i<len;i++) buffer[i] = -(inBuffer[i]==(1000001/*+segmentArray[0].id*/));
+	for (int i = 0;i<len;i++) buffer[i] = -(inBuffer[i]-1000000);
 	int borderType = 1000;
 
 	//'ukrojime' okraje obrazu
@@ -236,12 +236,10 @@ SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *out
 			while (queueEnd != queueStart){
 				//vyjmeme ze zasobniku pozici posledne vlozeneho pixelu 
 				position = stack[queueStart++];
-				nncount = 0;
 				//prohledame pixely na sousednich pozicich
 				for (int j =0;j<8;j++){
 					pos = position+expand[j];
 					//a pokud maji hledanou barvu,
-					if (buffer[pos] != 0) nncount++;
 					if (buffer[pos] == type){
 						//pridame jejich pozici do souradnic aktualniho segmentu
 						stack[queueEnd++] = pos;
@@ -276,7 +274,7 @@ SSegment CSegmentation::separateContours(int *inBuffer,Mat *coords,SSegment *out
 					segmentArray[numSegments-1].px = (segmentArray[numSegments-1].x-camCX)/focal*cameraToGround;
 					segmentArray[numSegments-1].py = (segmentArray[numSegments-1].y-camCY)/focal*cameraToGround;
 
-					// printf("Contour %i %i %i %f %f\n",run,segmentArray[numSegments-1].warning,queueEnd,segmentArray[numSegments-1].px,segmentArray[numSegments-1].py);
+//					printf("Contour %i %i %i %i %f %f\n",run,segmentArray[numSegments-1].type,segmentArray[numSegments-1].warning,queueEnd,segmentArray[numSegments-1].px,segmentArray[numSegments-1].py);
 				}
 
 			}else{
@@ -521,33 +519,34 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 	}
 
 	//Seradi segmenty podle velikosti
+	for (int i = 0;i< numSegments;i++) segmentArray[i].crit = segmentArray[i].size;
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
-	//separateContours(buffer,coords,output,10,1000000);
-	if (false){
-		*coords = cv::Mat::ones(0, 1, CV_32FC2);
-		Mat coord = cv::Mat::ones(1, 1, CV_32FC2);
-		int taken = -1;
-
-		//A vyhodi je do vystupni matice
-		for (int i = 0;i<numSegments;i++){
-			if (segmentArray[i].roundness > minCircularity && segmentArray[i].combo > 0 && segmentArray[i].warning == 0)
-			{
-
-				if (taken == - 1) taken = segmentArray[i].id;
-				coord.at<float>(0) = segmentArray[i].x;
-				coord.at<float>(1) = segmentArray[i].y;
-			}
-		}
+	for (int i = 0;i< numSegments;i++){
+	       	bigSegmentArray[i] = segmentArray[i];
 	}
-	result = segmentArray[0];
+	numBigSegments = numSegments;
+	separateContours(buffer,coords,output,10,1000000);
+	for (int i = 0;i< numBigSegments;i++){
+		bigSegmentArray[i].contours=0;	
+		for (int j = 0;j< numSegments;j++)
+		{
+			if (bigSegmentArray[i].id == segmentArray[j].type) bigSegmentArray[i].contours++;	
+		}	
+	}
+	for (int i = 0;i< numBigSegments;i++){
+	       	printf("Segment %i %i %i %f %f\n",i,bigSegmentArray[i].id,bigSegmentArray[i].contours,bigSegmentArray[i].x,bigSegmentArray[i].y);
+	}
+	for (int i = 0;i< numSegments;i++) bigSegmentArray[i].crit = bigSegmentArray[i].contours;
 	int i = 0;
-	printf("Segment %i %i %f %f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].y);	
+       	printf("Main segment %i %i %i %f %f\n",i,bigSegmentArray[i].id,bigSegmentArray[i].contours,bigSegmentArray[i].x,bigSegmentArray[i].y);
+	qsort(bigSegmentArray,numBigSegments,sizeof(SSegment),compareSegments);
+	result = bigSegmentArray[0];
 	//vykreslime vysledek
 	int j = 0;
 	if (drawSegments){
 		for (int i = 0;i<len;i++){
 			j = buffer[i];
-			if (j == 1000001) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0); else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
+			if (j > 1000000) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0); //else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
 		}
 	}	
 	free(buffer);
@@ -779,9 +778,10 @@ SSegment CSegmentation::findSeparatedSegment(Mat *image,Mat *coords,SSegment *ou
     }
 
     //Seradi segmenty podle velikosti
+    for (int i = 0;i< numSegments;i++) segmentArray[i].crit = segmentArray[i].size;
     qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
     for (int i = 0;i<numSegments;i++){
-    printf("Segment %i %i %i %f %f\n",i,segmentArray[i].size,segmentArray[i].id,segmentArray[i].x,segmentArray[i].y);
+	    printf("Segment %i %i %i %f %f\n",i,segmentArray[i].size,segmentArray[i].id,segmentArray[i].x,segmentArray[i].y);
     }
     separateContours(buffer,coords,output,minSize,maxSize);
     result = segmentArray[0];
