@@ -7,6 +7,10 @@ using namespace std;
 ros::Publisher vis_pub;
 ros::Publisher center_pub;
 ros::Publisher origin_pcl_pub;
+BrickDetector *b_detector;
+ros::Subscriber sub;
+ros::NodeHandle *local_n;
+bool lidar_working;
 
 double normal_pdf(double x, double m, double s) {
     double a = (x - m) / s;
@@ -669,6 +673,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 {
 
     /// DETECTION  ------------------------------------------------------------------------------------------------
+    lidar_working = true;
 
     // fill the row buffers and find point with the lowest height
     vector<MyPoint> point_rows[LIDAR_ROWS];
@@ -739,9 +744,9 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.y = pile_centers[i].y;
                 poi.request.covariance = 0;
                 if (ros::service::call("set_map_poi", poi)){
-                    cout << "Pile sent to symbolic map" << endl;
+                    ROS_INFO("Pile sent to symbolic map");
                 } else {
-                    cout << "Error calling service" << endl;
+                    ROS_INFO("Error calling service");
                 }
             }
         }
@@ -754,9 +759,9 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             poi.request.y = wall_centers[i].y;
             poi.request.covariance = 0;
             if (ros::service::call("set_map_poi", poi)){
-                cout << "Wall sent to symbolic map" << endl;
+                ROS_INFO("Wall sent to symbolic map");
             } else {
-                cout << "Error calling service" << endl;
+                ROS_INFO("Error calling service");
             }
         }
 
@@ -967,23 +972,63 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     /// --------------------------------------------------------------------------------------
 }
 
-void init_velodyne_subscriber(int argc, char **argv) {
-    ros::init(argc, argv, "detector");
-    ros::NodeHandle n;
-    tf2_ros::Buffer tfBuffer;
-    tf2_ros::TransformListener tfListener(tfBuffer);
+// bool start_detecting
 
-    BrickDetector detector(n, &tfBuffer);
+bool velodyne_callback(detector::brick_pile_trigger::Request &req, detector::brick_pile_trigger::Response &res) {
+    ROS_INFO("Service called");
 
-    vis_pub = n.advertise<visualization_msgs::MarkerArray>("/visualization_marker", 5);
-    center_pub = n.advertise<visualization_msgs::Marker>("/pile_centers", 5);
-    origin_pcl_pub = n.advertise<sensor_msgs::PointCloud>("/origin_line", 5);
+    if (req.activate == true){
+        lidar_working = false;
+        vis_pub = local_n->advertise<visualization_msgs::MarkerArray>("/visualization_marker", 5);
+        center_pub = local_n->advertise<visualization_msgs::Marker>("/pile_centers", 5);
+        origin_pcl_pub = local_n->advertise<sensor_msgs::PointCloud>("/origin_line", 5);
+        sub = local_n->subscribe("/velodyne_points", 5, &BrickDetector::subscribe_ptcl, b_detector);
+        for (int i = 0; i < 10; i++){
+            if (not lidar_working){
+                ros::spinOnce();
+                usleep(100000);
+            }
+        }
+        if (lidar_working){
+            ROS_INFO("Brick pile detection started");
+            res.success = true;
+            return true;
+        } else {
+            vis_pub.shutdown();
+            center_pub.shutdown();
+            origin_pcl_pub.shutdown();
+            sub.shutdown();
+            ROS_INFO("Lidar not available");
+            res.success = false;
+            return false;
+        }
+    } else {
+        vis_pub.shutdown();
+        center_pub.shutdown();
+        origin_pcl_pub.shutdown();
+        sub.shutdown();
+        ROS_INFO("Brick pile detection shutting down");
+        res.success = true;
+        return true;
+    }
 
-    ros::Subscriber sub = n.subscribe("/velodyne_points", 5, &BrickDetector::subscribe_ptcl, &detector);
-    ros::spin();
 }
 
 int main(int argc, char **argv) {
-    init_velodyne_subscriber(argc, argv);
+
+    ros::init(argc, argv, "detector");
+    ros::NodeHandle node;
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tfListener(tfBuffer);
+
+    BrickDetector det(node, &tfBuffer);
+    b_detector = &det;
+    local_n = &node;
+
+    ROS_INFO("Initializing service");
+    ros::ServiceServer service = node.advertiseService("/start_brick_pile_detector", velodyne_callback);
+
+    ros::spin();
+
     return 0;
 }
