@@ -20,13 +20,15 @@
   <group ns="$(arg NAME)">
 
     <!-- Service client -->
-    <node name="service_udp_client" pkg="nimbro_service_transport" type="udp_client" output="screen">
+<!--    
+<node name="service_udp_client" pkg="nimbro_service_transport" type="udp_client" output="screen">
       <param name="destination_port" value="$(arg service_server_port)" />
       <param name="response_timeout" value="$(arg service_response_timeout)" />
       <param name="call_timeout" value="$(arg service_call_timeout)" />
       <param name="call_repeats" value="$(arg service_call_repeats)" />
       <param name="topic_prefix" value="$(arg NAME)" />
     </node>
+-->
 
     <!-- Service server -->
     <!-- <node name="service_udp_server" pkg="nimbro_service_transport" type="udp_server" output="screen"> -->
@@ -43,14 +45,14 @@
     </node>
 
     <!-- Topic sender -->
-    <node name="topic_udp_sender" pkg="nimbro_topic_transport" type="udp_sender" output="screen">
-
-      The destination host name or IP address
+<!-- <node name="topic_udp_sender" pkg="nimbro_topic_transport" type="udp_sender" output="screen"> -->
+     <!-- The destination host name or IP address -->
+<!--
       <param name="destination_addr" value="$(arg broadcast_addr)" />
       <param name="destination_port" value="$(arg topic_server_port)" />
       <param name="topic_prefix" value="$(arg NAME)" />
     </node>
-
+-->
   </group>
 
 </launch>

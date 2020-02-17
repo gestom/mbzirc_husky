@@ -248,6 +248,8 @@ int robotMTM(const sensor_msgs::LaserScanConstPtr &msg)
 	{
 		spd.linear.x = 0;
 		float angleDiff = anchorAngle-tf::getYaw(robotPose.pose.orientation);
+		if (angleDiff > +M_PI) angleDiff-= 2*M_PI;
+		if (angleDiff < -M_PI) angleDiff+= 2*M_PI;
 		spd.angular.z =  angleDiff*10;
 		if (fabs(angleDiff) < 0.01){
 			anchorPose = robotPose;
@@ -466,6 +468,7 @@ int robotAlignXPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 				printf("Current robot alignment: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
 				anchorPose = robotPose;
 				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
+				printf("Anchor angle: %.3f %.3f %.3f\n",anchorAngle,tf::getYaw(anchorPose.pose.orientation),angle);
 				moveTurnMove(0.3,ROBOT_ALIGN_X_PHI);
 				return 1;
 			}

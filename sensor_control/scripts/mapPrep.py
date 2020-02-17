@@ -5,7 +5,7 @@ import numpy as np
 import math
 
 filename = "../maps/tennis-left-2/map.yaml"
-maxObservableDistance = 4.0
+maxObservableDistance = 5.0
 
 rotAmount = 0.02
 mvAmount = 1

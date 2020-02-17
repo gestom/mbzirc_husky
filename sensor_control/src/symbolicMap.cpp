@@ -431,7 +431,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 }
 
 void loadWaypoints(){
-	const char* filename = (char*) "./src/mbzirc_husky/sensor_control/maps/tennis-no-bricks/map-waypoints.txt";
+	const char* filename = (char*) "./src/mbzirc_husky/sensor_control/maps/tennis-left-2/map-waypoints.txt";
 
 	ROS_INFO("Opening waypoint file: %s", filename);
 	std::ifstream loadFile(filename);

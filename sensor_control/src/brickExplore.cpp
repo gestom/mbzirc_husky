@@ -606,11 +606,46 @@ void explore()
     srv.request.type = 0;
     if(symbolicClient.call(srv))
     {
-	    moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
-	    ROS_INFO("GOT RESPONSE");
-	    std_srvs::Trigger srv;
-	    wprosbagClient.call(srv);
-	    usleep(1000000);
+		moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
+		    std_srvs::Trigger srv;
+		    wprosbagClient.call(srv);
+			usleep(1000000);
+
+	    /*tf::TransformListener listener;
+	    try
+	    {
+		    geometry_msgs::PoseStamped pose;
+		    pose.header.frame_id = "base_link";
+		    pose.header.stamp = ros::Time(0);
+		    pose.pose.position.x = 0;
+		    pose.pose.position.y = 0;
+		    pose.pose.position.z = 0;
+		    pose.pose.orientation.x = 0;
+		    pose.pose.orientation.y = 0;
+		    pose.pose.orientation.z = 0;
+		    pose.pose.orientation.w = 1;
+		    listener.waitForTransform("/base_link", "map", ros::Time(0), ros::Duration(1.0));
+		    geometry_msgs::PoseStamped newPose;
+		    listener.transformPose("/map", pose, newPose);
+
+		    float dx = srv.response.x[0] - newPose.pose.position.x;
+		    float dy = srv.response.y[0] - newPose.pose.position.y;
+
+		    tf2::Quaternion quat_tf;
+		    quat_tf.setRPY(0, 0, atan2(dy, dx)) ;
+		    
+		    moveToMapPoint(srv.response.x[0], srv.response.y[0], quat_tf.z(), quat_tf.w());
+		    ROS_INFO("GOT RESPONSE");
+		    std_srvs::Trigger srv;
+		    wprosbagClient.call(srv);
+		    usleep(1000000);
+	    }
+	    catch (tf::TransformException &ex)
+	    {
+		    ROS_INFO("Error looking up transform %s", ex.what());
+		    precisePositionFound = false;
+		    return;
+	    }*/
     }
     else
     {
@@ -754,6 +789,13 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW)
     goal.target_pose.pose.orientation.w = 0;
 
     movebaseAC->sendGoal(goal);
+    
+    while(ros::ok())
+    {
+	
+    }
+    
+    
     movebaseAC->waitForResult(ros::Duration(180, 0));
     actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
     ROS_INFO("Move base state %s", mbState.getText());

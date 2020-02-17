@@ -49,6 +49,7 @@ geometry_msgs::PoseStamped anchorPose;
 geometry_msgs::PoseStamped robotPose;
 tf::TransformListener *listener;
 int numDetections = 0;
+int detectionStrength = 0;
 int numDetectionAttempts = 0;
 string uav_name;
 image_transport::Subscriber imageSub;
@@ -226,9 +227,8 @@ STrackedObject transformPatternPose(STrackedObject object)
 		float x,y;
 		float armOffsetX = 0;
 		float armOffsetY = 0;
-		x = cos(armAngle)*object.x - sin(armAngle)*object.y+armOffsetX;
-		y = sin(armAngle)*object.x + cos(armAngle)*object.y+armOffsetY;
-		printf("Main object: %.2f %.2f %.2f %.2f %i %i %.2f\n",x,y,object.x,object.y,object.numContours,numDetectionAttempts,armAngle);
+		x = + cos(armAngle)*object.x + sin(armAngle)*object.y+armOffsetX;
+		y = - sin(armAngle)*object.x + cos(armAngle)*object.y+armOffsetY;
 		pose.header.frame_id = "base_link";
 		pose.header.stamp = ros::Time::now();
 		pose.pose.position.x = x;
@@ -242,6 +242,7 @@ STrackedObject transformPatternPose(STrackedObject object)
 		listener->transformPose("/map",pose,resultPose);
 		result.x = resultPose.pose.position.x; 
 		result.y = resultPose.pose.position.y;
+		printf("Main object: %.2f %.2f %.2f %.2f %.2f %.2f %i %i %.2f\n",result.x,result.y,x,y,object.x,object.y,object.numContours,numDetectionAttempts,armAngle);
 		return result;
 	}
 	catch (tf::TransformException &ex) {
@@ -303,7 +304,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	if (segment.valid == 1){
 		STrackedObject object = altTransform->transform2D(segment);
 		object = transformPatternPose(object);
-				
+		detectionStrength += object.numContours;  
 		numDetections++;
 	}
 	//posePub.publish(patternPose);
@@ -437,21 +438,26 @@ void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr& msg)
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
 	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-	for (int i = 0;i<8;i++)
+	mbzirc_husky_msgs::Float64 srv;
+	srv.request.data = -M_PI/2;
+	armClient.call(srv);
+	for (float i = -1;i<1;i+=1.0/3)
 	{
-		float angleArray[] 	= {M_PI/2,M_PI,2*M_PI/3,M_PI/3,0,-M_PI/3,-2*M_PI/3,0};
-		bool doScan[] 		= {1,0,1,1,1,1,1,0};
-		mbzirc_husky_msgs::Float64 srv;
-		srv.request.data = angleArray[i];
+		srv.request.data = i*M_PI;
 		armClient.call(srv);
 		numDetections = 0;
 		numDetectionAttempts = 0;
+		detectionStrength = 0;
 		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-		while (numDetectionAttempts < 60 || gui){
+		while (numDetectionAttempts < 60){
 			ros::spinOnce();
 		}
 		imageSub.shutdown();
 	}
+	srv.request.data = M_PI/2;
+	armClient.call(srv);
+	srv.request.data = 0;
+	armClient.call(srv);
 	subInfo.shutdown();
 	return true;
 }
@@ -465,9 +471,8 @@ int main(int argc, char** argv)
 	it = new image_transport::ImageTransport(*n);
 
 	n->param("uav_name", uav_name, string());
-	n->param("gui", gui, false);
+	n->param("gui", gui, true);
 	n->param("debug", debug, false);
-	gui = true;
 	if (gui) {
 		debug = true;
 		signal (SIGINT,termHandler);
@@ -505,6 +510,7 @@ int main(int argc, char** argv)
 	dynSer = boost::bind(&reconfigureCallback, _1, _2);
 	server.setCallback(dynSer);
 	armInfo = n->subscribe("/kinova/arm_manager/status", 1, armStatusCallback);
+	listener = new tf::TransformListener();
 
 	// Debugging PUBLISHERS
 	if (debug) {
