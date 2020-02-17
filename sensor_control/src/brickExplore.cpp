@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <visualization_msgs/Marker.h>
 #include <math.h>
+#include <std_srvs/Trigger.h>
 #define PI 3.14159265358979
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
@@ -32,6 +33,7 @@ Server *server;
 
 ros::ServiceClient prepareClient;
 ros::ServiceClient symbolicClient;
+ros::ServiceClient wprosbagClient;
 ros::Subscriber scan_sub;
 ros::Publisher ransac_pub;
 ros::Publisher point_pub;
@@ -604,8 +606,11 @@ void explore()
     srv.request.type = 0;
     if(symbolicClient.call(srv))
     {
-        moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
+	    moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
 	    ROS_INFO("GOT RESPONSE");
+	    std_srvs::Trigger srv;
+	    wprosbagClient.call(srv);
+	    usleep(1000000);
     }
     else
     {
@@ -859,6 +864,7 @@ int main(int argc, char** argv)
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
 	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("/get_map_poi");
+	wprosbagClient = n.serviceClient<std_srvs::Trigger>("/shootVelodyne");
     scan_sub = n.subscribe("/scan",100, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
