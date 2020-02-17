@@ -180,6 +180,8 @@ Pose3d              gripping_pose;
 std::vector<Pose3d>              storage_poses;
 std::vector<std::vector<double>> storage_poses_jointspace;
 std::vector<double>              push1, push2, push3;
+std::vector<double> dispose_prepare, dispose_P3L2_start, dispose_P3L2_end, dispose_P0L1_start, dispose_P0L1_end, dispose_P1L1_start, dispose_P1L1_end,
+    dispose_P2L1_start, dispose_P2L1_end;
 
 // arm status
 bool is_initialized            = false;
@@ -197,7 +199,6 @@ Pose3d              end_effector_pose;
 std::vector<double> last_effort;
 std::vector<double> effort_difference_samples;
 double              accumulated_effort_difference;
-
 
 MotionStatus status;
 Brick        detected_brick;
@@ -227,6 +228,7 @@ ros::ServiceServer service_server_prepare_placing;
 ros::ServiceServer service_server_place_brick;
 ros::ServiceServer service_server_push_bricks_aside;
 ros::ServiceServer service_server_press_bricks;
+ros::ServiceServer service_server_dispose_brick;
 
 // called services
 ros::ServiceClient service_client_grip;
@@ -1211,20 +1213,20 @@ bool callbackPressBricksService([[maybe_unused]] std_srvs::TriggerRequest &req, 
 /* callbackPickupStorageService //{ */
 bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
   if (!is_initialized) {
-    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, not initialized!");
+    ROS_ERROR("[%s]: Cannot pickup brick from storage, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
     res.message = "Cannot pickup brick from storage, not initialized!";
     return false;
   }
 
   if (!getting_joint_angles) {
-    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, internal arm feedback missing!");
+    ROS_ERROR("[%s]: Cannot pickup brick from storage, internal arm feedback missing!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
   }
 
   if (status != IDLE) {
-    ROS_ERROR("[kinova_control_manager]: Cannot pickup brick from storage, arm is not IDLE!");
+    ROS_ERROR("[%s]: Cannot pickup brick from storage, arm is not IDLE!", ros::this_node::getName().c_str());
     res.success = false;
     res.message = "Cannot pickup brick from storage, arm is not IDLE!";
     return false;
@@ -1270,6 +1272,70 @@ bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &r
     return true;
   }
   status      = IDLE;
+  res.success = false;
+  return false;
+}
+//}
+
+/* callbackDisposeBrickService //{ */
+bool callbackDisposeBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+  if (!is_initialized) {
+    ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
+    res.success = false;
+    res.message = "Cannot move, not initialized!";
+    return false;
+  }
+
+  if (!getting_joint_angles) {
+    ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+
+  if (status != IDLE) {
+    ROS_ERROR("[%s]: Cannot move, arm is not IDLE!", ros::this_node::getName().c_str());
+    res.success = false;
+    res.message = "Cannot move, arm is not IDLE!";
+    return false;
+  }
+
+  if (req.layer < 1) {
+    ROS_ERROR("[%s]: Cannot dispose bricks at the lowest layer!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
+  }
+  ROS_WARN("[%s]: Brick at position %d, layer %d will be thrown away", ros::this_node::getName().c_str(), req.position, req.layer);
+
+  // Waypoint prepare disposal
+  ROS_INFO("[%s]: Preparing to dispose a brick", ros::this_node::getName().c_str());
+  goToAnglesAction(dispose_prepare);
+
+  bool w1 = false;
+  bool w2 = false;
+  if (req.layer == 2) {
+    w1 = goToAnglesAction(dispose_P3L2_start);
+    w2 = goToAnglesAction(dispose_P3L2_end);
+  }
+  if (req.layer == 1 && req.position == 0) {
+    w1 = goToAnglesAction(dispose_P0L1_start);
+    w2 = goToAnglesAction(dispose_P0L1_end);
+  }
+  if (req.layer == 1 && req.position == 1) {
+    w1 = goToAnglesAction(dispose_P1L1_start);
+    w2 = goToAnglesAction(dispose_P1L1_end);
+  }
+  if (req.layer == 1 && req.position == 2) {
+    w1 = goToAnglesAction(dispose_P2L1_start);
+    w2 = goToAnglesAction(dispose_P2L1_end);
+  }
+  bool success = w1 && w2;
+  if (success) {
+    ROS_INFO("[%s]: Brick from pos %d, layer %d successfully thrown off the cargo bay", ros::this_node::getName().c_str(), req.position, req.layer);
+    res.success = true;
+    return true;
+  }
+  ROS_ERROR("[%s]: Failed to dispose brick from pos %d, layer %d", ros::this_node::getName().c_str(), req.position, req.layer);
+
   res.success = false;
   return false;
 }
@@ -1508,6 +1574,14 @@ int main(int argc, char **argv) {
   nh.getParam("push1", push1);
   nh.getParam("push2", push2);
   nh.getParam("push3", push3);
+  nh.getParam("dispose/P3L2/start", dispose_P3L2_start);
+  nh.getParam("dispose/P3L2/end", dispose_P3L2_end);
+  nh.getParam("dispose/P0L1/start", dispose_P0L1_start);
+  nh.getParam("dispose/P0L1/end", dispose_P0L1_end);
+  nh.getParam("dispose/P1L1/start", dispose_P1L1_start);
+  nh.getParam("dispose/P1L1/end", dispose_P1L1_end);
+  nh.getParam("dispose/P2L1/start", dispose_P2L1_start);
+  nh.getParam("dispose/P2L1/end", dispose_P2L1_end);
 
   nh.getParam("align_x_min", align_x_min);
   nh.getParam("align_x_max", align_x_max);
@@ -1593,6 +1667,7 @@ int main(int argc, char **argv) {
   service_server_place_brick          = nh.advertiseService("place_brick_in", &callbackPlaceBrickService);
   service_server_push_bricks_aside    = nh.advertiseService("push_bricks_in", &callbackPushBricksAsideService);
   service_server_press_bricks         = nh.advertiseService("press_bricks_in", &callbackPressBricksService);
+  service_server_dispose_brick        = nh.advertiseService("dispose_brick_in", &callbackDisposeBrickService);
 
   // service clients
   service_client_grip   = nh.serviceClient<std_srvs::Trigger>("grip_out");
