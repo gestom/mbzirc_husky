@@ -62,6 +62,8 @@ random_device rd;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
+int left_edge = defaultImageWidth/4.0;
+int right_edge = defaultImageWidth*(3.0/4.0);
 Point2d camera_shift(320, 240);
 float cX = defaultImageWidth/2.0;
 float cY = defaultImageHeight/2.0;
@@ -489,6 +491,8 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
             drawMarker(frame, ret_ransac3[i][j], Scalar(0, 0, 255), MARKER_CROSS);
         }
     }
+    drawMarker(frame, Point(segmentation.biggest_segment.x, segmentation.biggest_segment.y), Scalar(0, 255, 0), MARKER_STAR);
+
     imshow("frame", frame);
     key = waitKey(1)%256;
     #endif
@@ -544,6 +548,18 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
 
     }
 
+    if (lines_num == 0){
+        Point2d seg_c(segmentation.biggest_segment.x, segmentation.biggest_segment.y);
+        if (seg_c.x < left_edge or seg_c.x > right_edge){
+            geometry_msgs::Point pt;
+            pt.x = 1000;
+            pt.y = 1000;
+            pt.z = 1000;
+            line_pub.publish(pt);
+            ROS_INFO_STREAM("End of pattern found!");
+        }
+    }
+
     #ifdef PATTERN_DEBUG
 	if (gui){
 		imshow("frame",frame);
@@ -561,7 +577,7 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
         #ifndef PATTERN_DEBUG
         ros::ServiceClient raise_arm = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
         mbzirc_husky_msgs::Float64 msg;
-        msg.request.data = 0.15;
+        msg.request.data = 0.11;
         if (raise_arm.call(msg)){
         #endif
             minSegmentSize = 50;
@@ -624,6 +640,7 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
         /// TODO !!!!!!!!!!!!!!!!!!
         // ros::ServiceClient fold_arm = n->serviceClient<mbzirc_husky_msgs::Trigger>(); ?????
         #endif
+        res.success = true;
         return true;
     }
 }
@@ -836,7 +853,9 @@ int main(int argc, char** argv)
     n->param("uav_name", uav_name, string());
     n->param("gui", gui, false);
     n->param("debug", debug, false);
+
     // gui = true;
+
     if (gui) {
         debug = true;
         signal (SIGINT,termHandler);

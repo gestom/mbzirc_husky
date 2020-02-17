@@ -75,6 +75,7 @@ class CSegmentation
 		Mat *hsv;
 		unsigned char colorArray[64*64*64];
 		SSegment segmentArray[MAX_SEGMENTS];
+		SSegment biggest_segment;
 		bool debug;
 		int numSegments;
 		float minConvexity,minCircularity;

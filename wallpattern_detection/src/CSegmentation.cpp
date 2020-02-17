@@ -781,6 +781,7 @@ SSegment CSegmentation::findSeparatedSegment(Mat *image,Mat *coords,SSegment *ou
 
     //Seradi segmenty podle velikosti
     qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
+    biggest_segment = segmentArray[0];
     separateContours(buffer,coords,output,minSize,maxSize);
     result = segmentArray[0];
     //vykreslime vysledek
