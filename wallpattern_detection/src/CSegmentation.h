@@ -33,6 +33,8 @@ typedef struct{
 	int contourX[MAX_CONTOUR_POINTS];
 	int contourY[MAX_CONTOUR_POINTS];
 	int contourPoints;
+	int contours;
+	float crit;
 	int id;
 	int size;
 	int type;
@@ -49,9 +51,9 @@ class CSegmentation
 		CSegmentation();
 		~CSegmentation();
 		SSegment findSegment(Mat* image,Mat *coords,SSegment *output,int minSegmentSize,int maxSegmentSize);
-        SSegment findSeparatedSegment(Mat* image,Mat *coords,SSegment *output,int minSegmentSize,int maxSegmentSize);
+		SSegment findSeparatedSegment(Mat* image,Mat *coords,SSegment *output,int minSegmentSize,int maxSegmentSize);
 
-        SSegment separateContours(int *image,Mat *coords,SSegment *output,int minSize,int maxSize);
+		SSegment separateContours(int *image,Mat *coords,SSegment *output,int minSize,int maxSize);
 		void setColor(int i,float h,float s,float v);
 		SSegment getSegment(int type,int number);
 		void learnPixel(Vec3b a,int type = 1);
@@ -75,8 +77,10 @@ class CSegmentation
 		Mat *hsv;
 		unsigned char colorArray[64*64*64];
 		SSegment segmentArray[MAX_SEGMENTS];
+		SSegment bigSegmentArray[MAX_SEGMENTS];
 		bool debug;
 		int numSegments;
+		int numBigSegments;
 		float minConvexity,minCircularity;
 		float ht[4];
 		float st[4];

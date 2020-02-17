@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/tennis-left/map.yaml"
+filename = "../maps/tennis-left-2/map.yaml"
 maxObservableDistance = 4.0
 
 rotAmount = 0.02
@@ -124,8 +124,8 @@ if __name__ == "__main__":
         img = cv2.line(img, br, bl, colour, lineWidth)
         img = cv2.line(img, bl, tl, colour, lineWidth)
         
-        nWaypointsX = int(((boxW-0.01)/(2*diagMaxObservableDistance)) + 1) 
-        nWaypointsY = int(((boxH-0.01)/(2*diagMaxObservableDistance)) + 1) 
+        nWaypointsX = int(((boxW-2)/(2*diagMaxObservableDistance)) + 1) 
+        nWaypointsY = int(((boxH-2)/(2*diagMaxObservableDistance)) + 1) 
 
         xOffset = (((2*diagMaxObservableDistance) * nWaypointsX) - boxW) / 2
         yOffset = (((2*diagMaxObservableDistance) * nWaypointsY) - boxH) / 2

@@ -29,6 +29,8 @@ typedef struct{
 	float error;
 	float esterror;
 	int ID;
+	int numContours;
+	int validity;
 }STrackedObject;
 
 class CTransformation

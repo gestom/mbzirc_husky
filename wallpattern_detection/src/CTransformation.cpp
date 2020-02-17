@@ -41,6 +41,8 @@ STrackedObject CTransformation::transform2D(SSegment o)
 	r.x = r.x/r.z;
 	r.y = r.y/r.z;
 	r.z = 0;
+	r.numContours = o.contours;
+	r.validity = o.valid;
 	return r; 	
 }
 
