@@ -393,7 +393,6 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = ARMRESET;
           break;
         case ARMTOSTORAGE:
-
           if (armToStorage() == 0)
             nextState = ARMGRASP;
           else
@@ -429,7 +428,11 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = BRICKPLACE;
           } else {
             eraseFromInventory();
-            fetchNextBrickData();
+            if (fetchNextBrickData() == -1) {
+              ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+              nextState = SUCCESS;
+              break;
+            }
             nextState = ARMTOSTORAGE;
           }
           break;
@@ -449,7 +452,11 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = ARMTOSTORAGE;
             eraseFromInventory();
           }
-          fetchNextBrickData();
+          if (fetchNextBrickData() == -1) {
+            ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+            nextState = SUCCESS;
+            break;
+          }
       }
     }
     usleep(1200000);

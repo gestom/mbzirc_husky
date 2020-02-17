@@ -790,7 +790,7 @@ SSegment CSegmentation::findSeparatedSegment(Mat *image,Mat *coords,SSegment *ou
     if (drawSegments){
         for (int i = 0;i<len;i++){
             j = buffer[i];
-            if (j > 1000000) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0); else image->at<Vec3b>(i/width,i%width) = Vec3f(255,255,255);
+            if (j > 1000000) image->at<Vec3b>(i/width,i%width) = Vec3f(0,0,0);
         }
     }
     free(buffer);
