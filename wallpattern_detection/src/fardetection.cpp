@@ -22,7 +22,10 @@
 #include <mbzirc_husky_msgs/wallPatternDetect.h>
 #include <wallpattern_detection/wallpattern_detectionConfig.h>
 #include <mbzirc_husky_msgs/wallPatternPosition.h>
+#include <mbzirc_husky_msgs/Gen3ArmStatus.h>
 
+#include <mbzirc_husky/setPoi.h>
+#include <mbzirc_husky/getPoi.h>
 
 #include <sys/time.h>
 #include <stdlib.h>
@@ -50,6 +53,7 @@ int numDetectionAttempts = 0;
 string uav_name;
 image_transport::Subscriber imageSub;
 ros::Subscriber subInfo;
+ros::Subscriber armInfo;
 ros::Publisher command_pub;
 ros::Publisher posePub;
 image_transport::Publisher imagePub;
@@ -63,7 +67,7 @@ float cX = defaultImageWidth/2.0;
 float cY = defaultImageHeight/2.0;
 float fPix = 1.0;
 bool gotCameraInfo = false;
-
+float armAngle = 0;
 
 String colorMap;
 int segmentType = 1;
@@ -152,22 +156,22 @@ std::string colormap_filename;
 //parameter reconfiguration
 void reconfigureCallback(wallpattern_detection::wallpattern_detectionConfig &config, uint32_t level) 
 {
-  // ROS_INFO("Reconfigure Request: %lf %lf %lf %lf %lf %lf %lf", config.outputImageIndex);
-  outputImageIndex = config.outputImageIndex;
-  manualThreshold = config.manualThreshold;
-  maxSegmentSize = config.maxBlobSize;
-  minSegmentSize = config.minBlobSize;
-  segmentation.minCircularity = config.minCircularity;
-  minRoundness = config.minRoundness;
-  circleDiameter = config.objectDiameter;
-  histogramScale = config.histogramScale;
-  visualDistanceToleranceRatio = config.visualDistanceToleranceRatio;
-  visualDistanceToleranceAbsolute = config.visualDistanceToleranceAbsolute;
-  longObjectDetection = config.longObject;
-//  ROS_INFO("Reconfigure Request min circularity, min convexity: %lf %lf %lf", config.minCircularity, config.manualThreshold,circleDiameter);
-  //outerDimMaster = config.masterDiameter/100.0;
-  //distanceTolerance = config.distanceTolerance/100.0;
-  //detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
+	// ROS_INFO("Reconfigure Request: %lf %lf %lf %lf %lf %lf %lf", config.outputImageIndex);
+	outputImageIndex = config.outputImageIndex;
+	manualThreshold = config.manualThreshold;
+	maxSegmentSize = config.maxBlobSize;
+	minSegmentSize = config.minBlobSize;
+	segmentation.minCircularity = config.minCircularity;
+	minRoundness = config.minRoundness;
+	circleDiameter = config.objectDiameter;
+	histogramScale = config.histogramScale;
+	visualDistanceToleranceRatio = config.visualDistanceToleranceRatio;
+	visualDistanceToleranceAbsolute = config.visualDistanceToleranceAbsolute;
+	longObjectDetection = config.longObject;
+	//  ROS_INFO("Reconfigure Request min circularity, min convexity: %lf %lf %lf", config.minCircularity, config.manualThreshold,circleDiameter);
+	//outerDimMaster = config.masterDiameter/100.0;
+	//distanceTolerance = config.distanceTolerance/100.0;
+	//detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
 }
 
 void learnSegments(int number);
@@ -212,6 +216,55 @@ void saveColors()
 	}
 }
 
+STrackedObject transformPatternPose(STrackedObject object)
+{
+	int inc = 0;
+	geometry_msgs::PoseStamped resultPose,pose;
+	STrackedObject result = object;
+	float az = 0;
+	try {
+		float x,y;
+		float armOffsetX = 0;
+		float armOffsetY = 0;
+		x = cos(armAngle)*object.x - sin(armAngle)*object.y+armOffsetX;
+		y = sin(armAngle)*object.x + cos(armAngle)*object.y+armOffsetY;
+		printf("Main object: %.2f %.2f %.2f %.2f %i %i %.2f\n",x,y,object.x,object.y,object.numContours,numDetectionAttempts,armAngle);
+		pose.header.frame_id = "base_link";
+		pose.header.stamp = ros::Time::now();
+		pose.pose.position.x = x;
+		pose.pose.position.y = y;
+		pose.pose.position.z = 0;
+		pose.pose.orientation.x = 0;
+		pose.pose.orientation.y = 0;
+		pose.pose.orientation.z = 0;
+		pose.pose.orientation.w = 1;
+		listener->waitForTransform("/base_link","map",pose.header.stamp,ros::Duration(0.2));
+		listener->transformPose("/map",pose,resultPose);
+		result.x = resultPose.pose.position.x; 
+		result.y = resultPose.pose.position.y;
+		return result;
+	}
+	catch (tf::TransformException &ex) {
+		ROS_ERROR("%s",ex.what());
+		result.validity = 0;
+		return result;
+	}
+}
+
+int reportPosition(STrackedObject object)
+{
+	    mbzirc_husky::setPoi poi;
+            poi.request.type = 3;
+            poi.request.x = object.x;
+            poi.request.y = object.y;
+            poi.request.covariance = 0;
+            if (ros::service::call("set_map_poi", poi)){
+                cout << "Wall pattern sent to symbolic map" << endl;
+            } else {
+                cout << "Error calling service" << endl;
+            }
+}
+
 int updateRobotPosition()
 {
 	int inc = 0;
@@ -237,20 +290,20 @@ int updateRobotPosition()
 		return -1;
 	}
 }
+
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
 	inFrame.copyTo(frame);
 	timer.reset();
 	timer.start();
-
+	updateRobotPosition();
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
-	STrackedObject object = altTransform->transform2D(segment);
-	printf("Object: %.2f %.2f %.2f %.2f %i\n",segment.x,segment.y,object.x,object.y,numDetectionAttempts);
-
-	if (segment.valid == 1)
-	{
+	if (segment.valid == 1){
+		STrackedObject object = altTransform->transform2D(segment);
+		object = transformPatternPose(object);
+				
 		numDetections++;
 	}
 	//posePub.publish(patternPose);
@@ -270,20 +323,20 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	}
 	//END of segmentation - START calculating global frame coords
 	if (gui){
-	       	imshow("frame",frame);
+		imshow("frame",frame);
 
-	/*processing user input*/
-	key = waitKey(1)%256;
-	if (key == 32) stallImage = !stallImage;
-	printf("STALL %i\n",stallImage);
-	if (key == 'r'){
-		segmentation.resetColorMap();
-		histogram = Mat::zeros(hbins,sbins,CV_32FC1);
-		storedSamples = Mat::zeros(0,3,CV_32FC1);
-	}
-	if (key == 's') segmentation.saveColorMap(colorMap.c_str());
-	if (key == 'c') saveColors();
-	if (key >= '1' && key < '9') segmentType = (key-'0');
+		/*processing user input*/
+		key = waitKey(1)%256;
+		if (key == 32) stallImage = !stallImage;
+		printf("STALL %i\n",stallImage);
+		if (key == 'r'){
+			segmentation.resetColorMap();
+			histogram = Mat::zeros(hbins,sbins,CV_32FC1);
+			storedSamples = Mat::zeros(0,3,CV_32FC1);
+		}
+		if (key == 's') segmentation.saveColorMap(colorMap.c_str());
+		if (key == 'c') saveColors();
+		if (key >= '1' && key < '9') segmentType = (key-'0');
 	}
 	imageNumber++;
 }
@@ -374,6 +427,12 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 	cY = msg->K[5];
 	fPix = msg->K[0];
 }
+ 
+void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr& msg)
+{
+	armAngle = msg->joint_angles[4];
+}
+
 
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
@@ -408,6 +467,7 @@ int main(int argc, char** argv)
 	n->param("uav_name", uav_name, string());
 	n->param("gui", gui, false);
 	n->param("debug", debug, false);
+	gui = true;
 	if (gui) {
 		debug = true;
 		signal (SIGINT,termHandler);
@@ -444,6 +504,7 @@ int main(int argc, char** argv)
 	dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig>::CallbackType dynSer;
 	dynSer = boost::bind(&reconfigureCallback, _1, _2);
 	server.setCallback(dynSer);
+	armInfo = n->subscribe("/kinova/arm_manager/status", 1, armStatusCallback);
 
 	// Debugging PUBLISHERS
 	if (debug) {
