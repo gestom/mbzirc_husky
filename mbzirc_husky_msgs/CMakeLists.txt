@@ -62,4 +62,3 @@ add_dependencies(mbzirc_husky_msgs
 target_link_libraries(mbzirc_husky_msgs
   ${catkin_LIBRARIES}
 )
-
