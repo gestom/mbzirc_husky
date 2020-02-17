@@ -8,6 +8,7 @@ CTSP::CTSP(float ix[],float iy[],int leni)
 	memcpy(x,ix,(len+1)*sizeof(float));
 	memcpy(y,iy,(len+1)*sizeof(float));
 	debug = false;
+	srand (time(NULL));
 }
 
 CTSP::~CTSP()
