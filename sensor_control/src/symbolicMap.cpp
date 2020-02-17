@@ -7,6 +7,7 @@
 #include <mbzirc_husky/symbolicMapConfig.h>
 #include <mbzirc_husky/setPoi.h>
 #include <mbzirc_husky/getPoi.h>
+#include <mbzirc_husky/removePoi.h>
 #include <visualization_msgs/Marker.h>
 #include <vector>
 #include <opencv2/core/types.hpp>
@@ -35,6 +36,7 @@ int hypothesisIdx[8];
 
 //Clustering reconfigure
 double tolerance = 0.5;
+double banTolerance = 0.5;
 
 //Stored waypoints
 std::vector<cv::Point2d> waypoints;
@@ -47,6 +49,18 @@ std::vector<std::vector<cv::Point3d>> redBricks;
 std::vector<std::vector<cv::Point3d>> blueBricks;
 std::vector<std::vector<cv::Point3d>> greenBricks;
 std::vector<std::vector<cv::Point3d>> orangeBricks;
+
+//Points banned from detection
+std::vector<cv::Point3d> bannedRobotDelivery;
+std::vector<cv::Point3d> bannedDronePile;
+std::vector<cv::Point3d> bannedDroneDelivery;
+std::vector<cv::Point3d> bannedRedBricks;
+std::vector<cv::Point3d> bannedBlueBricks;
+std::vector<cv::Point3d> bannedGreenBricks;
+std::vector<cv::Point3d> bannedOrangeBricks;
+
+
+
 
 void publishWaypoints();
 void organisePath();
@@ -61,6 +75,7 @@ void callback(mbzirc_husky::boundsConfig &config, uint32_t level) {
 
 void clusterCallback(mbzirc_husky::symbolicMapConfig &config, uint32_t level) {
         tolerance=config.tolerance;
+        banTolerance=config.banTolerance;
 }
 
 
@@ -83,7 +98,7 @@ cv::Point3d getCenter(std::vector<cv::Point3d> cluster){
 
 	//TODO Add recalculation of covariance 
 	//For now avg
-	res.z= res.z/c_size;
+	res.z= res.z;
 
 	return res;
 }
@@ -103,7 +118,20 @@ bool distanceToCenter(std::vector<cv::Point3d> cluster,cv::Point3d query){
 	else  return false;	
 }	
 
+bool isBanned(std::vector<cv::Point3d> banlist, cv::Point3d query){
+	float d;
+	if(banlist.empty()) return false; 
+	for(int i = 0; i < banlist.size();i++){
 
+		d = dist(banlist[i].x,banlist[i].y,query.x,query.y);
+
+		if(d < banTolerance){
+			return true;
+		}	
+	}
+	return false;	
+
+}
 
 // Take incoming point from service
 // Point type - 0 waypoint, 1 Drone Pile, 2 Drone delivery, 3 robot delivery, 4 red bricks, 5 green, 6 blue, 7 orange 
@@ -112,6 +140,9 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 	cv::Point3d point;
 	point.x = req.x;
 	point.y = req.y;
+	if(req.covariance == 0){
+		point.z = 1;
+	}	
 	point.z = req.covariance;
 	std::vector<cv::Point3d> vPoint;
 	vPoint.clear();
@@ -135,7 +166,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the Drone Pile in symbolic mapc at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedDronePile,point)) {
+
 				//Test Distance to center of all same points to all clusters
 				//If not close to any cluster create a new one 
 				for(int i = 0; i < dronePile.size();i++){
@@ -153,6 +185,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				return true;	
 
 			}
+			ROS_INFO("Looks like banned point");
+			return false;
 			break;
 
 		case 2: if(droneDelivery.empty()) {
@@ -160,7 +194,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the Drone Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedDroneDelivery,point)) {
 				for(int i = 0; i < droneDelivery.size();i++){
 
 					if(distanceToCenter(droneDelivery[i],point)){
@@ -181,7 +215,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the Robot Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedRobotDelivery,point)) {
 				for(int i = 0; i < robotDelivery.size();i++){
 					if(distanceToCenter(robotDelivery[i],point)){
 						robotDelivery[i].push_back(point);	
@@ -201,7 +235,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the Red Bricks in  symbolic map at position X: %f Y: %f ", point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedRedBricks,point)) {
 				for(int i = 0; i < redBricks.size();i++){
 					if(distanceToCenter(redBricks[i],point)){
 						redBricks[i].push_back(point);	
@@ -221,7 +255,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the Green Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedGreenBricks,point)) {
 				for(int i = 0; i < greenBricks.size();i++){
 					if(distanceToCenter(greenBricks[i],point)){
 						greenBricks[i].push_back(point);	
@@ -241,7 +275,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the Blue Bricks in symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedBlueBricks,point)) {
 				for(int i = 0; i < blueBricks.size();i++){
 					if(distanceToCenter(blueBricks[i],point)){
 						blueBricks[i].push_back(point);	
@@ -261,7 +295,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				ROS_INFO("Setting first point for the orange Bricks in  symbolic map at position X: %f Y: %f",point.x,point.y);
 				res.res = true;
 				return true;
-			} else {
+			} else if(!isBanned(bannedOrangeBricks,point)) {
+
 				for(int i = 0; i < orangeBricks.size();i++){
 					if(distanceToCenter(orangeBricks[i],point)){
 						orangeBricks[i].push_back(point);	
@@ -287,12 +322,12 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	int incoming_type = req.type;
 	cv::Point3d point;
 
-	ROS_INFO("Incomin service of type %i ", req.type);	
+	ROS_INFO("Get point service of type %i ", req.type);	
 	switch (incoming_type){
 		case 0: if(!waypoints.empty()){
 				cv::Point2d wayp;
 				wayp = waypoints[waypointIdx];				
-                		publishWaypoints();
+				publishWaypoints();
 				res.x.push_back(wayp.x);
 				res.y.push_back(wayp.y);
 				res.type = incoming_type;
@@ -307,7 +342,18 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			}	
 			break;
 		case 1: if(!dronePile.empty()){
-					std::sort(dronePile.begin(), dronePile.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+
+				std::sort(dronePile.begin(), dronePile.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < dronePile.size();i++){
 					point = getCenter(dronePile[i]);
 					res.x.push_back(point.x);
@@ -315,6 +361,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					res.type = incoming_type;
 					ROS_INFO("Retrieving center point for the Drone Pile from symbolic map, point type %i at position X: %f Y: %f for cluster %i", req.type,point.x,point.y,i);
 				}
+				ROS_INFO("Test on position %f %f",res.x[0],res.y[0]);
 				return true;
 
 			}
@@ -325,7 +372,17 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 2:	if(!droneDelivery.empty()){
-					std::sort(droneDelivery.begin(), droneDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+				std::sort(droneDelivery.begin(), droneDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < droneDelivery.size();i++){
 					point = getCenter(droneDelivery[i]);
 					res.x.push_back(point.x);
@@ -342,7 +399,17 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 3: if(!robotDelivery.empty()){
-					std::sort(robotDelivery.begin(), robotDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+				std::sort(robotDelivery.begin(), robotDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < robotDelivery.size();i++){
 					point = getCenter(robotDelivery[i]);
 					res.x.push_back(point.x);
@@ -359,7 +426,17 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 4: if(!redBricks.empty()){
-					std::sort(redBricks.begin(), redBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+				std::sort(redBricks.begin(), redBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < redBricks.size();i++){
 					point = getCenter(redBricks[i]);
 					res.x.push_back(point.x);
@@ -376,7 +453,17 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 5: if(!greenBricks.empty()){
-					std::sort(greenBricks.begin(), greenBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+				std::sort(greenBricks.begin(), greenBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < greenBricks.size();i++){
 					point = getCenter(greenBricks[i]);
 					res.x.push_back(point.x);
@@ -393,7 +480,17 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 6:	if(!blueBricks.empty()){
-					std::sort(blueBricks.begin(), blueBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+				std::sort(blueBricks.begin(), blueBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < blueBricks.size();i++){
 					point = getCenter(blueBricks[i]);
 					res.x.push_back(point.x);
@@ -410,7 +507,17 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 
 			break;
 		case 7: if(!orangeBricks.empty()){
-					std::sort(orangeBricks.begin(), orangeBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ return a.size() > b.size(); });
+				std::sort(orangeBricks.begin(), orangeBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
+						int sumA = 0;
+						int sumB = 0;
+						for(int i = 0; i < a.size();i++){
+						sumA+= a[i].z;
+						}		
+						for(int j = 0; j < b.size();j++){
+						sumB+= b[j].z;
+						}		
+
+						return sumA > sumB; });
 				for(int i = 0; i < orangeBricks.size();i++){
 					point = getCenter(orangeBricks[i]);
 					res.x.push_back(point.x);
@@ -429,6 +536,177 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	ROS_INFO("Wrong data format for obtaining data from symbolic map");
 	return false;	
 }
+
+bool removePointCallback(mbzirc_husky::removePoi::Request &req, mbzirc_husky::removePoi::Response &res){
+	int incoming_type = req.type;
+	cv::Point3d point;
+	point.x = req.x; 
+	point.y = req.y;
+	ROS_INFO("Incomin remove cluster service of type %i ", req.type);	
+	switch (incoming_type){
+		case 0: ROS_INFO("We dont want to remove waypoints");return true;break; 
+		case 1: if(!dronePile.empty()){
+				for(int i = 0; i < dronePile.size();i++){
+					//Look for cluster within range
+					if(distanceToCenter(dronePile[i],point)){
+						if(!isBanned(bannedDronePile,point)) {
+							dronePile.erase(dronePile.begin()+i);
+							bannedDronePile.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+					
+				}
+				ROS_INFO("Already removed cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("Cannot remove from EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}	
+
+			break; 
+		case 2:	if(!droneDelivery.empty()){
+				for(int i = 0; i < droneDelivery.size();i++){
+					if(distanceToCenter(droneDelivery[i],point)){
+						if(!isBanned(bannedDroneDelivery,point)) {
+							droneDelivery.erase(droneDelivery.begin()+i);
+							bannedDroneDelivery.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+				}
+				ROS_INFO("Already removed cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}	
+
+			break;
+		case 3:	if(!robotDelivery.empty()){
+				for(int i = 0; i < robotDelivery.size();i++){
+					if(distanceToCenter(robotDelivery[i],point)){
+						if(!isBanned(bannedRobotDelivery,point)) {
+							robotDelivery.erase(robotDelivery.begin()+i);
+							bannedRobotDelivery.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+				}
+				ROS_INFO("Already removed cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}
+			
+			break;	
+		case 4:	if(!redBricks.empty()){
+				for(int i = 0; i < redBricks.size();i++){
+					if(distanceToCenter(redBricks[i],point)){
+						if(!isBanned(bannedRedBricks,point)) {
+							redBricks.erase(redBricks.begin()+i);
+							bannedRedBricks.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+				}
+				ROS_INFO("Already removed cluster or Point not close to any cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}
+			
+			break;	
+		case 5:	if(!greenBricks.empty()){
+				for(int i = 0; i < greenBricks.size();i++){
+					if(distanceToCenter(greenBricks[i],point)){
+						if(!isBanned(bannedGreenBricks,point)) {
+							greenBricks.erase(greenBricks.begin()+i);
+							bannedGreenBricks.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+				}
+				ROS_INFO("Already removed cluster or Point not close to any cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}
+			
+			break;	
+		case 6:	if(!blueBricks.empty()){
+				for(int i = 0; i < blueBricks.size();i++){
+					if(distanceToCenter(blueBricks[i],point)){
+						if(!isBanned(bannedBlueBricks,point)) {
+							blueBricks.erase(blueBricks.begin()+i);
+							bannedBlueBricks.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+				}
+				ROS_INFO("Already removed cluster or Point not close to any cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}
+			
+			break;	
+		case 7:	if(!orangeBricks.empty()){
+				for(int i = 0; i < orangeBricks.size();i++){
+					if(distanceToCenter(orangeBricks[i],point)){
+						if(!isBanned(bannedOrangeBricks,point)) {
+							orangeBricks.erase(orangeBricks.begin()+i);
+							bannedOrangeBricks.push_back(point);		
+							ROS_INFO("Removing cluster for the Drone Pile from symbolic map, point type %i for cluster %i, created new banlist", req.type,i);
+							res.res = true;
+							return true;
+							break;
+						}
+					}
+				}
+				ROS_INFO("Already removed cluster or Point not close to any cluster");
+				return true;
+			}
+			else {
+				ROS_INFO("EMPTY MAP FOR TYPE %i! ",req.type);
+				return false;
+			}
+			
+			break;	
+	}
+	ROS_INFO("Wrong data format for obtaining data from symbolic map");
+	return false;	
+}
+
+
 
 void loadWaypoints(){
 	const char* filename = (char*) "./src/mbzirc_husky/sensor_control/maps/tennis-left-2/map-waypoints.txt";
@@ -572,6 +850,7 @@ int main(int argc, char** argv)
 	// service servers
 	ros::ServiceServer set_map_srv = n.advertiseService("set_map_poi", setPointCallback);
 	ros::ServiceServer get_map_srv = n.advertiseService("get_map_poi", getPointCallback);
+	ros::ServiceServer remove_map_srv = n.advertiseService("remove_map_poi", removePointCallback);
 
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::boundsConfig> dynServer;
@@ -591,6 +870,13 @@ int main(int argc, char** argv)
 	blueBricks.clear();
 	greenBricks.clear();
 	orangeBricks.clear();
+	bannedRobotDelivery.clear();
+	bannedDronePile.clear();
+	bannedDroneDelivery.clear();
+	bannedRedBricks.clear();
+	bannedBlueBricks.clear();
+	bannedGreenBricks.clear();
+	bannedOrangeBricks.clear();
 	loadWaypoints();
 	ros::spin();
 
