@@ -40,17 +40,17 @@ include_directories(
 )
 
 add_executable(kortex_control_manager src/control_manager.cpp)
-#add_executable(fake_manager src/fake_manager.cpp)
+add_executable(fake_manager src/fake_manager.cpp)
 
 target_link_libraries(kortex_control_manager
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
 
-#target_link_libraries(fake_manager
-#  ${catkin_LIBRARIES}
-#  ${Boost_LIBRARIES}
-#)
+target_link_libraries(fake_manager
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+)
 
 add_dependencies(
   kortex_control_manager
@@ -58,8 +58,8 @@ add_dependencies(
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
 )
 
-#add_dependencies(
-#  fake_manager 
-#  ${catkin_EXPORTED_TARGETS}
-#  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#)
+add_dependencies(
+  fake_manager 
+  ${catkin_EXPORTED_TARGETS}
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+)

@@ -1,0 +1,9 @@
+# published topics from the husky (it will receive all messages sent through nimbro)
+
+topics:
+ - name: "odometry/filtered"
+   compress: false # enable bz2 compression
+   rate: 2.0 # rate limit at 5Hz
+#services:
+#  - name: "/*/control_manager/mpc_tracker/fly_to_trajectory_start"
+#    type: std_srvs/Trigger 
