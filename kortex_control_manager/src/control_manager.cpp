@@ -837,16 +837,16 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 
   Pose3d goal_pose = end_effector_pose;
 
-  /* double ascent; */
-  /* if (req.layer == 0) { */
-  /*   ascent = 0.35; */
-  /* } else if (req.layer == 1) { */
-  /*   ascent = 0.23; */
-  /* } else { */
-  /*   ascent = 0.05; */
-  /* } */
+   double ascent;
+   if (req.layer == 0) {
+     ascent = 0.2 ;
+   } else if (req.layer == 1) { 
+     ascent = 0.1; 
+   } else { 
+     ascent = 0.05;
+   }
 
-  goal_pose.pos.z() = 0.62;
+  goal_pose.pos.z() += ascent;
   bool goal_reached = goToAction(goal_pose);
 
   if (!brick_attached) {
@@ -858,12 +858,7 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
     goToAnglesAction(storage_poses_jointspace[storage_index]);
     ungrip();
   }
-  /* int i = 0; */
-  /* while (brick_attached && !goal_reached && i < 5) { */
-  /*   goal_pose.pos.z() = 0.63 - i; */
-  /*   goal_reached      = goToAction(goal_pose); */
-  /*   i++; */
-  /* } */
+  
   if (!goal_reached) {
     ROS_ERROR("[%s]: Critical failure, cannot lift brick!", ros::this_node::getName().c_str());
     return false;

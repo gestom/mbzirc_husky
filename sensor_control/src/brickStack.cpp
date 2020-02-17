@@ -86,14 +86,14 @@ typedef enum
   IDLE = 0,
   TEST1,
   TEST2,
-  ARMRESET,          // arm goes to dock position
-  ARMTOSTORAGE,      //
-  ARMGRASP,          //
-  ARMPICKUP,         //
+  ARMRESET,          // arm goes to home position
+  ARMTOSTORAGE,      // arm reaches to storage
+  ARMGRASP,          // move down until magnet attaches
+  ARMPICKUP,         // move up
   ARMTOPLACEMENT,    // arm goes to position above the placement pattern
   BRICKPLACE,        // magnet is moved to to a given height
   BRICKRELEASE,      // brick is put into the storage and magnet released
-  MOVE_TO_NEXT_POS,  //
+  MOVE_TO_NEXT_POS,  // drive to position to place next brick
   TERMINALSTATE,     // marks terminal state
   FINAL,
   STOPPING,
@@ -328,6 +328,11 @@ int disposeBrick() {
   }
   ROS_INFO("BRICK DISPOSAL FAILED");
   return -1;
+}
+
+// TODO
+int moveToNextPosition(){
+  
 }
 
 int fetchNextBrickData() {
