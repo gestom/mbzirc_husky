@@ -839,9 +839,9 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 
    double ascent;
    if (req.layer == 0) {
-     ascent = 0.2 ;
+     ascent = 0.35;
    } else if (req.layer == 1) { 
-     ascent = 0.1; 
+     ascent = 0.15; 
    } else { 
      ascent = 0.05;
    }
@@ -853,13 +853,9 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
     ROS_ERROR("[%s]: Brick lost during ascent!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
-  }else{
-    int storage_index = getStorageIndex(req.position, req.layer);
-    goToAnglesAction(storage_poses_jointspace[storage_index]);
-    ungrip();
   }
-  
-  if (!goal_reached) {
+
+  if(!goal_reached) {
     ROS_ERROR("[%s]: Critical failure, cannot lift brick!", ros::this_node::getName().c_str());
     return false;
   }
