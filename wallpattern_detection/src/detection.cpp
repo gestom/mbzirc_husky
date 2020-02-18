@@ -854,7 +854,7 @@ int main(int argc, char** argv)
     n->param("gui", gui, false);
     n->param("debug", debug, false);
 
-    // gui = true;
+    gui = false;
 
     if (gui) {
         debug = true;
