@@ -667,11 +667,10 @@ void explore()
 void moveToBrickPile()
 {
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(2.2, -1.3, -0.4);
+    moveToBrickPosition(2.2, -1.3, -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(1.6, -0.5, -0.4);   
-    moveToBrickPosition(0.8, -0.5, -0.4);   
-    moveToBrickPosition(1.6, -0.5, -0.4);   
+    moveToBrickPosition(1.6, -0.5, -0.4, 1);
+    moveToBrickPosition(0.8, -0.5, -0.4, 0.7);   
            
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
@@ -712,27 +711,6 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
 
-    /*float frontNormalX = dy;
-    float frontNormalY = -dx;
-
-    //normalise normals
-    float magnitude = pow(pow(frontNormalX, 2) + pow(frontNormalY,2), 0.5);
-    frontNormalX /= magnitude;
-    frontNormalY /= magnitude;
-    float gradientX = dx / magnitude;
-    float gradientY = dy / magnitude;
-
-    float wayPointX = x;
-    float wayPointY = y;
-    float originX = brickStackRedX;
-    float originY = brickStackRedY;
-
-    float mapWPX = originX + (frontNormalX * wayPointY) + (gradientX * wayPointX);
-    float mapWPY = originY + (frontNormalY * wayPointY) + (gradientY * wayPointX);
-
-    ROS_INFO("Markers: %f %f %f %f %f %f\n",originX,originY,frontNormalX,frontNormalY,wayPointX,wayPointY);
-    ROS_INFO("MOVING TO MAP POS %f %f", mapWPX, mapWPY);*/
-
     visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = ros::Time::now();
@@ -768,20 +746,42 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
     goal.target_pose.pose.orientation.w = orientationW;
 
     movebaseAC->sendGoal(goal);
-    movebaseAC->waitForResult(ros::Duration(180, 0));
-    actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
-    ROS_INFO("Move base state %s", mbState.getText());
+    
+	while(ros::ok())
+	{	
+		usleep(500000);
+		
+		tf::TransformListener listener;
+		try
+		{
+			geometry_msgs::PoseStamped pose;
+			pose.header.frame_id = "base_link";
+			pose.header.stamp = ros::Time(0);
+			pose.pose.position.x = 0;
+			pose.pose.position.y = 0;
+			pose.pose.position.z = 0;
+			pose.pose.orientation.x = 0;
+			pose.pose.orientation.y = 0;
+			pose.pose.orientation.z = 0;
+			pose.pose.orientation.w = 1;
+			listener.waitForTransform("/base_link", "map", ros::Time(0), ros::Duration(1.0));
+			geometry_msgs::PoseStamped newPose;
+			listener.transformPose("/map", pose, newPose);
 
-    if(mbState == actionlib::SimpleClientGoalState::SUCCEEDED)
-    {
-        ROS_INFO("Move target achieved");
-        return 0;
-    }
-    else
-    {
-        ROS_INFO("Move base timed out, current state: %s", mbState.getText().c_str());
-        return -1;
-    }
+			float dx = newPose.pose.position.x - x;
+			float dy = newPose.pose.position.y - y;
+
+			if (sqrt(dx*dx+dy*dy) < 1.5)
+			{
+				break;
+			}
+		}
+		catch (tf::TransformException &ex)
+		{
+			ROS_INFO("Error looking up transform %s", ex.what());
+			return -1;
+		}
+	}	
 }
 
 int moveToMapPoint(float x, float y, float orientationZ, float orientationW)
