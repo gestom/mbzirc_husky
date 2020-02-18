@@ -34,6 +34,8 @@ int waypointIdx = 0;
 float maxObservationDistance = 4.0f;
 int hypothesisIdx[8];
 
+bool patternRecognised = false;
+
 //Clustering reconfigure
 double tolerance = 0.5;
 double banTolerance = 0.5;
@@ -152,7 +154,15 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 
 	//Waypoint init 
 	cv::Point2d wayp;
-
+	
+	//Pattern found
+	if(req.type == 3 && req.covariance == 666){
+		patternRecognised = true;
+		robotDelivery.clear();
+		robotDelivery.push_back(vPoint);
+		res.res = true;
+		return true;	
+	}	
 	switch (req.type){
 		case 0: ROS_INFO("Setting point for the waypoints symbolic map at position X: %f Y: %f", point.x,point.y);
 			wayp.x = req.x;
@@ -211,26 +221,33 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				res.res = true;
 				return true;	
 			}
+			ROS_INFO("Looks like banned point");
+			return false;
 			break;
-		case 3: if(robotDelivery.empty()) {
-				robotDelivery.push_back(vPoint);
-				ROS_INFO("Setting first point for the Robot Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
-				res.res = true;
-				return true;
-			} else if(!isBanned(bannedRobotDelivery,point)) {
-				for(int i = 0; i < robotDelivery.size();i++){
-					if(distanceToCenter(robotDelivery[i],point)){
-						robotDelivery[i].push_back(point);	
-						ROS_INFO("Setting point for the Robot Delivery in symbolic map at position X: %f Y: %f cluster %i",point.x,point.y, i);
-						res.res = true;
-						return true;
+		case 3: if(!patternRecognised){
+				if(robotDelivery.empty()) {
+					robotDelivery.push_back(vPoint);
+					ROS_INFO("Setting first point for the Robot Delivery in symbolic map at position X: %f Y: %f", point.x,point.y);
+					res.res = true;
+					return true;
+				} else if(!isBanned(bannedRobotDelivery,point)) {
+					for(int i = 0; i < robotDelivery.size();i++){
+						if(distanceToCenter(robotDelivery[i],point)){
+							robotDelivery[i].push_back(point);	
+							ROS_INFO("Setting point for the Robot Delivery in symbolic map at position X: %f Y: %f cluster %i",point.x,point.y, i);
+							res.res = true;
+							return true;
+						}
 					}
+					ROS_INFO ("Point for Robot Delivery way to far from previous at position X: %f Y: %f setting up new cluster",point.x,point.y);
+					robotDelivery.push_back(vPoint);
+					res.res = true;
+					return true;	
 				}
-				ROS_INFO ("Point for Robot Delivery way to far from previous at position X: %f Y: %f setting up new cluster",point.x,point.y);
-				robotDelivery.push_back(vPoint);
-				res.res = true;
-				return true;	
-			}		
+				ROS_INFO("Looks like banned point");
+				return true;
+			}	
+			return true;	
 			break;
 		case 4: if(redBricks.empty()) {
 				redBricks.push_back(vPoint);
@@ -251,6 +268,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				res.res = true;
 				return true;	
 			}
+			ROS_INFO("Looks like banned point");
+			return true;
 			break;
 		case 5: if(greenBricks.empty()) {
 				greenBricks.push_back(vPoint);
@@ -271,6 +290,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				res.res = true;
 				return true;	
 			}
+			ROS_INFO("Looks like banned point");
+			return true;
 			break;
 		case 6: if(blueBricks.empty()) {
 				blueBricks.push_back(vPoint);
@@ -291,6 +312,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				res.res = true;
 				return true;	
 			}
+			ROS_INFO("Looks like banned point");
+			return true;
 			break;
 		case 7: if(orangeBricks.empty()) {
 				orangeBricks.push_back(vPoint);
@@ -312,6 +335,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 				res.res = true;
 				return true;	
 			}
+			ROS_INFO("Looks like banned point");
+			return true;
 			break;
 	}
 	ROS_INFO("Wrong input data");
