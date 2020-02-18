@@ -837,34 +837,25 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 
   Pose3d goal_pose = end_effector_pose;
 
-  /* double ascent; */
-  /* if (req.layer == 0) { */
-  /*   ascent = 0.35; */
-  /* } else if (req.layer == 1) { */
-  /*   ascent = 0.23; */
-  /* } else { */
-  /*   ascent = 0.05; */
-  /* } */
+   double ascent;
+   if (req.layer == 0) {
+     ascent = 0.35;
+   } else if (req.layer == 1) { 
+     ascent = 0.15; 
+   } else { 
+     ascent = 0.05;
+   }
 
-  goal_pose.pos.z() = 0.62;
+  goal_pose.pos.z() += ascent;
   bool goal_reached = goToAction(goal_pose);
 
   if (!brick_attached) {
     ROS_ERROR("[%s]: Brick lost during ascent!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
-  }else{
-    int storage_index = getStorageIndex(req.position, req.layer);
-    goToAnglesAction(storage_poses_jointspace[storage_index]);
-    ungrip();
   }
-  /* int i = 0; */
-  /* while (brick_attached && !goal_reached && i < 5) { */
-  /*   goal_pose.pos.z() = 0.63 - i; */
-  /*   goal_reached      = goToAction(goal_pose); */
-  /*   i++; */
-  /* } */
-  if (!goal_reached) {
+
+  if(!goal_reached) {
     ROS_ERROR("[%s]: Critical failure, cannot lift brick!", ros::this_node::getName().c_str());
     return false;
   }
@@ -1121,7 +1112,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   if (req.layer != 2) {  // keep blue brick pressed
     goal_pose.pos.z() += descent;
   }
-  // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK
+  // TODO do not home after this
   goToAction(goal_pose);
 
 
@@ -1212,6 +1203,7 @@ bool callbackPressBricksService([[maybe_unused]] std_srvs::TriggerRequest &req, 
   if (brick_attached) {
     ROS_INFO("[%s]: Bricks pressed", ros::this_node::getName().c_str());
   }
+
   ungrip();
   setCartesianVelocity(ZERO_VELOCITY);
 

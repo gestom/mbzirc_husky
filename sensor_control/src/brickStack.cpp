@@ -39,6 +39,8 @@ ros::Subscriber subscriberScan;
 
 /* int   activeStorage   = 5; */
 float currentPosition = 0;
+float robotMoveDistance = 0;
+float currentRobotPosition = 0;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickStackAction> Server;
 Server *                                                              server;
@@ -86,14 +88,14 @@ typedef enum
   IDLE = 0,
   TEST1,
   TEST2,
-  ARMRESET,          // arm goes to dock position
-  ARMTOSTORAGE,      //
-  ARMGRASP,          //
-  ARMPICKUP,         //
+  ARMRESET,          // arm goes to home position
+  ARMTOSTORAGE,      // arm reaches to storage
+  ARMGRASP,          // move down until magnet attaches
+  ARMPICKUP,         // move up
   ARMTOPLACEMENT,    // arm goes to position above the placement pattern
   BRICKPLACE,        // magnet is moved to to a given height
   BRICKRELEASE,      // brick is put into the storage and magnet released
-  MOVE_TO_NEXT_POS,  //
+  MOVE_TO_NEXT_POS,  // drive to position to place next brick
   TERMINALSTATE,     // marks terminal state
   FINAL,
   STOPPING,
@@ -216,7 +218,7 @@ int moveRobot(float distance, EBehaviour nextBeh = NONE) {
   moveDistance = distance;
   printf("Move command:  %.3f\n", distance);
   nextBehaviour = nextBeh;
-  behaviour     = ROBOT_MOVE_ODO;
+  behaviour     = NONE;//ROBOT_MOVE_ODO;//TODO
   return 0;
 }
 
@@ -330,15 +332,21 @@ int disposeBrick() {
   return -1;
 }
 
+// TODO
+int moveToNextPosition(){
+  
+}
+
 int fetchNextBrickData() {
   // query inventory for next brick
   mbzirc_husky::nextBrickPlacement srv;
-  srv.request.offset = 0.0;
+  srv.request.offset = 0.05;
   if (inventoryQueryClient.call(srv.request, srv.response)) {
     if (srv.response.brickType == -1) {
       ROS_INFO("[%s]: No next brick", ros::this_node::getName().c_str());
       return -1;
     }
+    robotMoveDistance 	  = srv.wallOriginOffset - currentRobotPosition; 
     next_brick_type       = srv.response.brickType;
     next_storage_position = srv.response.position;
     next_storage_layer    = srv.response.layer;
@@ -406,6 +414,7 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = ARMRESET;
           break;
         case ARMTOSTORAGE:
+	  moveRobot(robotMoveDistance);
           if (armToStorage() == 0)
             nextState = ARMGRASP;
           else
