@@ -441,7 +441,6 @@ array<vector<Point2d>, 2> runRansac2(vector<SSegment> inSegments, int iterations
         }
     }
 
-
     return ret;
 
 }
@@ -478,8 +477,8 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
 
     if (not segs_to_ransac.empty()){
 
-        array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 15, 25);
-        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 7);
+        array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 10, 35);
+        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 5);
 
         int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
         int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
