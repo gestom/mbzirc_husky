@@ -243,6 +243,7 @@ STrackedObject transformPatternPose(STrackedObject object)
 		result.x = resultPose.pose.position.x; 
 		result.y = resultPose.pose.position.y;
 		printf("Main object: %.2f %.2f %.2f %.2f %.2f %.2f %i %i %.2f\n",result.x,result.y,x,y,object.x,object.y,object.numContours,numDetectionAttempts,armAngle);
+		if (result.numContours > 1) reportPosition(result);
 		return result;
 	}
 	catch (tf::TransformException &ex) {
@@ -258,7 +259,7 @@ int reportPosition(STrackedObject object)
             poi.request.type = 3;
             poi.request.x = object.x;
             poi.request.y = object.y;
-            poi.request.covariance = 0;
+            poi.request.covariance = object.numContours;
             if (ros::service::call("set_map_poi", poi)){
                 cout << "Wall pattern sent to symbolic map" << endl;
             } else {
