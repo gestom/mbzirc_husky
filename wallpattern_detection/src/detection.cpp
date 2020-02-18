@@ -422,7 +422,7 @@ array<vector<Point2d>, 2> runRansac2(vector<SSegment> inSegments, int iterations
     // compute distances
     Point2d pt1 = top_result[0];
     Point2d pt2 = top_result[1];
-    Point2d pt3 = top_result[3];
+    Point2d pt3 = top_result[2];
     Point2d vec = pt1 - pt2;
     Point2d norm_vec(-vec.y, vec.x);
     double c1 = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
@@ -476,96 +476,100 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
-    array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 15, 25);
-    array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 7);
+    if (not segs_to_ransac.empty()){
 
-    int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
-    int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
+        array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 15, 25);
+        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 7);
 
-    #ifdef PATTERN_DEBUG
-    for (int i = 0; i < segmentation.numSegments; i++){
+        int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
+        int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
+
+        #ifdef PATTERN_DEBUG
+        for (int i = 0; i < segmentation.numSegments; i++){
         drawMarker(frame, Point2d(segmentation.segmentArray[i].x, segmentation.segmentArray[i].y), Scalar(255, 0, 0), MARKER_SQUARE);
-    }
-    for (int i = 0; i < 3; i++){
-        for (int j = 0; j < ret_ransac3[i].size(); j++){
-            drawMarker(frame, ret_ransac3[i][j], Scalar(0, 0, 255), MARKER_CROSS);
         }
-    }
-    drawMarker(frame, Point(segmentation.biggest_segment.x, segmentation.biggest_segment.y), Scalar(0, 255, 0), MARKER_STAR);
-
-    imshow("frame", frame);
-    key = waitKey(1)%256;
-    #endif
-
-    ROS_INFO_STREAM("Found " << segmentation.numSegments << " segments");
-    int lines_num = 0;
-    if (ret_ransac3[0].size() > 1 and ret_ransac3[2].size() > 1 and ret_ransac3[1].size() > 3){
-        lines_num = 3;
-    } else if (ret_ransac2[0].size() > 2 and ret_ransac2[1].size() > 2 and r2_sum > 6) {
-        lines_num = 2;
-    } else if (ret_ransac3[1].size() > 3){
-        lines_num = 1;
-    }
-
-    if (got_height and got_img and got_params and lines_num > 0){
-        float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
-        geometry_msgs::Point pt;
-        if (lines_num == 3){
-            Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-            Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY, h);
-            Point2d vec = pt2 - pt1;
-            Point2d norm_vec = Point2d(-vec.y, vec.x);
-            vec = (vec/norm(vec)) * r3_sum;
-            double dist = (pt1.x*norm_vec.x + pt1.y*norm_vec.y)/norm(norm_vec);
-            pt.x = vec.x;
-            pt.y = vec.y;
-            pt.z = dist;
-        } else if (lines_num == 2){
-            Point2d pt1 = transform_using_h(ret_ransac2[0][0] - camera_shift, fPix, cX, cY, h);
-            Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1] - camera_shift, fPix, cX, cY, h);
-            Point2d vec = pt2 - pt1;
-            vec = (vec/norm(vec)) * r2_sum;
-            pt.x = vec.x;
-            pt.y = vec.y;
-            pt.z = -1000;
-        } else if (lines_num == 1){
-            Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-            Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY, h);
-            Point2d vec = pt2 - pt1;
-            vec = (vec/norm(vec)) * double(ret_ransac3[1].size());
-            pt.x = vec.x;
-            pt.y = vec.y;
-            pt.z = -1000;
+        for (int i = 0; i < 3; i++){
+            for (int j = 0; j < ret_ransac3[i].size(); j++){
+                drawMarker(frame, ret_ransac3[i][j], Scalar(0, 0, 255), MARKER_CROSS);
+            }
         }
-        // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
+        drawMarker(frame, Point(segmentation.biggest_segment.x, segmentation.biggest_segment.y), Scalar(0, 255, 0), MARKER_STAR);
 
-        if (pt.x < 0){
-            pt.x = -pt.x;
-            pt.y = -pt.y;
-            pt.z = -pt.z;
+        imshow("frame", frame);
+        key = waitKey(1)%256;
+        #endif
+
+        ROS_INFO_STREAM("Found " << segmentation.numSegments << " segments");
+        int lines_num = 0;
+        if (ret_ransac3[0].size() > 1 and ret_ransac3[2].size() > 1 and ret_ransac3[1].size() > 3){
+            lines_num = 3;
+        } else if (ret_ransac2[0].size() > 2 and ret_ransac2[1].size() > 2 and r2_sum > 6) {
+            lines_num = 2;
+        } else if (ret_ransac3[1].size() > 3){
+            lines_num = 1;
         }
-        line_pub.publish(pt);
 
-    }
-
-    if (lines_num == 0){
-        Point2d seg_c(segmentation.biggest_segment.x, segmentation.biggest_segment.y);
-        if (seg_c.x < left_edge or seg_c.x > right_edge){
+        if (got_height and got_img and got_params and lines_num > 0){
+            float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
             geometry_msgs::Point pt;
-            pt.x = 1000;
-            pt.y = 1000;
-            pt.z = 1000;
+            if (lines_num == 3){
+                Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
+                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY, h);
+                Point2d vec = pt2 - pt1;
+                Point2d norm_vec = Point2d(-vec.y, vec.x);
+                vec = (vec/norm(vec)) * r3_sum;
+                double dist = (pt1.x*norm_vec.x + pt1.y*norm_vec.y)/norm(norm_vec);
+                pt.x = vec.x;
+                pt.y = vec.y;
+                pt.z = dist;
+            } else if (lines_num == 2){
+                Point2d pt1 = transform_using_h(ret_ransac2[0][0] - camera_shift, fPix, cX, cY, h);
+                Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1] - camera_shift, fPix, cX, cY, h);
+                Point2d vec = pt2 - pt1;
+                vec = (vec/norm(vec)) * r2_sum;
+                pt.x = vec.x;
+                pt.y = vec.y;
+                pt.z = -1000;
+            } else if (lines_num == 1){
+                Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
+                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY, h);
+                Point2d vec = pt2 - pt1;
+                vec = (vec/norm(vec)) * double(ret_ransac3[1].size());
+                pt.x = vec.x;
+                pt.y = vec.y;
+                pt.z = -1000;
+            }
+            // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
+
+            if (pt.x < 0){
+                pt.x = -pt.x;
+                pt.y = -pt.y;
+                pt.z = -pt.z;
+            }
             line_pub.publish(pt);
-            ROS_INFO_STREAM("End of pattern found!");
+
         }
-    }
+
+        if (lines_num == 0){
+            Point2d seg_c(segmentation.biggest_segment.x, segmentation.biggest_segment.y);
+            if (seg_c.x < left_edge or seg_c.x > right_edge){
+                geometry_msgs::Point pt;
+                pt.x = 1000;
+                pt.y = 1000;
+                pt.z = 1000;
+                line_pub.publish(pt);
+                ROS_INFO_STREAM("End of pattern found!");
+            }
+        }
 
     #ifdef PATTERN_DEBUG
-	if (gui){
-		imshow("frame",frame);
-		key = waitKey(1)%256;
-	}
+        if (gui){
+            imshow("frame",frame);
+            key = waitKey(1)%256;
+	    }
     #endif
+
+    }
 
     got_img = true;
 }
@@ -854,7 +858,7 @@ int main(int argc, char** argv)
     n->param("gui", gui, false);
     n->param("debug", debug, false);
 
-    // gui = true;
+    gui = false;
 
     if (gui) {
         debug = true;
