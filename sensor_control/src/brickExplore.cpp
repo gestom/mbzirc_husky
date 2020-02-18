@@ -38,6 +38,7 @@ ros::ServiceClient symbolicClient;
 ros::ServiceClient wprosbagClient;
 ros::ServiceClient wallSearchClient;
 ros::ServiceClient brickPileDetectorClient;
+ros::ServiceClient wallPatternInvestigatorClient;
 ros::Subscriber scan_sub;
 ros::Publisher ransac_pub;
 ros::Publisher point_pub;
@@ -777,58 +778,64 @@ int moveToBrickPosition(float x, float y, float orientationOffset)
 
 void investigateWallPattern(float approachAngle)
 {
-    mbzirc_husky::getPoi srv;
-    srv.request.type = 3;
-    if(symbolicClient.call(srv))
-    {
-        if(src.response.covariance[0] > covariancePattern)
-        {
-            float centreX = src.response.x[0];
-            float centreY = src.response.y[0];
+	mbzirc_husky::getPoi srv;
+	srv.request.type = 3;
+	if(symbolicClient.call(srv))
+	{
+		if(src.response.covariance[0] > covariancePattern)
+		{
+			float centreX = src.response.x[0];
+			float centreY = src.response.y[0];
 
-            float wallPatternRadius = 3.0;
+			float wallPatternRadius = 3.0;
 
-            tf::TransformListener listener;
-            try
-            {
-                geometry_msgs::PoseStamped pose;
-                pose.header.frame_id = "base_link";
-                pose.header.stamp = ros::Time(0);
-                pose.pose.position.x = 0;
-                pose.pose.position.y = 0;
-                pose.pose.position.z = 0;
-                pose.pose.orientation.x = 0;
-                pose.pose.orientation.y = 0;
-                pose.pose.orientation.z = 0;
-                pose.pose.orientation.w = 1;
-                listener.waitForTransform("/base_link", "map", ros::Time(0), ros::Duration(1.0));
-                geometry_msgs::PoseStamped newPose;
-                listener.transformPose("/map", pose, newPose);
+			tf::TransformListener listener;
+			try
+			{
+				geometry_msgs::PoseStamped pose;
+				pose.header.frame_id = "base_link";
+				pose.header.stamp = ros::Time(0);
+				pose.pose.position.x = 0;
+				pose.pose.position.y = 0;
+				pose.pose.position.z = 0;
+				pose.pose.orientation.x = 0;
+				pose.pose.orientation.y = 0;
+				pose.pose.orientation.z = 0;
+				pose.pose.orientation.w = 1;
+				listener.waitForTransform("/base_link", "map", ros::Time(0), ros::Duration(1.0));
+				geometry_msgs::PoseStamped newPose;
+				listener.transformPose("/map", pose, newPose);
 
-                float vecX = centreX - newPose.pose.position.x;
-                float vecY = centreY - newPose.pose.position.y;
-                
-		        float mag = sqrt(vecX*vecX+vecY*vecY)
-                vecX = (vecX / mag) * (mag - wallPatternRadius);
-                vecY = (vecY / mag) * (mag - wallPatternRadius);
+				float vecX = centreX - newPose.pose.position.x;
+				float vecY = centreY - newPose.pose.position.y;
 
-                vecX = newPose.pose.position.x + vecX;
-                vecY = newPose.pose.position.y + vecY;
+				float mag = sqrt(vecX*vecX+vecY*vecY)
+					vecX = (vecX / mag) * (mag - wallPatternRadius);
+				vecY = (vecY / mag) * (mag - wallPatternRadius);
 
-                moveToMapPoint(vecX, vecY, 0, 1, 0.5);
+				vecX = newPose.pose.position.x + vecX;
+				vecY = newPose.pose.position.y + vecY;
 
-                //call to service here
-                //
-                //check check if symbolic map contains magic number, if so change state to EXPLORE.
-                //if it doesnt, call self recursively setting angle
-            }
-            catch (tf::TransformException &ex)
-            {
-                ROS_INFO("Error looking up transform %s", ex.what());
-                return -1;
-            }               
-        }
-    }    
+				moveToMapPoint(vecX, vecY, 0, 1, 0.5);
+
+				mbzirc_husky_msgs::Float64 msg;
+				msg.request.data = 0;
+				wallPatternInvestigatorClient.call(msg);
+
+				mbzirc_husky_msgs::				
+
+				//call to service here
+				//
+				//check check if symbolic map contains magic number, if so change state to EXPLORE.
+				//if it doesnt, call self recursively setting angle
+			}
+			catch (tf::TransformException &ex)
+			{
+				ROS_INFO("Error looking up transform %s", ex.what());
+				return -1;
+			}               
+		}
+	}    
 }
 
 void investigateBricks()
@@ -956,6 +963,12 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                 {
                     state = INVESTIGATEWP;
                 }
+		else if(srcWP.response.covariance[0] == 666)
+		{
+			wallPatternLocationKnown = true;
+			wallPatternLocationX = srcWP.reponse.x;
+			wallPatternLocationY = srcWP.reponse.y;
+		}
             }
             else
                 ROS_INFO("Symbolic map call failed!");
@@ -1032,6 +1045,7 @@ int main(int argc, char** argv)
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
 	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("/get_map_poi");
 	wprosbagClient = n.serviceClient<std_srvs::Trigger>("/shootVelodyne");
+	wallPatternInvestigatorClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	//brickPileDetectorClient = n.serviceClient<detector::brick_pile>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scan",100, scanCallback);	
