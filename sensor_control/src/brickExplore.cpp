@@ -73,10 +73,13 @@ float spdLimit = 0.3;
 float realConst = 1;
 float dispConst = 3; 
 float fwSpeed = 0.1;
+int covarianceBricks = 500;
+int covariancePattern = 1500;
 
 int misdetections = 0;
 
 //brickStackLocation in map frame
+bool useRansac = false;
 bool brickStackLocationKnown = false;
 bool precisePositionFound = false;
 float brickStackRedX = -1.27;
@@ -114,6 +117,8 @@ void dynamicReconfigureCallback(mbzirc_husky::brick_pileConfig &config, uint32_t
         spdLimit=config.spdLimit;
         realConst=config.realConst;
         dispConst=config.dispConst;
+        covarianceBricks=config.covarianceBricks;
+        covariancePattern=config.covariancePattern;
 }
 
 bool isTerminal(ESprayState state)
@@ -122,10 +127,9 @@ bool isTerminal(ESprayState state)
 	if(state == MOVINGTOBRICKS) return false;
 	if(state == PRECISEBRICKFIND) return false;
 	if(state == BRICKAPPROACH) return false;
-    if(state == EXPLORINGSTACKSITE) return false;
 	if(state == MOVINGTOSTACKSITE) return false;
-    if(state == STACKAPPROACH) return false;
-    if(state == FINAL) return true;
+	if(state == STACKAPPROACH) return false;
+	if(state == FINAL) return true;
 	return true;
 }
 
@@ -614,26 +618,25 @@ void explore()
 	    moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1);
 
 	    /*ROS_INFO("Sending velo points");
-	      std_srvs::Trigger srv;
-	      wprosbagClient.call(srv);
+	    std_srvs::Trigger srv;
+	    wprosbagClient.call(srv);
 
-		ROS_INFO("Searching for bricks");
-		detector::brick_pile_detector bpd;
-		m.request.activate = true;
-		brickPileDetectorClient.call(bpd);
-		
+	    ROS_INFO("Searching for bricks");
+	    detector::brick_pile_detector bpd;
+	    m.request.activate = true;
+	    brickPileDetectorClient.call(bpd);
 
-	      ROS_INFO("Calling wall pattern detect");
-	      mbzirc_husky_msgs::wallPatternDetect m;
-	      m.request.activate = true;
-	      wallSearchClient.call(m);		*/
+	    ROS_INFO("Calling wall pattern detect");
+	    mbzirc_husky_msgs::wallPatternDetect m;
+	    m.request.activate = true;
+	    wallSearchClient.call(m);*/
 
-	    ROS_INFO("Finished calling wall search");
+	    ROS_INFO("Finished calling wp search");
 	    usleep(2000000); 
 
-/*
-	    detector::brick_pile_trigger set activate true
-	    /start_brick_pile_detector*/
+	    /*
+	       detector::brick_pile_trigger set activate true
+	       /start_brick_pile_detector*/
     }
     else
     {
@@ -644,10 +647,10 @@ void explore()
 void moveToBrickPile()
 {
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(2.2, -1.3, -0.4, 1.5);
+    //moveToBrickPosition(2.2, -1.3, -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(1.6, -0.5, -0.4, 1);
-    moveToBrickPosition(0.8, -0.5, -0.4, 0.7);   
+    //moveToBrickPosition(1.6, -0.5, -0.4, 1);
+    //moveToBrickPosition(0.8, -0.5, -0.4, 0.7);   
            
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
@@ -658,6 +661,7 @@ void moveToBrickPile()
 
     //wait for ransac callback
     precisePositionFound = false;
+    useRansac = true;
     state = PRECISEBRICKFIND;
 }
 
@@ -855,23 +859,38 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     else if(goal->goal == 2)
     {
         ROS_INFO("MOVE TO BRICK STACK SITE GOAL RECEIVED");
-        state = EXPLORINGSTACKSITE;
+        state = MOVINGTOSTACKSITE;
     }
 
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
-        {
-		ROS_INFO("Exploring");
-            //begin lidar search for bricks
-            if(brickStackLocationKnown && 1==2)
-            {
-                //state = MOVINGTOBRICKS;
-            }
-            else
-            {
-                explore();
-            }
-        }
+	{
+		mbzirc_husky::getPoi srvR;
+		srvR.request.type = 4;
+		mbzirc_husky::getPoi srvB;
+		srvB.request.type = 5;
+		ROS_INFO("Checking if red and green bricks is found");
+		if(symbolicClient.call(srvR) && symbolicClient.call(srvB))
+		{
+			if(srvR.response.covariance[0] > covarianceBricks && srvB.response.covariance[0] > covarianceBricks)
+			{
+				ROS_INFO("Detected brick piles, checking pattern");
+				mbzirc_husky::getPoi srvPattern;
+				srvPattern.type = 3;
+				if(symbolicClient.call(srvPattern))
+				{
+					if(srvPattern.response.covariance[0] > covariancePattern)
+					{
+						ROS_INFO("Red and green found and pattern, going straight to bricks");
+						state = MOVINGTOBRICKS;	
+						continue;
+					}
+				}
+			}
+		}
+
+		explore();
+	}
         else if(state == MOVINGTOBRICKS)
         {
             moveToBrickPile();
@@ -884,10 +903,6 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         else if(state == BRICKAPPROACH)
         {
             finalApproach();
-        }
-        else if(state == EXPLORINGSTACKSITE)
-        {
-            state = MOVINGTOSTACKSITE;
         }
         else if(state == MOVINGTOSTACKSITE)
         {
@@ -922,7 +937,7 @@ int main(int argc, char** argv)
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
 	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("/get_map_poi");
 	wprosbagClient = n.serviceClient<std_srvs::Trigger>("/shootVelodyne");
-	brickPileDetectorClient = n.serviceClient<detector::brick_pile>("/start_brick_pile_detector");
+	//brickPileDetectorClient = n.serviceClient<detector::brick_pile>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scan",100, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
