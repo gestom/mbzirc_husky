@@ -84,10 +84,10 @@ int misdetections = 0;
 //brickStackLocation in map frame
 bool brickStackLocationKnown = false;
 bool wallPatternLocationKnown = false;
-float brickStackX = 0.0f;
-float brickStackY = 0.0f;
-float wallPatternX = 0.0f;
-float wallPatternY = 0.0f;
+float brickStackLocationX = 0.0f;
+float brickStackLocationY = 0.0f;
+float wallPatternLocationX = 0.0f;
+float wallPatternLocationY = 0.0f;
 
 bool useRansac = false;
 bool precisePositionFound = false;
@@ -782,10 +782,10 @@ void investigateWallPattern(float approachAngle)
 	srv.request.type = 3;
 	if(symbolicClient.call(srv))
 	{
-		if(src.response.covariance[0] > covariancePattern)
+		if(srv.response.covariance[0] > covariancePattern)
 		{
-			float centreX = src.response.x[0];
-			float centreY = src.response.y[0];
+			float centreX = srv.response.x[0];
+			float centreY = srv.response.y[0];
 
 			float wallPatternRadius = 3.0;
 
@@ -809,8 +809,8 @@ void investigateWallPattern(float approachAngle)
 				float vecX = centreX - newPose.pose.position.x;
 				float vecY = centreY - newPose.pose.position.y;
 
-				float mag = sqrt(vecX*vecX+vecY*vecY)
-					vecX = (vecX / mag) * (mag - wallPatternRadius);
+				float mag = sqrt(vecX*vecX+vecY*vecY);
+				vecX = (vecX / mag) * (mag - wallPatternRadius);
 				vecY = (vecY / mag) * (mag - wallPatternRadius);
 
 				vecX = newPose.pose.position.x + vecX;
@@ -822,7 +822,7 @@ void investigateWallPattern(float approachAngle)
 				msg.request.data = 0;
 				wallPatternInvestigatorClient.call(msg);
 
-				mbzirc_husky_msgs::				
+				//mbzirc_husky_msgs::				
 
 				//call to service here
 				//
@@ -832,13 +832,13 @@ void investigateWallPattern(float approachAngle)
 			catch (tf::TransformException &ex)
 			{
 				ROS_INFO("Error looking up transform %s", ex.what());
-				return -1;
+				return;
 			}               
 		}
 	}    
 }
 
-void investigateBricks()
+void investigateBricks(float approachAngle)
 {
     
 }
@@ -949,54 +949,65 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                 state = MOVINGTOBRICKS;
             }
 
-            if(!brickStackLocationKnown)
-                ROS_INFO("Looking For bricks");
-            if(!wallPatternLocationKnown)
-                ROS_INFO("Looking For wall pattern");
-
             //check for candidate wall patterns
-            mbzirc_husky::getPoi srvWP;
-            srvWP.request.type = 3;
-            if(symbolicClient.call(srvWP))
+            if(!wallPatternLocationKnown)
             {
-                if(srcWP.response.covariance[0] > covariancePattern)
+                ROS_INFO("Looking For wall pattern");
+                mbzirc_husky::getPoi srvWP;
+                srvWP.request.type = 3;
+                if(symbolicClient.call(srvWP))
                 {
-                    state = INVESTIGATEWP;
-                }
-		else if(srcWP.response.covariance[0] == 666)
-		{
-			wallPatternLocationKnown = true;
-			wallPatternLocationX = srcWP.reponse.x;
-			wallPatternLocationY = srcWP.reponse.y;
-		}
-            }
-            else
-                ROS_INFO("Symbolic map call failed!");
-
-            //see if any bricks were seen
-            for(int i = 0; i < 4; i++)
-            {
-                mbzirc_husky::getPoi srvB;
-                srvWP.request.type = 4 + i;
-                if(symbolicClient.call(srvB))
-                {
-                    if(srvB.response.covariance[0] > covarianceBricks)
+                    if(srvWP.response.covariance[0] == 666)
                     {
-                        state = INVESTIGATEBRICKS;
+                        wallPatternLocationKnown = true;
+                        wallPatternLocationX = (float)srvWP.response.x[0];
+                        wallPatternLocationY = (float)srvWP.response.y[0];
+                    }
+                    else if(srvWP.response.covariance[0] > covariancePattern)
+                    {
+                        state = INVESTIGATEWP;
                     }
                 }
                 else
                     ROS_INFO("Symbolic map call failed!");
             }
 
+            //see if any bricks were seen
+            if(!brickStackLocationKnown)
+            {
+                ROS_INFO("Looking For bricks");
+                for(int i = 0; i < 4; i++)
+                {
+                    mbzirc_husky::getPoi srvB;
+                    srvB.request.type = 4 + i;
+                    if(symbolicClient.call(srvB))
+                    {
+                        if(srvB.response.covariance[0] == 666)
+                        {
+                            brickStackLocationKnown = true;
+                            brickStackLocationX = srvB.response.x[0];
+                            brickStackLocationY = srvB.response.y[0];
+                        }
+                        else if(srvB.response.covariance[0] > covarianceBricks)
+                        {
+                            state = INVESTIGATEBRICKS;
+                        }
+                    }
+                    else
+                        ROS_INFO("Symbolic map call failed!");
+                }
+            }
+
             explore();
         }
         else if(state == INVESTIGATEWP)
         {
+            ROS_INFO("Investigating wall pattern");
             investigateWallPattern(0.0f);
         }
         else if(state == INVESTIGATEBRICKS)
         {
+            ROS_INFO("Investigating bricks");
             investigateBricks(0.0f);
         }
         else if(state == MOVINGTOBRICKS)
