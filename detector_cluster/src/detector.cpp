@@ -742,7 +742,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.type = 4 + i;
                 poi.request.x = pile_centers[i].x;
                 poi.request.y = pile_centers[i].y;
-                poi.request.covariance = 0;
+                poi.request.covariance = brick_centers[i].size();
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {

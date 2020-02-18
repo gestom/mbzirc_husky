@@ -217,6 +217,21 @@ void saveColors()
 	}
 }
 
+int reportPosition(STrackedObject object)
+{
+	    mbzirc_husky::setPoi poi;
+            poi.request.type = 3;
+            poi.request.x = object.x;
+            poi.request.y = object.y;
+            poi.request.covariance = 0;
+            if (ros::service::call("set_map_poi", poi)){
+                cout << "Wall pattern sent to symbolic map" << endl;
+            } else {
+                cout << "Error calling service" << endl;
+            }
+}
+
+
 STrackedObject transformPatternPose(STrackedObject object)
 {
 	int inc = 0;
@@ -251,20 +266,6 @@ STrackedObject transformPatternPose(STrackedObject object)
 		result.validity = 0;
 		return result;
 	}
-}
-
-int reportPosition(STrackedObject object)
-{
-	    mbzirc_husky::setPoi poi;
-            poi.request.type = 3;
-            poi.request.x = object.x;
-            poi.request.y = object.y;
-            poi.request.covariance = object.numContours;
-            if (ros::service::call("set_map_poi", poi)){
-                cout << "Wall pattern sent to symbolic map" << endl;
-            } else {
-                cout << "Error calling service" << endl;
-            }
 }
 
 int updateRobotPosition()

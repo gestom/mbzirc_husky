@@ -59,8 +59,8 @@ std::vector<cv::Point3d> bannedBlueBricks;
 std::vector<cv::Point3d> bannedGreenBricks;
 std::vector<cv::Point3d> bannedOrangeBricks;
 
-
-
+//char path_file[1000];
+std::string path_file;
 
 void publishWaypoints();
 void organisePath();
@@ -83,6 +83,7 @@ cv::Point3d getCenter(std::vector<cv::Point3d> cluster){
 	cv::Point3d res;
 	res.x = 0;
 	res.y = 0;
+	res.z = 0;
 	int c_size=0;
 
 	//Center + avg uncertainty
@@ -142,8 +143,9 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 	point.y = req.y;
 	if(req.covariance == 0){
 		point.z = 1;
-	}	
+	}else{	
 	point.z = req.covariance;
+	}
 	std::vector<cv::Point3d> vPoint;
 	vPoint.clear();
 	vPoint.push_back(point);
@@ -358,6 +360,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(dronePile[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving center point for the Drone Pile from symbolic map, point type %i at position X: %f Y: %f for cluster %i", req.type,point.x,point.y,i);
 				}
@@ -387,6 +390,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(droneDelivery[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Drone Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -414,6 +418,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(robotDelivery[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Robot Delivery symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -441,6 +446,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(redBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Red Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -468,6 +474,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(greenBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving  point for the Green Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -495,6 +502,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(blueBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Blue Bricks symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -522,6 +530,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 					point = getCenter(orangeBricks[i]);
 					res.x.push_back(point.x);
 					res.y.push_back(point.y);
+					res.covariance.push_back(point.z);
 					res.type = incoming_type;
 					ROS_INFO("Retrieving point for the Orange symbolic map, point type %i at position X: %f Y: %f", req.type,point.x,point.y);
 				}
@@ -709,10 +718,10 @@ bool removePointCallback(mbzirc_husky::removePoi::Request &req, mbzirc_husky::re
 
 
 void loadWaypoints(){
-	const char* filename = (char*) "./src/mbzirc_husky/sensor_control/maps/tennis-left-2/map-waypoints.txt";
+	//const char* filename = (char*) "./src/mbzirc_husky/sensor_control/maps/tennis-left-2/map-waypoints.txt";
 
-	ROS_INFO("Opening waypoint file: %s", filename);
-	std::ifstream loadFile(filename);
+	ROS_INFO("Opening waypoint file: %s", path_file.c_str());
+	std::ifstream loadFile(path_file.c_str());
 
 	float x,y;
 	while(loadFile >> x >> y){
@@ -860,6 +869,8 @@ int main(int argc, char** argv)
 	dynamic_reconfigure::Server<mbzirc_husky::symbolicMapConfig> dynamicServer;
 	dynamic_reconfigure::Server<mbzirc_husky::symbolicMapConfig>::CallbackType fc = boost::bind(&clusterCallback, _1, _2);
 	dynamicServer.setCallback(fc);
+
+      	n.param<std::string>("/symbolicMap/path_file", path_file, "./src/mbzirc_husky/a.txt");
 
 
 	waypoints.clear();

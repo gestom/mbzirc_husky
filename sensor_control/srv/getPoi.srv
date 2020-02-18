@@ -2,4 +2,5 @@ int32 type # 0 waypoint, 1 Drone Pile, 2 Drone delivery, 3 robot delivery, 4 red
 ---
 float32[] x
 float32[] y
+float32[] covariance
 int32 type
