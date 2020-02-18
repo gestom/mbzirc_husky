@@ -44,6 +44,7 @@
     <remap from="~prepare_placing_in" to="kinova/arm_manager/prepare_placing" />
     <remap from="~place_brick_in" to="kinova/arm_manager/place_brick" />
     <remap from="~push_bricks_in" to="kinova/arm_manager/push_bricks" />
+    <remap from="~press_bricks_in" to="kinova/arm_manager/press_bricks" />
     <remap from="~dispose_brick_in" to="kinova/arm_manager/dispose_brick" />
 
     

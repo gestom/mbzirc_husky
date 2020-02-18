@@ -1116,7 +1116,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   if (req.layer != 2) {  // keep blue brick pressed
     goal_pose.pos.z() += descent;
   }
-  // TODO WATCH OUT! NEXT MOTION WILL HIT BLUE BRICK
+  // TODO do not home after this
   goToAction(goal_pose);
 
 
@@ -1207,6 +1207,7 @@ bool callbackPressBricksService([[maybe_unused]] std_srvs::TriggerRequest &req, 
   if (brick_attached) {
     ROS_INFO("[%s]: Bricks pressed", ros::this_node::getName().c_str());
   }
+
   ungrip();
   setCartesianVelocity(ZERO_VELOCITY);
 
