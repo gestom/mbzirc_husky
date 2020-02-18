@@ -876,7 +876,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 			{
 				ROS_INFO("Detected brick piles, checking pattern");
 				mbzirc_husky::getPoi srvPattern;
-				srvPattern.type = 3;
+				srvPattern.request.type = 3;
 				if(symbolicClient.call(srvPattern))
 				{
 					if(srvPattern.response.covariance[0] > covariancePattern)
