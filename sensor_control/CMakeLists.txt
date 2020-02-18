@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs 
     image_transport
     tf
+    detector
     #    mrs_lib
     mbzirc_husky_msgs
   )

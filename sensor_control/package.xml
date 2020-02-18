@@ -26,6 +26,7 @@
   <build_depend>tf</build_depend>
   <build_depend>mrs_lib</build_depend>
   <build_depend>mbzirc_husky_msgs</build_depend>
+  <build_depend>detector</build_depend>
   <!-- <build_depend>kinova_driver</build_depend> -->
   <!-- <build_depend>kinova_msgs</build_depend> -->
   <!-- <build_depend>kinova_control_manager</build_depend> -->
@@ -42,6 +43,7 @@
   <run_depend>tf</run_depend>
   <run_depend>mrs_lib</run_depend>
   <run_depend>mbzirc_husky_msgs</run_depend>
+  <run_depend>detector</run_depend>
   <!-- <run_depend>kinova_driver</run_depend> -->
   <!-- <run_depend>kinova_msgs</run_depend> -->
   <!-- <run_depend>kinova_control_manager</run_depend> -->
