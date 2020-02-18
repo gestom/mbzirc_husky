@@ -39,6 +39,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <nav_msgs/Odometry.h>
+#include <std_srvs/Trigger.h>
 
 using namespace std;
 using namespace cv;
@@ -100,6 +101,7 @@ geometry_msgs::PoseArray poseArray;
 ros::ServiceClient       turnArmClient;
 ros::ServiceClient       holdBricksClient;
 ros::ServiceClient       homeArmClient;
+ros::ServiceClient       inventoryQueryClient;
 
 image_transport::Publisher imdebug;
 image_transport::Publisher objectImages;
@@ -493,7 +495,7 @@ int main(int argc, char **argv) {
   it = new image_transport::ImageTransport(*n);
 
   n->param("uav_name", uav_name, string());
-  n->param("gui", gui, true);
+  n->param("gui", gui, false);
   n->param("debug", debug, false);
   if (gui) {
     debug = true;
@@ -529,7 +531,7 @@ int main(int argc, char **argv) {
   turnArmClient              = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
   homeArmClient              = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
   holdBricksClient           = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/press_bricks");
-  inventoryQueryClient       = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
+  inventoryQueryClient       = n->serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
   imagePub                   = it->advertise("/searchWallResult", 1);
 
   // initialize dynamic reconfiguration feedback
