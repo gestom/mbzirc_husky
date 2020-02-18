@@ -79,8 +79,14 @@ int covariancePattern = 1500;
 int misdetections = 0;
 
 //brickStackLocation in map frame
-bool useRansac = false;
 bool brickStackLocationKnown = false;
+bool wallPatternLocationKnown = false;
+float brickStackX = 0.0f;
+float brickStackY = 0.0f;
+float wallPatternX = 0.0f;
+float wallPatternY = 0.0f;
+
+bool useRansac = false;
 bool precisePositionFound = false;
 float brickStackRedX = -1.27;
 float brickStackRedY = -0.65;
@@ -864,33 +870,48 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
-	{
-		mbzirc_husky::getPoi srvR;
-		srvR.request.type = 4;
-		mbzirc_husky::getPoi srvB;
-		srvB.request.type = 5;
-		ROS_INFO("Checking if red and green bricks is found");
-		if(symbolicClient.call(srvR) && symbolicClient.call(srvB))
-		{
-			if(srvR.response.covariance[0] > covarianceBricks && srvB.response.covariance[0] > covarianceBricks)
-			{
-				ROS_INFO("Detected brick piles, checking pattern");
-				mbzirc_husky::getPoi srvPattern;
-				srvPattern.type = 3;
-				if(symbolicClient.call(srvPattern))
-				{
-					if(srvPattern.response.covariance[0] > covariancePattern)
-					{
-						ROS_INFO("Red and green found and pattern, going straight to bricks");
-						state = MOVINGTOBRICKS;	
-						continue;
-					}
-				}
-			}
-		}
+        {
+            if(brickStackLocationKnown && wallPatternLocationKnown)
+            {
+                ROS_INFO("Locations already known, moving straight to them");
+                state = MOVINGTOBRICKS;
+            }
 
-		explore();
-	}
+            if(!brickStackLocationKnown)
+                ROS_INFO("Looking For bricks");
+            if(!wallPatternLocationKnown)
+                ROS_INFO("Looking For wall pattern");
+
+            mbzirc_husky::getPoi srvR;
+            srvR.request.type = 4;
+            mbzirc_husky::getPoi srvB;
+            srvB.request.type = 5;
+            ROS_INFO("Checking if red and green bricks is found");
+            if(symbolicClient.call(srvR) && symbolicClient.call(srvB))
+            {
+                if(srvR.response.covariance[0] > covarianceBricks && srvB.response.covariance[0] > covarianceBricks)
+                {
+                    ROS_INFO("Detected brick piles, checking pattern");
+                    mbzirc_husky::getPoi srvPattern;
+                    srvPattern.type = 3;
+                    if(symbolicClient.call(srvPattern))
+                    {
+                        if(srvPattern.response.covariance[0] > covariancePattern)
+                        {
+                            ROS_INFO("Red and green found and pattern, going straight to bricks");
+                            
+                            
+                            state = MOVINGTOBRICKS;	
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            
+
+            explore();
+        }
         else if(state == MOVINGTOBRICKS)
         {
             moveToBrickPile();
