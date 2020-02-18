@@ -258,7 +258,7 @@ STrackedObject transformPatternPose(STrackedObject object)
 		result.x = resultPose.pose.position.x; 
 		result.y = resultPose.pose.position.y;
 		printf("Main object: %.2f %.2f %.2f %.2f %.2f %.2f %i %i %.2f\n",result.x,result.y,x,y,object.x,object.y,object.numContours,numDetectionAttempts,armAngle);
-		if (object.numContours > 1) reportPosition(result);
+		if (result.numContours > 1) reportPosition(result);
 		return result;
 	}
 	catch (tf::TransformException &ex) {
