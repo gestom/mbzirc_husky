@@ -1,4 +1,5 @@
 bool activate
+bool rotate_arm
 float64 step
 int32 attempts
 float64 groundPlaneDistance 

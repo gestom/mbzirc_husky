@@ -450,12 +450,29 @@ void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr &msg) {
 
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msgs::wallPatternDetect::Response &res) {
   subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-  mbzirc_husky_msgs::Float64 srv;
-  srv.request.data = -M_PI / 2;
-  turnArmClient.call(srv);
-  for (float i = -1; i < 1; i += 1.0 / 3) {
-    srv.request.data = i * M_PI;
+
+  if (req.rotate_arm) {
+    mbzirc_husky_msgs::Float64 srv;
+    srv.request.data = -M_PI / 2;
     turnArmClient.call(srv);
+    for (float i = -1; i < 1; i += 1.0 / 3) {
+      srv.request.data = i * M_PI;
+      turnArmClient.call(srv);
+      numDetections        = 0;
+      numDetectionAttempts = 0;
+      detectionStrength    = 0;
+      imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+      while (numDetectionAttempts < 60) {
+        ros::spinOnce();
+      }
+      imageSub.shutdown();
+    }
+    srv.request.data = M_PI / 2;
+    turnArmClient.call(srv);
+    srv.request.data = 0;
+    turnArmClient.call(srv);
+    subInfo.shutdown();
+  } else {
     numDetections        = 0;
     numDetectionAttempts = 0;
     detectionStrength    = 0;
@@ -464,12 +481,8 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msg
       ros::spinOnce();
     }
     imageSub.shutdown();
+    subInfo.shutdown();
   }
-  srv.request.data = M_PI / 2;
-  turnArmClient.call(srv);
-  srv.request.data = 0;
-  turnArmClient.call(srv);
-  subInfo.shutdown();
 
   // check if we have blue brick in the inventory
   mbzirc_husky::nextBrickPlacement inventorySrv;
