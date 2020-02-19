@@ -1,6 +1,8 @@
 
 #include "detector.h"
 
+// #define CLUSTER_DEBUG
+
 using namespace std;
 
 // variables
@@ -307,7 +309,7 @@ vector<BrickLine> BrickDetector::match_detections(vector<BrickLine> lines,
                 }
             }
         }
-        if (hits >= int(expected_hits) and max_z > req_height) {
+        if (hits >= int(expected_hits) and max_z > req_height and max_z < obj_top) {
             ret.push_back(lines[i]);
         }
     }
@@ -683,7 +685,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     vector<MyPoint> filtered_dense[LIDAR_ROWS];
     vector<MyPoint> filtered_sparse[LIDAR_ROWS];
     std::vector<double> ground1 = {0, 0, 1, LIDAR_HEIGHT};
-    std::vector<double> ground2 = {0, 0, 1, 0};
+    std::vector<double> ground2 = {0, 0, 1, LIDAR_HEIGHT - 0.1};
     filter_ground(ground1, point_rows, filtered_dense);
     filter_ground(ground2, point_rows, filtered_sparse);
 
@@ -693,24 +695,20 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     // perform brick segment matching using hits with different heights
     array<vector<BrickLine>, 4> matched_bricks;
-    array<vector<BrickLine>, 4> matched_single_bricks;
     vector<BrickLine> matched_walls;
+    array<vector<BrickLine>, 4> candidate_bricks;
+
     // vector<BrickLine> matched_wall_sides;
     // matched_bricks = {lines[0], lines[1], lines[2], lines[3]};
 
+    /// matching
     for (int i = 0; i < 3; i++) {
         matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 1, 2);
+        candidate_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.07, 0, 0);
     }
     matched_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.425, 2, 3);
-
+    candidate_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.07, 0, 0);
     matched_walls = match_detections(wall_lines, 1.1, 2.0, 0.8, 2, 3);
-
-    /*
-    matched_wall_sides = match_detections(lines[4], 1.1, 1.75, 0.8, 2, 3);
-    for (int i = 0; i < 4; i++) {
-        matched_single_bricks[i] = match_detections(lines[i], 0.2, 0.25, 0.025, 0, 2);
-    }
-    */
 
     // obtain piles
     array<MyPoint, 4> pile_centers = get_piles(matched_bricks);
@@ -724,24 +722,25 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     */
 
     // fit wall shape on my detection
-    array<cv::Point2d, 2> tar_pt = {cv::Point2d(0.0, 0.0), cv::Point2d(5.0, 0.0)};
+    array<cv::Point2d, 2> tar_pt = {cv::Point2d(0.0, 0.0), cv::Point2d(2.65, 0.0)};
     array<MyPoint, 2> way_point = fit_detection(brick_centers, wall_setup, tar_pt);
-    array<cv::Point2d, 2> tar_pt_back = {cv::Point2d(7.3, -0.8), cv::Point2d(2.3, -0.8)};
+    array<cv::Point2d, 2> tar_pt_back = {cv::Point2d(7.3, -0.8), cv::Point2d(4.65, -0.8)};
     array<MyPoint, 2> way_point_back = fit_detection(brick_centers, wall_setup_back, tar_pt_back);
 
     vector<MyPoint> wall_centers = get_wall_centers(matched_walls);
 
     // get transformations
-    geometry_msgs::TransformStamped transformStamped;
+#ifndef CLUSTER_DEBUG
+    geometry_msgs::TransformStamped tf_stamped;
     try {
-        transformStamped = tf_buffer->lookupTransform(TARGET_FRAME, LIDAR_FRAME, ptcl.header.stamp, ros::Duration(0.2));
+        tf_stamped = tf_buffer->lookupTransform(TARGET_FRAME, LIDAR_FRAME, ptcl.header.stamp, ros::Duration(0.2));
         for (int i = 0; i < 4; i++){
             if (pile_centers[i].x != 0 and pile_centers[i].y != 0){
-                geometry_msgs::Point ret_pt = transform_point(pile_centers[i], transformStamped);
+                geometry_msgs::Point ret_pt = transform_point(pile_centers[i], tf_stamped);
                 mbzirc_husky::setPoi poi;
                 poi.request.type = 4 + i;
-                poi.request.x = pile_centers[i].x;
-                poi.request.y = pile_centers[i].y;
+                poi.request.x = ret_pt.x;
+                poi.request.y = ret_pt.y;
                 poi.request.covariance = brick_centers[i].size();
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
@@ -751,12 +750,29 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             }
         }
 
+        for (int i = 0; i < 4; i++){
+            for (int k = 0; k < candidate_bricks[k].size(); k++){
+                MyPoint tf_pt = GET_CENTER(candidate_bricks[i][k][0], candidate_bricks[i][k][1]);
+                geometry_msgs::Point ret_pt = transform_point(tf_pt, tf_stamped);
+                mbzirc_husky::setPoi poi;
+                poi.request.type = 4 + i;
+                poi.request.x = ret_pt.x;
+                poi.request.y = ret_pt.y;
+                poi.request.covariance = 0.01;
+                if (ros::service::call("set_map_poi", poi)){
+                    ROS_INFO("Pile sent to symbolic map");
+                } else {
+                    ROS_INFO("Error calling service");
+                }
+            }
+        }
+
         for (int i = 0; i < wall_centers.size(); i++){
-            geometry_msgs::Point ret_pt = transform_point(pile_centers[i], transformStamped);
+            geometry_msgs::Point ret_pt = transform_point(pile_centers[i], tf_stamped);
             mbzirc_husky::setPoi poi;
             poi.request.type = 2;
-            poi.request.x = wall_centers[i].x;
-            poi.request.y = wall_centers[i].y;
+            poi.request.x = ret_pt.x;
+            poi.request.y = ret_pt.y;
             poi.request.covariance = 0;
             if (ros::service::call("set_map_poi", poi)){
                 ROS_INFO("Wall sent to symbolic map");
@@ -765,13 +781,53 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             }
         }
 
+        if (way_point[0].x != 0 and way_point[0].y != 0) {
+            if (way_point[0].z > way_point_back[0].z and way_point_back[0].x != 0 and way_point_back[0].y != 0) {
+                way_point = way_point_back;
+            }
+
+            if (way_point[0].z < RANSAC_TOLERANCE){
+                sensor_msgs::PointCloud origin_line1;
+                origin_line1.header.frame_id = LIDAR_FRAME;
+                origin_line1.header.stamp = ros::Time::now();
+                // fill with points
+                geometry_msgs::Point32 pub_pt1;
+                pub_pt1.x = way_point[0].x;
+                pub_pt1.y = way_point[0].y;
+                pub_pt1.z = way_point[0].z;
+                origin_line1.points.push_back(pub_pt1);
+                geometry_msgs::Point32 pub_pt2;
+                pub_pt2.x = way_point[1].x;
+                pub_pt2.y = way_point[1].y;
+                pub_pt2.z = 0;
+                origin_line1.points.push_back(pub_pt2);
+                // origin_pcl_pub.publish(origin_line1);
+                for (int wp_num = 0; wp_num < 2; wp_num++){
+                    geometry_msgs::Point ret_pt = transform_point(way_point[wp_num], tf_stamped);
+                    mbzirc_husky::setPoi poi;
+                    poi.request.type = 4 + wp_num;
+                    poi.request.x = ret_pt.x;
+                    poi.request.y = ret_pt.y;
+                    poi.request.covariance = 666;
+                    if (ros::service::call("set_map_poi", poi)){
+                        ROS_INFO("Pile sent to symbolic map");
+                    } else {
+                        ROS_INFO("Error calling service");
+                    }
+                }
+            }
+
+        }
+
     } catch (tf2::TransformException &ex) {
         ROS_WARN("%s",ex.what());
         ros::Duration(1.0).sleep();
     }
+#endif
 
     /// visualise using marker publishing in rviz --------------------------------------------------------------
 
+#ifdef CLUSTER_DEBUG
     visualization_msgs::Marker centers;
     centers.header.frame_id = LIDAR_FRAME;
     centers.header.stamp = ros::Time::now();
@@ -798,29 +854,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
     center_pub.publish(centers);
 
-    if (way_point[0].x != 0 and way_point[0].y != 0 and way_point[0].z < RANSAC_TOLERANCE) {
-        if (way_point[0].z > way_point_back[0].z) {
-            way_point = way_point_back;
-        }
-
-        sensor_msgs::PointCloud origin_line1;
-        origin_line1.header.frame_id = LIDAR_FRAME;
-        origin_line1.header.stamp = ros::Time::now();
-        // fill with points
-        geometry_msgs::Point32 pub_pt1;
-        pub_pt1.x = way_point[0].x;
-        pub_pt1.y = way_point[0].y;
-        pub_pt1.z = way_point[0].z;
-        origin_line1.points.push_back(pub_pt1);
-        geometry_msgs::Point32 pub_pt2;
-        pub_pt2.x = way_point[1].x;
-        pub_pt2.y = way_point[1].y;
-        pub_pt2.z = 0;
-        origin_line1.points.push_back(pub_pt2);
-        origin_pcl_pub.publish(origin_line1);
-    }
-
-    /*
     visualization_msgs::MarkerArray lists;
     visualization_msgs::Marker line_list1;
     line_list1.header.frame_id = LIDAR_FRAME;
@@ -959,7 +992,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         line_list5.points.push_back(p2);
     }
 
-
     lists.markers.push_back(line_list1);
     lists.markers.push_back(line_list2);
     lists.markers.push_back(line_list3);
@@ -967,7 +999,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     lists.markers.push_back(line_list5);
 
     vis_pub.publish(lists);
-    */
+#endif
 
     /// --------------------------------------------------------------------------------------
 }

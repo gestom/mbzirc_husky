@@ -106,7 +106,7 @@ private:
     float MAX_HEIGHT;               // maximal possible height of a detection
     float RANSAC_TOLERANCE;         // tolerance of fitting distance per brick
     double BRICK_HEIGHT = 0.2;
-    std::string LIDAR_FRAME = "velodyne";      // frame in which you publish the results
+    std::string LIDAR_FRAME = "lidar";      // frame in which you publish the results
     std::string TARGET_FRAME = "map";
 
     void fetch_parameters();

@@ -41,6 +41,8 @@ ros::Subscriber subscriberScan;
 ros::Subscriber subscriberPattern;
 ros::Subscriber subscriberOdom;
 
+boolean end_of_pattern = false;
+
 /* int   activeStorage   = 5; */
 float robotMoveDistance = 0;
 float currentRobotPosition = 0;
@@ -538,20 +540,21 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
 	printf("Angle %f\n",angle);
 	geometry_msgs::Twist spd;
 	spd.angular.z = -angle;
-	spd.linear.x = -0.1;
-	if (std::abs(msg->z) < 1000){
+	if (not end_of_pattern) {
+        spd.linear.x = -0.1;
+    }
+	if (std::abs(msg->z) < 999){
 	    pattern_end_accumulator = 0;
 	    spd.angular.z = msg->z;
 	}
 	if (std::abs(msg->x) > 999){
 	    pattern_end_accumulator++;
 	    spd.linear.x = 0.0;
-
 	}
 	if (pattern_end_accumulator > 20){
 	    /// TODO stop subscribing and start brick stacking
-	    ROS_INFO("END OF THE PATTERN - START BRICK PICKUP");
-	    // subscriberPattern.shutdown();
+	    ROS_INFO("END OF THE PATTERN - START BRICK STACK");
+	    end_of_pattern = true;
 	}
 	setSpeed(spd);
 	return;
