@@ -1163,10 +1163,14 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
 /* callbackSetJointVelocityService //{ */
 bool callbackSetJointVelocityService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_husky_msgs::Vector7Response &res) {
   std::vector<double> velocity;
+  std::vector<double> zero_velocity;
   for (int i = 0; i < DOF; i++) {
     velocity.push_back(req.data[i]);
+    zero_velocity.push_back(0.0);
   }
   setJointVelocity(velocity);
+  ros::Duration(1.0).sleep();
+  setJointVelocity(zero_velocity);
   res.success = true;
   return true;
 }
