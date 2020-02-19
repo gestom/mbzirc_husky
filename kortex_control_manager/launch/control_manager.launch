@@ -22,6 +22,7 @@
     <remap from="~arm_status_out" to="kinova/arm_manager/status" />
     <remap from="~camera_to_ground_out" to="kinova/arm_manager/camera_to_ground" />
     <remap from="~cartesian_velocity_out" to="my_gen3/in/cartesian_velocity" />
+    <remap from="~joint_velocity_out" to="my_gen3/in/joint_velocity" />
     <remap from="~effort_changes_out" to="kinova/arm_manager/effort_changes" />
     <remap from="~markers_out" to="kinova/arm_manager/rviz_markers" />
 
@@ -46,6 +47,7 @@
     <remap from="~push_bricks_in" to="kinova/arm_manager/push_bricks" />
     <remap from="~press_bricks_in" to="kinova/arm_manager/press_bricks" />
     <remap from="~dispose_brick_in" to="kinova/arm_manager/dispose_brick" />
+    <remap from="~joint_velocity_in" to="kinova/arm_manager/set_joint_velocity" />
 
     
   </node>
