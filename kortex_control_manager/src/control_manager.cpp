@@ -1168,8 +1168,12 @@ bool callbackSetJointVelocityService(mbzirc_husky_msgs::Vector7Request &req, mbz
     velocity.push_back(req.data[i]);
     zero_velocity.push_back(0.0);
   }
-  setJointVelocity(velocity);
-  ros::Duration(1.0).sleep();
+
+  ros::Time start_time = ros::Time::now();
+  while (ros::ok() && (ros::Time::now() - start_time).toSec() < 2.0) {
+    setJointVelocity(velocity);
+    ros::Duration(0.02).sleep();
+  }
   setJointVelocity(zero_velocity);
   res.success = true;
   return true;
