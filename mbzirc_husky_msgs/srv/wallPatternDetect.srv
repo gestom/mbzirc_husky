@@ -5,5 +5,5 @@ int32 attempts
 float64 groundPlaneDistance 
 ---
 bool activated
-bool detected 
+int32 detected 
 geometry_msgs/PoseStamped patternPose 

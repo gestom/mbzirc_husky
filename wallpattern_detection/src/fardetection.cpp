@@ -89,7 +89,7 @@ MatND                    histogram;
 int                      hbins = 180;
 int                      sbins = 256;
 tf::StampedTransform     lastTransform;
-bool                     gui        = true;
+bool                     gui        = false;
 bool                     debug      = true;
 bool                     oldbags    = false;
 bool                     stallImage = false;
@@ -329,24 +329,24 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
   }
   // END of segmentation - START calculating global frame coords
   if (gui) {
-    imshow("frame", frame);
+	  imshow("frame", frame);
 
-    /*processing user input*/
-    key = waitKey(1) % 256;
-    if (key == 32)
-      stallImage = !stallImage;
-    printf("STALL %i\n", stallImage);
-    if (key == 'r') {
-      segmentation.resetColorMap();
-      histogram     = Mat::zeros(hbins, sbins, CV_32FC1);
-      storedSamples = Mat::zeros(0, 3, CV_32FC1);
-    }
-    if (key == 's')
-      segmentation.saveColorMap(colorMap.c_str());
-    if (key == 'c')
-      saveColors();
-    if (key >= '1' && key < '9')
-      segmentType = (key - '0');
+	  /*processing user input*/
+	  key = waitKey(1) % 256;
+	  if (key == 32)
+		  stallImage = !stallImage;
+	  printf("STALL %i\n", stallImage);
+	  if (key == 'r') {
+		  segmentation.resetColorMap();
+		  histogram     = Mat::zeros(hbins, sbins, CV_32FC1);
+		  storedSamples = Mat::zeros(0, 3, CV_32FC1);
+	  }
+	  if (key == 's')
+		  segmentation.saveColorMap(colorMap.c_str());
+	  if (key == 'c')
+		  saveColors();
+	  if (key >= '1' && key < '9')
+		  segmentType = (key - '0');
   }
   imageNumber++;
 }
@@ -408,10 +408,8 @@ void mainMouseCallback(int event, int x, int y, int flags, void *userdata) {
       }
     }
 
-    if (gui)
-      imshow("roi", roi);
-    if (gui)
-      imshow("histogram", histImg);
+    if (gui) imshow("roi", roi);
+    if (gui) imshow("histogram", histImg);
 
     cout << frame.at<Vec3b>(y, x) << endl;
   }
@@ -449,40 +447,41 @@ void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr &msg) {
 
 
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msgs::wallPatternDetect::Response &res) {
-  subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
 
+	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
+	res.activated = true;
   if (req.rotate_arm) {
-    mbzirc_husky_msgs::Float64 srv;
-    srv.request.data = -M_PI / 2;
-    turnArmClient.call(srv);
-    for (float i = -1; i < 1; i += 1.0 / 3) {
-      srv.request.data = i * M_PI;
-      turnArmClient.call(srv);
-      numDetections        = 0;
-      numDetectionAttempts = 0;
-      detectionStrength    = 0;
-      imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-      while (numDetectionAttempts < 60) {
-        ros::spinOnce();
-      }
-      imageSub.shutdown();
-    }
-    srv.request.data = M_PI / 2;
-    turnArmClient.call(srv);
-    srv.request.data = 0;
-    turnArmClient.call(srv);
-    subInfo.shutdown();
+	  mbzirc_husky_msgs::Float64 srv;
+	  srv.request.data = -M_PI / 2;
+	  turnArmClient.call(srv);
+	  for (float i = -1; i < 1; i += 1.0 / 3) {
+		  srv.request.data = i * M_PI;
+		  turnArmClient.call(srv);
+		  numDetections        = 0;
+		  numDetectionAttempts = 0;
+		  detectionStrength    = 0;
+		  imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		  while (numDetectionAttempts < 10) {
+			  ros::spinOnce();
+		  }
+		  imageSub.shutdown();
+	  }
+	  srv.request.data = M_PI / 2;
+	  turnArmClient.call(srv);
+	  srv.request.data = 0;
+	  turnArmClient.call(srv);
   } else {
-    numDetections        = 0;
-    numDetectionAttempts = 0;
-    detectionStrength    = 0;
-    imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-    while (numDetectionAttempts < 60) {
-      ros::spinOnce();
-    }
-    imageSub.shutdown();
-    subInfo.shutdown();
+	  numDetections        = 0;
+	  numDetectionAttempts = 0;
+	  detectionStrength    = 0;
+	  imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+	  while (numDetectionAttempts < 10) {
+		  ros::spinOnce();
+	  }
+	  imageSub.shutdown();
   }
+  subInfo.shutdown();
+  res.detected = detectionStrength;
 
   // check if we have blue brick in the inventory
   mbzirc_husky::nextBrickPlacement inventorySrv;
@@ -510,6 +509,7 @@ int main(int argc, char **argv) {
   n->param("uav_name", uav_name, string());
   n->param("gui", gui, false);
   n->param("debug", debug, false);
+  gui = false;
   if (gui) {
     debug = true;
     signal(SIGINT, termHandler);
@@ -523,13 +523,10 @@ int main(int argc, char **argv) {
   n->param("camera_offset", camera_offset, 0.17);
   n->param("wallpattern_height", wallpattern_height, 0.20);
   n->param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
-
-  if (gui)
-    namedWindow("frame", CV_WINDOW_AUTOSIZE);
-  if (gui)
-    namedWindow("histogram", CV_WINDOW_AUTOSIZE);
-  if (gui)
-    namedWindow("roi", CV_WINDOW_AUTOSIZE);
+  gui = false;
+  if (gui)   namedWindow("frame", CV_WINDOW_AUTOSIZE);
+  if (gui)   namedWindow("histogram", CV_WINDOW_AUTOSIZE);
+  if (gui)   namedWindow("roi", CV_WINDOW_AUTOSIZE);
 
   colorMap = ros::package::getPath("wallpattern_detection") + "/etc/farDetect.colormap";
   segmentation.loadColorMap(colorMap.c_str());
@@ -563,10 +560,8 @@ int main(int argc, char **argv) {
   }
 
   sensor_msgs::Image msg;
-  if (gui)
-    setMouseCallback("frame", mainMouseCallback, NULL);
-  if (gui)
-    setMouseCallback("histogram", histogramMouseCallback, NULL);
+  if (gui)  setMouseCallback("frame", mainMouseCallback, NULL);
+  if (gui)  setMouseCallback("histogram", histogramMouseCallback, NULL);
 
   timer.reset();
   timer.start();
