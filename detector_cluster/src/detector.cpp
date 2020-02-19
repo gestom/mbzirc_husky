@@ -704,10 +704,10 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     /// matching
     for (int i = 0; i < 3; i++) {
         matched_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 1, 2);
-        candidate_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.07, 0, 0);
+        candidate_bricks[i] = match_detections(lines[i], 0.4, 0.45, 0.225, 0, 0);
     }
     matched_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.425, 2, 3);
-    candidate_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.07, 0, 0);
+    candidate_bricks[3] = match_detections(lines[3], 0.6, 0.65, 0.225, 0, 0);
     matched_walls = match_detections(wall_lines, 1.1, 2.0, 0.8, 2, 3);
 
     // obtain piles

@@ -23,6 +23,7 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
+#include <mbzirc_husky/patternAlignement.h>
 
 ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
@@ -36,12 +37,17 @@ ros::ServiceClient inventoryQueryClient;
 ros::ServiceClient inventoryBuiltClient;
 ros::ServiceClient inventoryRemoveClient;
 
+ros::ServiceClient goPatternStart;
+
 ros::Subscriber subscriberBrickPose;
 ros::Subscriber subscriberScan;
 ros::Subscriber subscriberPattern;
 ros::Subscriber subscriberOdom;
 
-boolean end_of_pattern = false;
+ros::NodeHandle *node;
+
+bool end_of_pattern = false;
+bool started_alignement = false;
 
 /* int   activeStorage   = 5; */
 float robotMoveDistance = 0;
@@ -536,6 +542,9 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 }
 
 void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
+    if (msg->x < 999){
+        started_alignement = true;
+    }
 	float angle = atan2(msg->y,msg->x);
 	printf("Angle %f\n",angle);
 	geometry_msgs::Twist spd;
@@ -551,7 +560,7 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
 	    pattern_end_accumulator++;
 	    spd.linear.x = 0.0;
 	}
-	if (pattern_end_accumulator > 20){
+	if (pattern_end_accumulator > 30){
 	    /// TODO stop subscribing and start brick stacking
 	    ROS_INFO("END OF THE PATTERN - START BRICK STACK");
 	    end_of_pattern = true;
@@ -560,6 +569,35 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
 	return;
 }
 
+bool startWallCallBack(mbzirc_husky::patternAlignement::Request req, mbzirc_husky::patternAlignement::Response res){
+
+    if (req.trigger){
+        started_alignement = false;
+        end_of_pattern = false;
+        pattern_end_accumulator = 0;
+        subscriberPattern = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
+        for (int i = 0; i < 10; i++){
+            usleep(200000);
+            ros::spinOnce();
+            if (started_alignement){
+                break;
+            }
+        }
+        if (started_alignement){
+            res.success = true;
+            return true;
+        } else {
+            res.success = false;
+            subscriberPattern.shutdown();
+            return false;
+        }
+    } else {
+        subscriberPattern.shutdown();
+        res.success = true;
+        return true;
+    }
+
+}
 
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
   if (updateRobotPosition() < 0)
@@ -575,6 +613,7 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
 int main(int argc, char **argv) {
   ros::init(argc, argv, "brickStack");
   ros::NodeHandle n;
+  node = &n;
   // Dynamic reconfiguration server
   // dynamic_reconfigure::Server<mbzirc_husky::sprayConfig> dynServer;
   // dynamic_reconfigure::Server<mbzirc_husky::sprayConfig>::CallbackType f = boost::bind(&callback, _1, _2);
@@ -582,7 +621,6 @@ int main(int argc, char **argv) {
 
   listener         = new tf::TransformListener();
   subscriberScan   = n.subscribe("/scan", 1, &scanCallBack);
-  subscriberPattern   = n.subscribe("/wall_pattern_line", 1, &wallCallBack);
   subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
   twistPub         = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
   prepareClient    = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_placing");
@@ -593,6 +631,9 @@ int main(int argc, char **argv) {
   liftBrickClient  = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/lift_brick_storage");
   releaseClient    = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
   disposeClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/dispose_brick");
+
+  goPatternStart   = n.serviceClient<mbzirc_husky::patternAlignement>("/start_pattern_alignement");
+
 
   inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
   inventoryBuiltClient  = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");

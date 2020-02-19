@@ -173,7 +173,7 @@ void reconfigureCallback(wallpattern_detection::wallpattern_detectionConfig &con
   visualDistanceToleranceRatio = config.visualDistanceToleranceRatio;
   visualDistanceToleranceAbsolute = config.visualDistanceToleranceAbsolute;
   longObjectDetection = config.longObject;
-//  ROS_INFO("Reconfigure Request min circularity, min convexity: %lf %lf %lf", config.minCircularity, config.manualThreshold,circleDiameter);
+  // ROS_INFO("Reconfigure Request min circularity, min convexity: %lf %lf %lf", config.minCircularity, config.manualThreshold,circleDiameter);
   //outerDimMaster = config.masterDiameter/100.0;
   //distanceTolerance = config.distanceTolerance/100.0;
   //detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
@@ -513,7 +513,7 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
         }
 
         geometry_msgs::Point pt;
-        if (got_height and got_img and got_params and b_seg.size > 1000) {
+        if (got_height and got_img and got_params and b_seg.size > 500) {
             float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
             if (lines_num == 3) {
                 Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
