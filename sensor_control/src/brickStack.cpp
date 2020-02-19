@@ -573,6 +573,8 @@ bool startWallCallBack(mbzirc_husky::patternAlignement::Request req, mbzirc_husk
 
     if (req.trigger){
         started_alignement = false;
+        end_of_pattern = false;
+        pattern_end_accumulator = 0;
         subscriberPattern = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
         for (int i = 0; i < 10; i++){
             usleep(200000);
@@ -633,7 +635,7 @@ int main(int argc, char **argv) {
   goPatternStart   = n.serviceClient<mbzirc_husky::patternAlignement>("/start_pattern_alignement");
 
 
-    inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
+  inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
   inventoryBuiltClient  = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
   inventoryRemoveClient = n.serviceClient<mbzirc_husky::removeInventory>("/inventory/remove");
 
