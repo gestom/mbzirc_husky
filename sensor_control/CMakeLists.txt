@@ -63,6 +63,7 @@ add_service_files(
   nextBrickPlacement.srv
   brickBuilt.srv
   debugFillInventory.srv
+  patternAlignement.srv
 )
 
 
