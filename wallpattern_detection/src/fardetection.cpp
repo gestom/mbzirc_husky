@@ -454,7 +454,7 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msg
 	  mbzirc_husky_msgs::Float64 srv;
 	  srv.request.data = -M_PI / 2;
 	  turnArmClient.call(srv);
-	  for (float i = -1; i < 1; i += 1.0 / 3) {
+	  for (float i = -1; i < 1; i += 1.0 / 3.0) {
 		  srv.request.data = i * M_PI;
 		  turnArmClient.call(srv);
 		  numDetections        = 0;

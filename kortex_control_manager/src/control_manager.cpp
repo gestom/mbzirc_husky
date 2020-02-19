@@ -1106,6 +1106,7 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
     return false;
   }
 
+  // TODO this fucker hangs and makes me want to hang myself
   ROS_INFO("[%s]: Assuming a raised camera pose", ros::this_node::getName().c_str());
   status                          = MOVING;
   std::vector<double> goal_angles = raised_camera_angles;
@@ -1122,12 +1123,16 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
       goal_reached = goToAnglesAction(goal_angles);
     } else {
       ROS_WARN("[%s]: Fallback for raised camera failed! Trying to home arm", ros::this_node::getName().c_str());
-      goal_reached = goToAnglesAction(fallback_home_angles);
-      if (goal_reached) {
+      goal_reached = goToAnglesAction(home_angles);
+      if (!goal_reached) {
+        ROS_WARN("[%s]: Homing attempt failed! Trying the fallback home position", ros::this_node::getName().c_str());
+        goal_reached = goToAnglesAction(fallback_home_angles);
+        if (!goal_reached) {
+          ROS_FATAL("[%s]: Failed to home the arm!", ros::this_node::getName().c_str());
+        }
+      } else {
         ROS_INFO("[%s]: Fallback successful. Returning to the original goal", ros::this_node::getName().c_str());
         goal_reached = goToAnglesAction(goal_angles);
-      } else {
-        ROS_FATAL("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
       }
     }
   }
