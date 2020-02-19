@@ -525,7 +525,7 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
 	if (pattern_end_accumulator > 20){
 	    /// TODO stop subscribing and start brick stacking
 	    ROS_INFO("END OF THE PATTERN - START BRICK PICKUP");
-	    subscriberPattern.shutdown();
+	    // subscriberPattern.shutdown();
 	}
 	setSpeed(spd);
 	return;
