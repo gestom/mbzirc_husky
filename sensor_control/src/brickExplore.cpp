@@ -82,8 +82,10 @@ int covariancePattern = 1500;
 int misdetections = 0;
 
 //brickStackLocation in map frame
-bool brickStackLocationKnown = false;
-bool wallPatternLocationKnown = false;
+//bool brickStackLocationKnown = false;
+//bool wallPatternLocationKnown = false;
+bool brickStackLocationKnown = true;
+bool wallPatternLocationKnown = true;
 float brickStackLocationX = 0.0f;
 float brickStackLocationY = 0.0f;
 float wallPatternLocationX = 0.0f;
@@ -91,10 +93,10 @@ float wallPatternLocationY = 0.0f;
 
 bool useRansac = false;
 bool precisePositionFound = false;
-float brickStackRedX = -1.27;
-float brickStackRedY = -0.65;
-float brickStackOrangeX = -5.21;
-float brickStackOrangeY = -0.64;
+float brickStackRedX = 8.8;
+float brickStackRedY = 33.1;
+float brickStackOrangeX = 1.7;
+float brickStackOrangeY = 30.9;
 
 ros::Subscriber schedulerSub;
 int redBricksRequired = 0;
