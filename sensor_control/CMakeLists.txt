@@ -64,7 +64,6 @@ add_service_files(
 )
 
 
-
 generate_messages(
     DEPENDENCIES
     std_msgs
@@ -119,9 +118,9 @@ target_link_libraries (symbolicMap ${catkin_LIBRARIES})
 ## Install ##
 #############
 
- install(PROGRAMS
-    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
- )
+install(PROGRAMS
+	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 # install(TARGETS mbzirc_husky
 #    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
