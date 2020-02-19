@@ -37,6 +37,7 @@
 #include <random>
 #include <wallpattern_detection/wall_pattern_close.h>
 #include <mbzirc_husky_msgs/Float64.h>
+#include <algorithm>
 
 // #define PATTERN_DEBUG
 
@@ -263,7 +264,7 @@ array<vector<Point2d>, 3> runRansac3(vector<SSegment> inSegments, int iterations
 
     // prepare points and random number generator
     mt19937 rng(rd());
-    uniform_int_distribution<int> uni(0, arr_len);
+    uniform_int_distribution<int> uni(0, arr_len - 1);
     Point2d all_points[arr_len];
     for (int el = 0; el < arr_len; el++){
         all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
@@ -475,6 +476,10 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
+    int lines_num = 0;
+
+    SSegment b_seg = segmentation.biggest_segment;
+
     if (not segs_to_ransac.empty()){
 
         array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 10, 35);
@@ -499,7 +504,6 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
         #endif
 
         ROS_INFO_STREAM("Found " << segmentation.numSegments << " segments");
-        int lines_num = 0;
         if (ret_ransac3[0].size() > 1 and ret_ransac3[2].size() > 1 and ret_ransac3[1].size() > 3){
             lines_num = 3;
         } else if (ret_ransac2[0].size() > 2 and ret_ransac2[1].size() > 2 and r2_sum > 6) {
@@ -508,58 +512,61 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
             lines_num = 1;
         }
 
-        if (got_height and got_img and got_params and lines_num > 0){
+        geometry_msgs::Point pt;
+        if (got_height and got_img and got_params and b_seg.size > 1000) {
             float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
-            geometry_msgs::Point pt;
-            if (lines_num == 3){
+            if (lines_num == 3) {
                 Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY, h);
+                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY,
+                                                h);
                 Point2d vec = pt2 - pt1;
                 Point2d norm_vec = Point2d(-vec.y, vec.x);
-                vec = (vec/norm(vec)) * r3_sum;
-                double dist = (pt1.x*norm_vec.x + pt1.y*norm_vec.y)/norm(norm_vec);
+                vec = (vec / norm(vec)) * r3_sum;
+                double dist = (pt1.x * norm_vec.x + pt1.y * norm_vec.y) / norm(norm_vec);
                 pt.x = vec.x;
                 pt.y = vec.y;
                 pt.z = dist;
-            } else if (lines_num == 2){
+            } else if (lines_num == 2) {
                 Point2d pt1 = transform_using_h(ret_ransac2[0][0] - camera_shift, fPix, cX, cY, h);
-                Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1] - camera_shift, fPix, cX, cY, h);
+                Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1] - camera_shift, fPix, cX, cY,
+                                                h);
                 Point2d vec = pt2 - pt1;
-                vec = (vec/norm(vec)) * r2_sum;
+                vec = (vec / norm(vec)) * r2_sum;
                 pt.x = vec.x;
                 pt.y = vec.y;
                 pt.z = -1000;
-            } else if (lines_num == 1){
+            } else if (lines_num == 1) {
                 Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY, h);
+                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY,
+                                                h);
                 Point2d vec = pt2 - pt1;
-                vec = (vec/norm(vec)) * double(ret_ransac3[1].size());
+                vec = (vec / norm(vec)) * double(ret_ransac3[1].size());
                 pt.x = vec.x;
                 pt.y = vec.y;
                 pt.z = -1000;
             }
             // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
 
-            if (pt.x < 0){
+            if (pt.x < 0) {
                 pt.x = -pt.x;
                 pt.y = -pt.y;
                 pt.z = -pt.z;
             }
-            line_pub.publish(pt);
 
-        }
-
-        if (lines_num == 0){
-            Point2d seg_c(segmentation.biggest_segment.x, segmentation.biggest_segment.y);
-            if (seg_c.x < left_edge or seg_c.x > right_edge){
-                geometry_msgs::Point pt;
+            int *corner_max = max_element(b_seg.cornerX, b_seg.cornerX + 3);
+            int *corner_min = min_element(b_seg.cornerX, b_seg.cornerX + 3);
+            if (not (*corner_min < left_edge and *corner_max > right_edge)){
                 pt.x = 1000;
                 pt.y = 1000;
                 pt.z = 1000;
-                line_pub.publish(pt);
                 ROS_INFO_STREAM("End of pattern found!");
+                line_pub.publish(pt);
+            }
+            if (lines_num > 0){
+                line_pub.publish(pt);
             }
         }
+
 
     #ifdef PATTERN_DEBUG
         if (gui){
@@ -570,6 +577,9 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
 
     }
 
+
+
+    // ROS_INFO_STREAM("courners: " << b_seg.cornerX[0] << " : " << b_seg.cornerX[1] << " : " << b_seg.cornerX[2] << " : " << b_seg.cornerX[3] << endl);
     got_img = true;
 }
 
@@ -580,7 +590,7 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
         #ifndef PATTERN_DEBUG
         ros::ServiceClient raise_arm = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
         mbzirc_husky_msgs::Float64 msg;
-        msg.request.data = 0.11;
+        msg.request.data = 0;
         if (raise_arm.call(msg)){
         #endif
             minSegmentSize = 50;
