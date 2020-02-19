@@ -314,7 +314,7 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	float maxX,minX,maxY,minY;
 	minX = -0.0;
 	maxX = +5.0;
-	minY = -1.0;
+	minY = -3.0;
 	maxY = -0.4;
 	for (int i = 0; i <= num_ranges; i++)
 	{
@@ -401,7 +401,7 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	if (moveDistance < 0) signMove = -1;
 
 	if (maxEvalA + maxEvalB > 50) { spd.angular.z = maxA; spd.linear.x = 0.3;}
-	if (maxEvalA > 50 && maxEvalB > 50) {spd.angular.z = signMove*(0.57+maxB);} 
+	if (maxEvalA + maxEvalB > 100 && maxB < -1.3 || maxEvalA > 50 && maxEvalB > 50) {spd.angular.z = signMove*(0.57+maxB);} 
 	spd.linear.x = signMove*(fabs(moveDistance) - dist + 0.1);
 
 	if (dist > fabs(moveDistance)) {
@@ -746,7 +746,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 			state = nextState;
 			switch (state){
 				case TEST1: if (moveRobot(-2.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
-				case TEST2: if (moveRobot(-7.5) == 0) nextState = ARMRESET; else nextState = IDLE; break;
+				case TEST2: if (moveRobot(+2.5) == 0) nextState = TEST1; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
