@@ -43,6 +43,7 @@ ros::Subscriber subscriberPattern;
 float currentPosition = 0;
 float robotMoveDistance = 0;
 float currentRobotPosition = 0;
+int pattern_end_accumulator = 0;
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickStackAction> Server;
 Server *                                                              server;
@@ -511,12 +512,20 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
 	printf("Angle %f\n",angle);
 	geometry_msgs::Twist spd;
 	spd.angular.z = -angle;
-	spd.linear.x = 0.1;
+	spd.linear.x = -0.1;
 	if (std::abs(msg->z) < 1000){
+	    pattern_end_accumulator = 0;
 	    spd.angular.z = msg->z;
 	}
 	if (std::abs(msg->x) > 999){
+	    pattern_end_accumulator++;
 	    spd.linear.x = 0.0;
+
+	}
+	if (pattern_end_accumulator > 20){
+	    /// TODO stop subscribing and start brick stacking
+	    ROS_INFO("END OF THE PATTERN - START BRICK PICKUP");
+	    subscriberPattern.shutdown();
 	}
 	setSpeed(spd);
 	return;
