@@ -45,14 +45,12 @@
     </node>
 
     <!-- Topic sender -->
-<!-- <node name="topic_udp_sender" pkg="nimbro_topic_transport" type="udp_sender" output="screen"> -->
+    <node name="topic_udp_sender" pkg="nimbro_topic_transport" type="udp_sender" output="screen">
      <!-- The destination host name or IP address -->
-<!--
       <param name="destination_addr" value="$(arg broadcast_addr)" />
       <param name="destination_port" value="$(arg topic_server_port)" />
       <param name="topic_prefix" value="$(arg NAME)" />
     </node>
--->
   </group>
 
 </launch>

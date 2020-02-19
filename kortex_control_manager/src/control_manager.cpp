@@ -159,6 +159,7 @@ double align_timeout;
 double gripper_threshold;
 double effort_threshold;
 double align_x_min, align_x_max, align_y_min, align_y_max;
+double placing_drop_height = 0.0;
 
 Eigen::Vector3d camera_offset;
 
@@ -810,8 +811,9 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
 
   status = MOVING;
 
-  double placement_height = (camera_offset.z() + req.data + 0.02) - arm_base_to_ground;
-  ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f", ros::this_node::getName().c_str(), placement_height);
+  double placement_height = (camera_offset.z() + req.data + 0.02) - arm_base_to_ground + placing_drop_height;
+  ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f including %.2f m drop", ros::this_node::getName().c_str(), placement_height,
+           placing_drop_height);
 
   Pose3d goal_pose  = end_effector_pose;
   goal_pose.pos.z() = placement_height;
@@ -1660,6 +1662,7 @@ int main(int argc, char **argv) {
   nh.getParam("dispose/P1L1/end", dispose_P1L1_end);
   nh.getParam("dispose/P2L1/start", dispose_P2L1_start);
   nh.getParam("dispose/P2L1/end", dispose_P2L1_end);
+  nh.getParam("placing_drop_height", placing_drop_height);
 
   nh.getParam("align_x_min", align_x_min);
   nh.getParam("align_x_max", align_x_max);
