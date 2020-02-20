@@ -1,0 +1,3 @@
+<launch>
+	<node pkg="rosbag" type="record" name="rosbagrecord" args="-o testbag /tf /velodyne_packets /kinova/arm_manager/status /odometry/filtered /particlecloud /husky/gripper/gripper_diagnostics /ransac/poi /ransac/correct_two_lines /ransac/correct_one_line /ransac/clusterer_str /ransac/clusterer_reset /kinova/arm_manager/camera_to_ground /status  "/>
+</launch>
