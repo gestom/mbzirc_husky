@@ -7,7 +7,7 @@ z = -0.4
 ztol = 0.4
 scale = 0.05
 
-fn = "/home/george/datasets/MBZIRC_pointcloud/mbzirc.pts"
+fn = "/home/george/datasets/MBZIRC_pointcloud/tower2.pts"
 
 img = np.zeros((4000, 4000, 3), dtype=np.uint8)
 origin = (2000, 2000)
@@ -36,4 +36,4 @@ with open(fn, "r") as f:
 img[origin[0]][origin[1]] = [255,255,255]
 
 img = Image.fromarray(img, 'RGB')
-img.save('my.png')
+img.save('arena.png')
