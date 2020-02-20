@@ -4,8 +4,8 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/tennis-left-2/map.yaml"
-maxObservableDistance = 5.0
+filename = "../maps/ambulance/map.yaml"
+maxObservableDistance = 6.5
 
 rotAmount = 0.02
 mvAmount = 1
@@ -21,8 +21,8 @@ resolution = 1
 origin = [0, 0]
 boxX = 0
 boxY = 0
-boxW = 30
-boxH = 20
+boxW = 60
+boxH = 40
 boxR = 0
 running = True
 
