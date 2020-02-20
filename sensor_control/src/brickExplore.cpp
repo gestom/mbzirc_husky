@@ -93,10 +93,10 @@ float wallPatternLocationY = 0.0f;
 
 bool useRansac = false;
 bool precisePositionFound = false;
-float brickStackRedX = 8.8;
-float brickStackRedY = 33.1;
-float brickStackOrangeX = 1.7;
-float brickStackOrangeY = 30.9;
+float brickStackRedX = 0.5;
+float brickStackRedY = -12.5;
+float brickStackOrangeX = 8.15;
+float brickStackOrangeY = -12.6;
 
 ros::Subscriber schedulerSub;
 int redBricksRequired = 0;
@@ -178,7 +178,8 @@ double dist(double x1, double y1, double x2, double y2)
 
 void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 {
-
+	if(state != PRECISEBRICKFIND)
+		return;
 	size_t num_ranges = scan_msg->ranges.size();
 	float x[num_ranges];
 	float y[num_ranges];
@@ -630,21 +631,21 @@ void explore()
         ROS_INFO("Moving to point");
         moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1, 1.5);
 
-        /*ROS_INFO("Sending velo points");
+        ROS_INFO("Sending velo points");
           std_srvs::Trigger srv;
           wprosbagClient.call(srv);
 
-          ROS_INFO("Searching for bricks");
+          /*ROS_INFO("Searching for bricks");
           detector::brick_pile_detector bpd;
           m.request.activate = true;
           if(!brickPileDetectorClient.call(bpd))
-          ROS_INFO("Brick pile detector failed to call");
+          ROS_INFO("Brick pile detector failed to call");*/
 
           ROS_INFO("Calling wall pattern detect");
           mbzirc_husky_msgs::wallPatternDetect m;
           m.request.activate = true;
           m.request.rotate_arm = true;
-          wallSearchClient.call(m);*/
+          wallSearchClient.call(m);
 
         ROS_INFO("Finished calling wp search");
         usleep(2000000); 
@@ -657,12 +658,15 @@ void explore()
 
 void moveToBrickPile()
 {
-    ROS_INFO("Approaching bricks");
-    moveToBrickPosition(2.2, -1.3, -0.4, 1.5);
+    /*ROS_INFO("Approaching bricks");
+    moveToBrickPosition(-4.5, 1.5, -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(1.6, -0.5, -0.4, 1);
-    moveToBrickPosition(0.8, -0.5, -0.4, 0.7);   
-           
+    moveToBrickPosition(-2.5, 1.2, -0.0, 1);*/
+    ROS_INFO("Approaching bricks");
+    moveToBrickPosition(-2.5, 1.5, -0.4, 1.5);
+    ROS_INFO("Closer approach to bricks");
+    moveToBrickPosition(-1.5, 1.2, -0.0, 1);
+     
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
     std::stringstream ss;
@@ -685,21 +689,23 @@ void preciseBrickFind()
 
 int moveToBrickPosition(float x, float y, float orientationOffset, float tolerance)
 { 
-    float dx = brickStackRedX - brickStackOrangeX;
-    float dy = brickStackRedY - brickStackOrangeY;
-    
+    float dx = brickStackOrangeX - brickStackRedX;
+    float dy = brickStackOrangeY - brickStackRedY;
     if (sqrt(dx*dx+dy*dy) < 1.0)
     {
+	    ROS_INFO("ERROR WITH SQRT");
         brickStackLocationKnown = false;
         return -1;
     }
 
     float theta = atan2(dy, dx);
-    float mapWPX = x*cos(theta) - y*sin(theta) + brickStackRedX;
-    float mapWPY = y*sin(theta) + y*cos(theta) + brickStackRedY;
+    float mapWPX = x*cos(theta) + y*sin(theta) + brickStackRedX;
+    float mapWPY = -x*sin(theta) + y*cos(theta) + brickStackRedY;
 
     tf2::Quaternion quat_tf;
-    quat_tf.setRPY(0, 0, atan2(dy, dx) + orientationOffset + PI) ;
+    quat_tf.setRPY(0, 0, theta); // orientationOffset + PI);
+    printf("POS: %f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
+    printf("WWW: %f %f %f\n" ,dx,dy,theta);
     float orientationZ = quat_tf.z();
     float orientationW = quat_tf.w();
 
@@ -734,6 +740,8 @@ int moveToBrickPosition(float x, float y, float orientationOffset, float toleran
     goal.target_pose.pose.position.y = mapWPY;
 
     //goal orientation
+    goal.target_pose.pose.orientation.x = 0;
+    goal.target_pose.pose.orientation.y = 0;
     goal.target_pose.pose.orientation.z = orientationZ;
     goal.target_pose.pose.orientation.w = orientationW;
 
@@ -741,6 +749,7 @@ int moveToBrickPosition(float x, float y, float orientationOffset, float toleran
     
 	while(ros::ok())
 	{	
+		ROS_INFO("Polling position");
 		usleep(500000);
 		
 		tf::TransformListener listener;
@@ -760,12 +769,14 @@ int moveToBrickPosition(float x, float y, float orientationOffset, float toleran
 			geometry_msgs::PoseStamped newPose;
 			listener.transformPose("/map", pose, newPose);
 
-			float dx = newPose.pose.position.x - x;
-			float dy = newPose.pose.position.y - y;
+			float dx = newPose.pose.position.x - mapWPX;
+			float dy = newPose.pose.position.y - mapWPY;
+
+			ROS_INFO("Distance to target: %f", sqrt(dx*dx+dy*dy));
 
 			if (sqrt(dx*dx+dy*dy) < tolerance)
 			{
-				break;
+				return 0;
 			}
 		}
 		catch (tf::TransformException &ex)
@@ -921,7 +932,7 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 void finalApproach()
 {
 	ROS_INFO("Final approach");
-	if(moveToBrickPosition(-1.2, -0.5, 0.4, 0) == 0)
+	if(moveToBrickPosition(1.3, -0.3, 0.4, 0.3) == 0)//second is perp, one is along
 	{
 		ROS_INFO("Approach successful");
 		state = FINAL;
@@ -1068,7 +1079,7 @@ int main(int argc, char** argv)
 	wallPatternInvestigatorClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	brickPileDetectorClient = n.serviceClient<detector::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
-    scan_sub = n.subscribe("/scan",100, scanCallback);	
+    scan_sub = n.subscribe("/scan",10, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);

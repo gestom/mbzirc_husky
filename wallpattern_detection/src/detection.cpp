@@ -6,6 +6,7 @@
 #include "CTransformation.h"
 #include <image_transport/image_transport.h>
 #include <std_msgs/String.h>
+#include <mbzirc_husky_msgs/Vector7.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Twist.h>
@@ -62,6 +63,7 @@ image_transport::ImageTransport *it;
 ros::NodeHandle *n;
 float groundPlaneDistance = 0;
 random_device rd;
+ros::ServiceClient move_arm;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
@@ -497,11 +499,18 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     int lines_num = 0;
 
     SSegment b_seg = segmentation.biggest_segment;
+    if (b_seg.warningTop == 1){
+	    mbzirc_husky_msgs::Vector7 msg;
+	    for (int i = 0;i<7;i++) msg.request.data[i] = 0;
+	    msg.request.data[5] = 0.1;
+	    move_arm.call(msg);
+	    printf("MoveUP!\n");
+    }
 
     if (not segs_to_ransac.empty()){
 
         array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 20, 35);
-        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 5);
+        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 20);
 
         int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
         int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
@@ -886,7 +895,9 @@ int main(int argc, char** argv)
     n->param("uav_name", uav_name, string());
     n->param("gui", gui, false);
     n->param("debug", debug, false);
+    move_arm = n->serviceClient<mbzirc_husky_msgs::Vector7>("/kinova/arm_manager/goto_angles_relative");
 
+	    
     gui = false;
 
     if (gui) {

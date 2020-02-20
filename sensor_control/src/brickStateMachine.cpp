@@ -44,7 +44,7 @@ int main (int argc, char **argv) {
     ROS_INFO("Waiting for pickup...");
     pickupAC.waitForServer();
     ROS_INFO("Waiting for stack...");
-    stackAC.waitForServer();
+    //stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
     while(ros::ok())

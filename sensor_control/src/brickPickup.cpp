@@ -794,7 +794,7 @@ int main(int argc, char** argv)
 	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
 	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
-	//subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
+	subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
 	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
 	liftClient          = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/lift_brick");
