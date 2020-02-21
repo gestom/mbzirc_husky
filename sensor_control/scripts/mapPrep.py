@@ -4,8 +4,8 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/tennis-left-2/map.yaml"
-maxObservableDistance = 5.0
+filename = "../maps/tower/map.yaml"
+maxObservableDistance = 8
 
 rotAmount = 0.02
 mvAmount = 1
@@ -21,8 +21,8 @@ resolution = 1
 origin = [0, 0]
 boxX = 0
 boxY = 0
-boxW = 30
-boxH = 20
+boxW = 60
+boxH = 40
 boxR = 0
 running = True
 
@@ -181,5 +181,16 @@ if __name__ == "__main__":
             with open(folder + "/" + newFilename + "-waypoints.txt", "w") as f:
                 for i in wp:
                     f.write(str(i[0]) + " " + str(i[1]) + "\n")
+
+            with open(folder + "/" + newFilename + "-corners.txt", "w") as f:
+                tl = (boxX - ((boxW/2) * math.cos(boxR)) + ((boxH/2) * math.sin(boxR)), boxY - ((boxH/2) * math.cos(boxR)) - ((boxW/2) * math.sin(boxR)))
+                tr = (boxX + ((boxW/2) * math.cos(boxR)) + ((boxH/2) * math.sin(boxR)), boxY - ((boxH/2) * math.cos(boxR)) + ((boxW/2) * math.sin(boxR)))
+                bl = (boxX - ((boxW/2) * math.cos(boxR)) - ((boxH/2) * math.sin(boxR)), boxY + ((boxH/2) * math.cos(boxR)) - ((boxW/2) * math.sin(boxR)))
+                br = (boxX + ((boxW/2) * math.cos(boxR)) - ((boxH/2) * math.sin(boxR)), boxY + ((boxH/2) * math.cos(boxR)) + ((boxW/2) * math.sin(boxR)))
+     
+                f.write(str(tl[0]) + " " + str(tl[1]) + "\n")
+                f.write(str(tr[0]) + " " + str(tr[1]) + "\n")
+                f.write(str(br[0]) + " " + str(br[1]) + "\n")
+                f.write(str(bl[0]) + " " + str(bl[1]) + "\n")
 
     cv2.destroyAllWindows()
