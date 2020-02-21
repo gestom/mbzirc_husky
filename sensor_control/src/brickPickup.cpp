@@ -140,6 +140,7 @@ ros::Publisher twistPub;
 tf::TransformListener *listener;
 geometry_msgs::PoseStamped anchorPose;
 geometry_msgs::PoseStamped robotPose;
+geometry_msgs::PoseStamped robotOdoPose;
 geometry_msgs::Twist spd;
 float anchorAngle = 0;
 float wallAngleOffset = 0;
@@ -188,7 +189,12 @@ void setSpeed(geometry_msgs::Twist speed)
 }
 
 
-int updateRobotPosition()
+int updateRobotPosition() {
+	robotPose = robotOdoPose;
+	return 0;
+}
+
+int updateRobotPositionold()
 {
 	int inc = 0;
 	geometry_msgs::PoseStamped pose;
@@ -482,10 +488,10 @@ float uux = 0;
 float uuy = 0;
 bool first = true;
 
-/*this is exclusively for testing*/
 void odoCallBack(const nav_msgs::OdometryConstPtr &msg) 
 {
-	float aaa = tf::getYaw(msg->pose.pose.orientation);
+	/*this is exclusively for testing*/
+	/*float aaa = tf::getYaw(msg->pose.pose.orientation);
 	if (first){
 	       	uuu = aaa;
 		uux = msg->pose.pose.position.x;
@@ -495,22 +501,12 @@ void odoCallBack(const nav_msgs::OdometryConstPtr &msg)
 	float dx = uux-msg->pose.pose.position.x;
 	float dy = uuy-msg->pose.pose.position.y;
 	float dist = sqrt(dx*dx+dy*dy);
-	printf("Angle: %.3f distance %.3f \n",aaa-uuu,dist);
-	return;
-}
+	*/
+	robotOdoPose.pose.position.x = msg->pose.pose.position.x;
+	robotOdoPose.pose.position.y = msg->pose.pose.position.y;
+	robotOdoPose.pose.position.z = 0;
+	robotOdoPose.pose.orientation = msg->pose.pose.orientation;
 
-void velodyneCallBack(const velodyne_msgs::VelodyneScanConstPtr &msg) 
-{
-	 velodynePub.publish(msg);
-	 if (velodynePacketCount++ > 20) velodyneSub.shutdown();
-}
-
-void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
-{
-	if (updateRobotPosition() < 0) return;
-	if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg); 
-	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
-	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
 	return;
 }
 
@@ -533,31 +529,39 @@ int robotAlignPhi(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 	setSpeed(spd);
 }
 
-void callbackOdom(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
+
+
+
+void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
 {
-	int inc = 0;
-	float maxX = 0.10;
-	float maxZ = 0.15;
-	float angle = tf::getYaw(msg->pose.pose.orientation);
+        int inc = 0;
+        float maxX = 0.10;
+        float maxZ = 0.15;
+        float angle = tf::getYaw(msg->pose.pose.orientation);
+        if (updateRobotPosition() < 0) return;
+        if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
+        if (behaviour == ROBOT_ALIGN_PHI) behaviourResult = robotAlignPhi(msg);
+        return;
+}
+
+
+void velodyneCallBack(const velodyne_msgs::VelodyneScanConstPtr &msg) 
+{
+	 velodynePub.publish(msg);
+	 if (velodynePacketCount++ > 20) velodyneSub.shutdown();
+}
+
+void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
+{
 	if (updateRobotPosition() < 0) return;
-	if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
-	if (behaviour == ROBOT_ALIGN_PHI) behaviourResult = robotAlignPhi(msg);
+	if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg); 
+	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
+	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
 	return;
 }
 
 
 
-void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg) 
-{
-	int inc = 0;
-	float maxX = 0.10;
-	float maxZ = 0.15;
-	float angle = tf::getYaw(msg->pose.pose.orientation);
-	if (updateRobotPosition() < 0) return;
-	if (behaviour == ROBOT_ALIGN_X_PHI) behaviourResult = robotAlignXPhi(msg);
-	if (behaviour == ROBOT_ALIGN_PHI) behaviourResult = robotAlignPhi(msg);
-	return;
-}
 
 int resetArm()
 {

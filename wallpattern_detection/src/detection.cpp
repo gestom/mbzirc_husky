@@ -891,19 +891,18 @@ int main(int argc, char** argv)
 	n->param("camera_offset", camera_offset, 0.17);
 	n->param("wallpattern_height", wallpattern_height, 0.20);
 	// n->param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
-    n->param("colormap_filename", colormap_filename, clr_filepath);
-    n->param("uav_name", uav_name, string());
-    n->param("gui", gui, false);
-    n->param("debug", debug, false);
-    move_arm = n->serviceClient<mbzirc_husky_msgs::Vector7>("/kinova/arm_manager/goto_angles_relative");
+	n->param("colormap_filename", colormap_filename, clr_filepath);
+	n->param("uav_name", uav_name, string());
+	n->param("gui", gui, false);
+	n->param("debug", debug, false);
+	move_arm = n->serviceClient<mbzirc_husky_msgs::Vector7>("/kinova/arm_manager/goto_angles_relative");
 
-	    
-    gui = false;
+	gui = false;
 
-    if (gui) {
-        debug = true;
-        signal (SIGINT,termHandler);
-    }
+	if (gui) {
+		debug = true;
+		signal (SIGINT,termHandler);
+	}
 
 	if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
 	if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
@@ -915,7 +914,7 @@ int main(int argc, char** argv)
 
 	armInfo  = n->subscribe("/kinova/arm_manager/status", 1, armStatusCallback);
 
-    ros::ServiceServer service2 = n->advertiseService("start_top_wall_detector", getPatternAbove);
+	ros::ServiceServer service2 = n->advertiseService("start_top_wall_detector", getPatternAbove);
 
 	// initialize dynamic reconfiguration feedback
 
@@ -924,13 +923,13 @@ int main(int argc, char** argv)
 	dynSer = boost::bind(&reconfigureCallback, _1, _2);
 	server.setCallback(dynSer);
 
-		// SUBSCRIBERS
-    ros::ServiceServer service;
-    if (gui){
-        service = n->advertiseService("detectWallpattern", detect);
-        imagePub = it->advertise("/wallDetectResult", 1);
-        ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
-    }
+	// SUBSCRIBERS
+	ros::ServiceServer service;
+	if (gui){
+		service = n->advertiseService("detectWallpattern", detect);
+		imagePub = it->advertise("/wallDetectResult", 1);
+		ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
+	}
 
 	// Debugging PUBLISHERS
 	if (debug) {
