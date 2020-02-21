@@ -40,6 +40,10 @@ typedef struct{
 	int type;
 	int combo;
 	int warning;
+	int warningTop;
+	int warningBottom;
+	int warningLeft;
+	int warningRight;
 	int valid;
 	float roundness;
 	float circularity;

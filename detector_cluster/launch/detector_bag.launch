@@ -11,10 +11,6 @@
 
     </node>
 
-    <node name="rosbag" pkg="rosbag" type="play" args="--loop $(find detector)/bags/husky_end.bag" output="screen"/>
+    <node name="rosbag" pkg="rosbag" type="play" args="--loop $(find detector)/bags/2020-02-15-12-47-00.bag" output="screen"/>
 
 </launch>
-
-
-
-

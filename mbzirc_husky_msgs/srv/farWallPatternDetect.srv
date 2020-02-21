@@ -1,8 +1,0 @@
-bool activate
-float64 step
-int32 attempts
-float64 groundPlaneDistance 
----
-bool activated
-bool detected 
-geometry_msgs/PoseStamped patternPose 

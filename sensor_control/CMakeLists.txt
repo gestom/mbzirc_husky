@@ -20,9 +20,11 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs 
     image_transport
     tf
+    detector
     #    mrs_lib
     mbzirc_husky_msgs
-  )
+    detector
+    )
 
 find_package(PCL REQUIRED)
 
@@ -61,8 +63,8 @@ add_service_files(
   nextBrickPlacement.srv
   brickBuilt.srv
   debugFillInventory.srv
+  patternAlignement.srv
 )
-
 
 
 generate_messages(
@@ -100,7 +102,7 @@ add_dependencies(brickDetector ${PROJECT_NAME}_generate_messages_cpp ${catkin_EX
 add_dependencies(fireExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(fireStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-add_dependencies(brickExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(brickExplore ${PROJECT_NAME}_generate_messages_cpp detector_generate_messages_cpp catkin_EXPORTED_TARGETS})
 add_dependencies(brickPickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS} kinova_control_manager_gencpp)
 add_dependencies(brickStack ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(symbolicMap ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
@@ -119,9 +121,9 @@ target_link_libraries (symbolicMap ${catkin_LIBRARIES})
 ## Install ##
 #############
 
- install(PROGRAMS
-    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
- )
+install(PROGRAMS
+	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 # install(TARGETS mbzirc_husky
 #    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
