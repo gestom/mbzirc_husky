@@ -68,8 +68,8 @@ int velodynePacketCount = 0;
 
 const char *stateStr[] = { 
 	"Idle",
-	"TEST1",
-	"TEST2",
+	"Approach 1",
+	"Approach 2",
 	"resetting arm",		
 	"positioning arm", 	
 	"aligning robot to a brick",	
@@ -96,8 +96,8 @@ const char *stateStr[] = {
 
 typedef enum{
 	IDLE = 0,
-	TEST1,
-	TEST2,
+	APPROACH1,
+	APPROACH2,
 	ARMRESET,		//arm goes to dock position
 	ARMPOSITIONING, 	//arm goes to overview positions
 	ROBOT_ALIGNMENT, 	//arm goes to overview positions
@@ -739,8 +739,8 @@ bool shootVelodyne(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response 
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
 	mbzirc_husky::brickPickupResult result;
-	state = TEST2;//TODO
-	state = ARMRESET;//TODO
+	state = ARMRESET;	//TODO
+	state = APPROACH1;	//TODO
 	EState nextState = state;
 	EState recoveryState = state;
 	while (isTerminal(state) == false && ros::ok()) 
@@ -749,8 +749,8 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
-				case TEST1: if (moveRobot(-2.5) == 0) nextState = TEST2; else nextState = IDLE; break; 
-				case TEST2: if (moveRobot(+2.5) == 0) nextState = TEST1; else nextState = IDLE; break;
+				case APPROACH1: if (moveRobot(+2.5) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
+				case APPROACH2: if (moveRobot(-2.5) == 0) nextState =  ARMRESET; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
@@ -797,7 +797,7 @@ int main(int argc, char** argv)
 
 	twistPub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
-	subscriberScan = n.subscribe("/scan", 1, &scanCallBack);
+	subscriberScan = n.subscribe("/scanlocal", 1, &scanCallBack);
 	subscriberOdom = n.subscribe("/odometry/filtered", 1, &odoCallBack);
 	brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 	prepareClient       = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");

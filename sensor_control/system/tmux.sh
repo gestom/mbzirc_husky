@@ -43,7 +43,7 @@ tmux split-window -h
 tmux send-keys 'rosrun mbzirc_husky brickPickup'
 tmux split-window -h
 sleep 0.2
-tmux send-keys ''
+tmux send-keys 'roslaunch mbzirc_husky symbolicMap'
 tmux split-window -h
 sleep 0.2
 tmux send-keys 'rosrun mbzirc_husky brickExplore'
@@ -64,10 +64,10 @@ sleep 0.2
 tmux send-keys 'roslaunch mbzirc_husky inventory.launch'
 tmux select-layout tiled
 tmux new-window -n:"Detectors"
-tmux send-keys ''
+tmux send-keys 'rosrun mbzirc_husky ransac_clusterer.py'
 sleep 0.2
 tmux split-window -h
-tmux send-keys ''
+tmux send-keys 'roslaunch detector detector.launch'
 sleep 0.2
 tmux split-window
 tmux send-keys ''
