@@ -446,57 +446,57 @@ void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr &msg) {
 }
 
 
-bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msgs::wallPatternDetect::Response &res) {
-
+bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msgs::wallPatternDetect::Response &res) 
+{
 	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
 	res.activated = true;
-  if (req.rotate_arm) {
-	  mbzirc_husky_msgs::Float64 srv;
-	  srv.request.data = -M_PI / 2;
-	  turnArmClient.call(srv);
-	  for (float i = -1; i < 1; i += 1.0 / 3.0) {
-		  srv.request.data = i * M_PI;
-		  turnArmClient.call(srv);
-		  numDetections        = 0;
-		  numDetectionAttempts = 0;
-		  detectionStrength    = 0;
-		  imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-		  while (numDetectionAttempts < 10) {
-			  ros::spinOnce();
-		  }
-		  imageSub.shutdown();
-	  }
-	  srv.request.data = M_PI / 2;
-	  turnArmClient.call(srv);
-	  srv.request.data = 0;
-	  turnArmClient.call(srv);
-  } else {
-	  numDetections        = 0;
-	  numDetectionAttempts = 0;
-	  detectionStrength    = 0;
-	  imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-	  while (numDetectionAttempts < 10) {
-		  ros::spinOnce();
-	  }
-	  imageSub.shutdown();
-  }
-  subInfo.shutdown();
-  res.detected = detectionStrength;
+	if (req.rotate_arm) {
+		mbzirc_husky_msgs::Float64 srv;
+		srv.request.data = -M_PI / 2;
+		turnArmClient.call(srv);
+		for (float i = -1; i < 1; i += 1.0 / 3.0) {
+			srv.request.data = i * M_PI;
+			turnArmClient.call(srv);
+			numDetections        = 0;
+			numDetectionAttempts = 0;
+			detectionStrength    = 0;
+			imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+			while (numDetectionAttempts < 10) {
+				ros::spinOnce();
+			}
+			imageSub.shutdown();
+		}
+		srv.request.data = M_PI / 2;
+		turnArmClient.call(srv);
+		srv.request.data = 0;
+		turnArmClient.call(srv);
+	} else {
+		numDetections        = 0;
+		numDetectionAttempts = 0;
+		detectionStrength    = 0;
+		imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		while (numDetectionAttempts < 10) {
+			ros::spinOnce();
+		}
+		imageSub.shutdown();
+	}
+	subInfo.shutdown();
+	res.detected = detectionStrength;
 
-  // check if we have blue brick in the inventory
-  mbzirc_husky::nextBrickPlacement inventorySrv;
-  inventorySrv.request.offset = 0.0;
-  inventoryQueryClient.call(inventorySrv);
-  if (inventorySrv.response.brickType == 2) {
-    ROS_INFO("We have a blue brick. Moving the arm to hold it down");
-    std_srvs::Trigger trg;
-    holdBricksClient.call(trg);
-  } else {
-    ROS_INFO("No blue brick to hold down. Moving arm to home position");
-    std_srvs::Trigger trg;
-    homeArmClient.call(trg);
-  }
-  return true;
+	// check if we have blue brick in the inventory
+	mbzirc_husky::nextBrickPlacement inventorySrv;
+	inventorySrv.request.offset = 0.0;
+	inventoryQueryClient.call(inventorySrv);
+	if (inventorySrv.response.brickType == 2) {
+		ROS_INFO("We have a blue brick. Moving the arm to hold it down");
+		std_srvs::Trigger trg;
+		holdBricksClient.call(trg);
+	} else {
+		ROS_INFO("No blue brick to hold down. Moving arm to home position");
+		std_srvs::Trigger trg;
+		homeArmClient.call(trg);
+	}
+	return true;
 }
 
 
@@ -523,7 +523,6 @@ int main(int argc, char **argv) {
   n->param("camera_offset", camera_offset, 0.17);
   n->param("wallpattern_height", wallpattern_height, 0.20);
   n->param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
-  gui = false;
   if (gui)   namedWindow("frame", CV_WINDOW_AUTOSIZE);
   if (gui)   namedWindow("histogram", CV_WINDOW_AUTOSIZE);
   if (gui)   namedWindow("roi", CV_WINDOW_AUTOSIZE);
