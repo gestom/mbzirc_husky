@@ -24,5 +24,5 @@ obstacle_layer:
     raytrace_range: 3.0
     observation_sources: laser
 
-    laser: {sensor_frame: velodyne, data_type: LaserScan, topic: scan, marking: true, clearing: true}
+    laser: {sensor_frame: velodyne, data_type: LaserScan, topic: scanlocal, marking: true, clearing: true}
     track_unknown_space: true

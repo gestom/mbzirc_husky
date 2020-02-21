@@ -63,3 +63,16 @@ tmux split-window -h
 sleep 0.2
 tmux send-keys 'roslaunch mbzirc_husky inventory.launch'
 tmux select-layout tiled
+tmux new-window -n:"Detectors"
+tmux send-keys ''
+sleep 0.2
+tmux split-window -h
+tmux send-keys ''
+sleep 0.2
+tmux split-window
+tmux send-keys ''
+sleep 0.2
+tmux split-window -h
+tmux send-keys ''
+sleep 0.2
+tmux select-layout tiled

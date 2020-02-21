@@ -541,7 +541,8 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
   state = IDLE;
 }
 
-void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
+void wallCallBack(const geometry_msgs::PointConstPtr &msg)
+{
     if (msg->x < 999){
         started_alignement = true;
     }
@@ -553,24 +554,24 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
         spd.linear.x = -0.1;
     }
 	if (std::abs(msg->z) < 999){
-	    pattern_end_accumulator = 0;
+	    if (pattern_end_accumulator-- < 0) pattern_end_accumulator = 0;
 	    spd.angular.z = msg->z;
 	}
 	if (std::abs(msg->x) > 999){
 	    pattern_end_accumulator++;
 	    spd.linear.x = 0.0;
+	    spd.angular.z = 0.0;
 	}
 	if (pattern_end_accumulator > 30){
-	    /// TODO stop subscribing and start brick stacking
-	    ROS_INFO("END OF THE PATTERN - START BRICK STACK");
+	    ROS_INFO("END OF THE PATTERN - START BRICK STACK %i\n",pattern_end_accumulator);
 	    end_of_pattern = true;
 	}
 	setSpeed(spd);
 	return;
 }
 
-bool startWallCallBack(mbzirc_husky::patternAlignement::Request req, mbzirc_husky::patternAlignement::Response res){
-
+bool startWallCallBack(mbzirc_husky::patternAlignement::Request &req, mbzirc_husky::patternAlignement::Response &res)
+{
     if (req.trigger){
         started_alignement = false;
         end_of_pattern = false;
@@ -579,18 +580,18 @@ bool startWallCallBack(mbzirc_husky::patternAlignement::Request req, mbzirc_husk
         for (int i = 0; i < 10; i++){
             usleep(200000);
             ros::spinOnce();
-            if (started_alignement){
-                break;
-            }
         }
-        if (started_alignement){
-            res.success = true;
-            return true;
-        } else {
+	if (started_alignement == false)
+	{
             res.success = false;
             subscriberPattern.shutdown();
             return false;
         }
+	while (end_of_pattern == false){
+            usleep(50000);
+            ros::spinOnce();
+	}
+	subscriberPattern.shutdown();
     } else {
         subscriberPattern.shutdown();
         res.success = true;
@@ -632,7 +633,8 @@ int main(int argc, char **argv) {
   releaseClient    = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
   disposeClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/dispose_brick");
 
-  goPatternStart   = n.serviceClient<mbzirc_husky::patternAlignement>("/start_pattern_alignement");
+  //goPatternStart   = n.serviceClient<mbzirc_husky::patternAlignement>("/start_pattern_alignement");
+  ros::ServiceServer goPatternStart = n.advertiseService("/start_pattern_alignement",startWallCallBack);
 
 
   inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");

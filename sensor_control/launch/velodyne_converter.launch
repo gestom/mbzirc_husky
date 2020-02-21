@@ -1,0 +1,4 @@
+<launch>
+    <node name="republish_ptcl" pkg="velodyne_pointcloud" type="cloud_node" 
+          args="_calibration:=$(find velodyne_pointcloud)/params/VLP16db.yaml" />
+</launch>
