@@ -66,6 +66,11 @@ add_service_files(
   patternAlignement.srv
 )
 
+add_message_files(
+	FILES
+	symbolicMap.msg
+)	
+
 
 generate_messages(
     DEPENDENCIES
