@@ -1,0 +1,8 @@
+<launch>
+
+    <param name="colormap_filename" type="str" value="$(find wallpattern_detection)/etc/rosbag.bin" />
+    <param name="detection_type" type="int" value="1" />
+
+    <node name="mbzirc_calibration" pkg="wallpattern_detection" type="mbzirc_calibration" output="screen"> </node>
+
+</launch>

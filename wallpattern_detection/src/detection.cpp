@@ -6,6 +6,7 @@
 #include "CTransformation.h"
 #include <image_transport/image_transport.h>
 #include <std_msgs/String.h>
+#include <mbzirc_husky_msgs/Vector7.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Twist.h>
@@ -38,13 +39,15 @@
 #include <wallpattern_detection/wall_pattern_close.h>
 #include <mbzirc_husky_msgs/Float64.h>
 #include <algorithm>
+#include <mbzirc_husky_msgs/Gen3ArmStatus.h>
 
-// #define PATTERN_DEBUG
+#define PATTERN_DEBUG
 
 using namespace std;
 using namespace cv;
 
 VideoCapture *capture;
+float armAngle = 0;
 int key = 0;
 
 int numDetections = 0;
@@ -58,14 +61,14 @@ image_transport::Publisher imagePub;
 mbzirc_husky_msgs::wallPatternPosition patternPose;
 image_transport::ImageTransport *it;
 ros::NodeHandle *n;
-int groundPlaneDistance = 0;
+float groundPlaneDistance = 0;
 random_device rd;
+ros::ServiceClient move_arm;
 
 int  defaultImageWidth= 640;
 int  defaultImageHeight = 480;
 int left_edge = defaultImageWidth/4.0;
 int right_edge = defaultImageWidth*(3.0/4.0);
-Point2d camera_shift(320, 240);
 float cX = defaultImageWidth/2.0;
 float cY = defaultImageHeight/2.0;
 float fPix = 1.0;
@@ -109,6 +112,7 @@ ros::Publisher pose_pub;
 ros::Publisher errorPub;
 ros::Publisher objectPublisher;
 ros::Subscriber localOdomSub;
+ros::Subscriber armInfo;
 ros::Publisher line_pub;
 
 SSegment currentSegment;
@@ -245,8 +249,24 @@ static array<int, 2> twoLargest(const int *values, int len, int mid_idx){
     return { idx1, idx2 };
 }
 
-static Point2d transform_using_h(Point2d pt, double fpix, double cx, double cy, double h){
-    return Point2d((pt.x -h*cx)/fpix, (pt.y - h*cy)/fpix);
+float sgn(float a)
+{
+	if (a<0) return -1;
+	return 1;
+}
+
+static Point2d transform_using_h(Point2d pt){
+    Point2d pta = Point2d((pt.x-cX)/fPix, (pt.y-cY)/fPix);
+    float gamma = armAngle  -atan2(1,pt.y);
+    if (gamma < M_PI/3  && gamma > -1)
+    {
+	pta.y = groundPlaneDistance/cos(gamma)*sgn(gamma);
+	float v = sqrt(pt.y*pt.y+groundPlaneDistance*groundPlaneDistance);
+	pta.x = pta.x*v;
+    }else{
+    	ROS_ERROR("Angle of point is invalid, robot will explode");
+    }
+    return pta;
 }
 
 array<vector<Point2d>, 3> runRansac3(vector<SSegment> inSegments, int iterations, int hist_size, int bins_num){
@@ -370,7 +390,7 @@ array<vector<Point2d>, 2> runRansac2(vector<SSegment> inSegments, int iterations
 
     // prepare points and random number generator
     mt19937 rng(rd());
-    uniform_int_distribution<int> uni(0, arr_len);
+    uniform_int_distribution<int> uni(0, arr_len-1);
     Point2d all_points[arr_len];
     for (int el = 0; el < arr_len; el++){
         all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
@@ -448,8 +468,8 @@ array<vector<Point2d>, 2> runRansac2(vector<SSegment> inSegments, int iterations
 
 void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 {
-    groundPlaneDistance = msg->data*1000+20;
-    // printf("Ground plane: %i\n",groundPlaneDistance);
+    groundPlaneDistance = msg->data;
+    printf("Ground plane: %f\n",groundPlaneDistance);
     got_height = true;
 }
 
@@ -479,11 +499,18 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     int lines_num = 0;
 
     SSegment b_seg = segmentation.biggest_segment;
+    if (b_seg.warningTop == 1){
+	    mbzirc_husky_msgs::Vector7 msg;
+	    for (int i = 0;i<7;i++) msg.request.data[i] = 0;
+	    msg.request.data[5] = 0.1;
+	    move_arm.call(msg);
+	    printf("MoveUP!\n");
+    }
 
     if (not segs_to_ransac.empty()){
 
-        array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 10, 35);
-        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 5);
+        array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 20, 35);
+        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 20);
 
         int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
         int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
@@ -514,11 +541,10 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
 
         geometry_msgs::Point pt;
         if (got_height and got_img and got_params and b_seg.size > 500) {
-            float h = ((groundPlaneDistance - 20) / 1000) + 0.05;
             if (lines_num == 3) {
-                Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY,
-                                                h);
+                Point2d pt1 = transform_using_h(ret_ransac3[1][0]);
+                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1]);
+	 		
                 Point2d vec = pt2 - pt1;
                 Point2d norm_vec = Point2d(-vec.y, vec.x);
                 vec = (vec / norm(vec)) * r3_sum;
@@ -527,18 +553,16 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
                 pt.y = vec.y;
                 pt.z = dist;
             } else if (lines_num == 2) {
-                Point2d pt1 = transform_using_h(ret_ransac2[0][0] - camera_shift, fPix, cX, cY, h);
-                Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1] - camera_shift, fPix, cX, cY,
-                                                h);
+                Point2d pt1 = transform_using_h(ret_ransac2[0][0]);
+                Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1]);
                 Point2d vec = pt2 - pt1;
                 vec = (vec / norm(vec)) * r2_sum;
                 pt.x = vec.x;
                 pt.y = vec.y;
                 pt.z = -1000;
             } else if (lines_num == 1) {
-                Point2d pt1 = transform_using_h(ret_ransac3[1][0] - camera_shift, fPix, cX, cY, h);
-                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1] - camera_shift, fPix, cX, cY,
-                                                h);
+                Point2d pt1 = transform_using_h(ret_ransac3[1][0]);
+                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1]);
                 Point2d vec = pt2 - pt1;
                 vec = (vec / norm(vec)) * double(ret_ransac3[1].size());
                 pt.x = vec.x;
@@ -801,6 +825,11 @@ void termHandler(int s){
   exit(1); 
 }
 
+void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr &msg) {
+  armAngle = msg->joint_angles[5]+1.628826;
+}
+
+
 bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
 {
 
@@ -866,7 +895,9 @@ int main(int argc, char** argv)
     n->param("uav_name", uav_name, string());
     n->param("gui", gui, false);
     n->param("debug", debug, false);
+    move_arm = n->serviceClient<mbzirc_husky_msgs::Vector7>("/kinova/arm_manager/goto_angles_relative");
 
+	    
     gui = false;
 
     if (gui) {
@@ -882,11 +913,7 @@ int main(int argc, char** argv)
 	segmentation.loadColorMap(colorMap.c_str());
 	segmentation.loadColors((colorMap+".col").c_str());
 
-	/*  TODO: get calibration file
-	altTransform = new CTransformation();
-	string calibrationFile = ros::package::getPath("wallpattern_detection")+"/etc/correspondences.col";
-	altTransform->calibrate2D(calibrationFile.c_str());
-	*/
+	armInfo  = n->subscribe("/kinova/arm_manager/status", 1, armStatusCallback);
 
     ros::ServiceServer service2 = n->advertiseService("start_top_wall_detector", getPatternAbove);
 
