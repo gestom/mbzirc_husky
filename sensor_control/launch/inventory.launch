@@ -1,6 +1,6 @@
 <launch>
 	<!--Additional services-->
 	<node pkg="mbzirc_husky" name="inventory" type="brickInventory.py" output="screen">
-		<param name="filename" value="$(find mbzirc_husky)/bricks/bricks.txt"/> 
+		<param name="filename" value="$(find mbzirc_husky)/bricks/bricks-difficult.txt"/> 
 	</node>
 </launch>
