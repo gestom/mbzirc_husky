@@ -1124,6 +1124,10 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
     return false;
   }
 
+
+
+
+
   // TODO this fucker hangs and makes me want to hang myself
   ROS_INFO("[%s]: Assuming a raised camera pose", ros::this_node::getName().c_str());
   status                          = MOVING;
@@ -1521,6 +1525,7 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
       if (status == MOVING && accumulated_effort_difference > effort_threshold) {
         ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
       }
+      //TODO stop movement here
       publisher_effort_changes.publish(msg);
     }
   }
