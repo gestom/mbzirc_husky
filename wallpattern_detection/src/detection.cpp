@@ -487,7 +487,7 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
     inFrame.copyTo(frame);
 
-    segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
+//    segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
     vector<SSegment> segs_to_ransac;
     int new_size;
     for (int i = 0; i < segmentation.numSegments; i++){

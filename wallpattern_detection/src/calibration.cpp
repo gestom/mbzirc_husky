@@ -43,8 +43,6 @@
 #include <mbzirc_husky_msgs/Float64.h>
 #include <algorithm>
 
-// #define PATTERN_DEBUG
-
 using namespace std;
 using namespace cv;
 
@@ -94,7 +92,7 @@ int hbins = 180;
 int sbins = 256;
 tf::TransformListener *listener;
 tf::StampedTransform lastTransform;
-bool gui;
+bool gui = true;
 bool debug = true;
 bool oldbags = false;
 bool stallImage = false;
@@ -405,70 +403,59 @@ int main(int argc, char** argv)
 
     if (detection_type == 1){
 
-    ROS_INFO("running close detection");
-#ifndef PATTERN_DEBUG
-    ros::ServiceClient raise_arm = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
-    mbzirc_husky_msgs::Float64 msg;
-    msg.request.data = 0;
+	    ROS_INFO("running close detection");
+	    ros::ServiceClient raise_arm = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
+	    mbzirc_husky_msgs::Float64 msg;
+	    msg.request.data = 0;
 
-        if (raise_arm.call(msg)) {
-#endif
-            if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
-            if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
-            if (gui) namedWindow("roi", CV_WINDOW_AUTOSIZE);
+	    if (raise_arm.call(msg))  ROS_ERROR("Unable to hajitla");
+	    if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
+	    if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
+	    if (gui) namedWindow("roi", CV_WINDOW_AUTOSIZE);
 
-            colorMap = colormap_filename;
-            segmentation.loadColorMap(colorMap.c_str());
-            segmentation.loadColors((colorMap + ".col").c_str());
+	    colorMap = colormap_filename;
+	    segmentation.loadColorMap(colorMap.c_str());
+	    segmentation.loadColors((colorMap + ".col").c_str());
 
 
-            // initialize dynamic reconfiguration feedback
+	    // initialize dynamic reconfiguration feedback
 
-            dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig> server;
-            dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig>::CallbackType dynSer;
-            dynSer = boost::bind(&reconfigureCallback, _1, _2);
-            server.setCallback(dynSer);
+	    dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig> server;
+	    dynamic_reconfigure::Server<wallpattern_detection::wallpattern_detectionConfig>::CallbackType dynSer;
+	    dynSer = boost::bind(&reconfigureCallback, _1, _2);
+	    server.setCallback(dynSer);
 
-            // SUBSCRIBERS
-            if (gui) {
-                imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-                imagePub = it->advertise("/wallDetectResult", 1);
-                ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback,
-                                                        ros::TransportHints().tcpNoDelay());
-            }
+	    // SUBSCRIBERS
+	    if (gui) {
+		    imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		    imagePub = it->advertise("/wallDetectResult", 1);
+		    ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback,
+				    ros::TransportHints().tcpNoDelay());
+	    }
 
-            // Debugging PUBLISHERS
-            if (debug) {
-                poseArrayPub = n->advertise<geometry_msgs::PoseArray>("objectPositions", 1);
-                pose_pub = n->advertise<geometry_msgs::PoseStamped>("objectRelative", 1);
-                imdebug = it->advertise("processedimage", 1);
-            }
+	    // Debugging PUBLISHERS
+	    if (debug) {
+		    poseArrayPub = n->advertise<geometry_msgs::PoseArray>("objectPositions", 1);
+		    pose_pub = n->advertise<geometry_msgs::PoseStamped>("objectRelative", 1);
+		    imdebug = it->advertise("processedimage", 1);
+	    }
 
-            sensor_msgs::Image msg;
-            if (gui) setMouseCallback("frame", mainMouseCallback, NULL);
-            if (gui) setMouseCallback("histogram", histogramMouseCallback, NULL);
+	    if (gui) setMouseCallback("frame", mainMouseCallback, NULL);
+	    if (gui) setMouseCallback("histogram", histogramMouseCallback, NULL);
 
-            timer.reset();
-            timer.start();
+	    timer.reset();
+	    timer.start();
 
-            ros::spin();
+	    ros::spin();
 
-#ifndef PATTERN_DEBUG
-        } else {
-            ROS_ERROR("unable to raise the arm");
-            return 0;
-        }
-#endif
     }
 
     if (detection_type == 2){
         ROS_INFO("running far detection");
-#ifndef PATTERN_DEBUG
         ros::ServiceClient turnArmClient = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
         mbzirc_husky_msgs::Float64 srv;
         srv.request.data = -M_PI / 2;
-        if (turnArmClient.call(srv)) {
-#endif
+        if (turnArmClient.call(srv)) ROS_ERROR("Unable to turn arm");
 
             if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
             if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
@@ -510,13 +497,6 @@ int main(int argc, char** argv)
 
             ros::spin();
 
-#ifndef PATTERN_DEBUG
-
-        } else {
-            ROS_ERROR("unable to raise the arm");
-            return 0;
-        }
-#endif
     }
 
 
