@@ -234,35 +234,36 @@ int reportPosition(STrackedObject object) {
 }
 
 
-STrackedObject transformPatternPose(STrackedObject object) {
+STrackedObject transformPatternPose(STrackedObject object)
+{
   int                        inc = 0;
   geometry_msgs::PoseStamped resultPose, pose;
   STrackedObject             result = object;
   float                      az     = 0;
   try {
-    float x, y;
-    float armOffsetX        = 0;
-    float armOffsetY        = 0;
-    x                       = +cos(armAngle) * object.x + sin(armAngle) * object.y + armOffsetX;
-    y                       = -sin(armAngle) * object.x + cos(armAngle) * object.y + armOffsetY;
-    pose.header.frame_id    = "base_link";
-    pose.header.stamp       = ros::Time::now();
-    pose.pose.position.x    = x;
-    pose.pose.position.y    = y;
-    pose.pose.position.z    = 0;
-    pose.pose.orientation.x = 0;
-    pose.pose.orientation.y = 0;
-    pose.pose.orientation.z = 0;
-    pose.pose.orientation.w = 1;
-    listener->waitForTransform("/base_link", "map", pose.header.stamp, ros::Duration(0.2));
-    listener->transformPose("/map", pose, resultPose);
-    result.x = resultPose.pose.position.x;
-    result.y = resultPose.pose.position.y;
-    printf("Main object: %.2f %.2f %.2f %.2f %.2f %.2f %i %i %.2f\n", result.x, result.y, x, y, object.x, object.y, object.numContours, numDetectionAttempts,
-           armAngle);
-    if (result.numContours > 1)
-      reportPosition(result);
-    return result;
+	  float x, y;
+	  float armOffsetX        = 0;
+	  float armOffsetY        = 0;
+	  x                       = +cos(armAngle) * object.x + sin(armAngle) * object.y + armOffsetX;
+	  y                       = -sin(armAngle) * object.x + cos(armAngle) * object.y + armOffsetY;
+	  pose.header.frame_id    = "base_link";
+	  pose.header.stamp       = ros::Time::now();
+	  pose.pose.position.x    = x;
+	  pose.pose.position.y    = y;
+	  pose.pose.position.z    = 0;
+	  pose.pose.orientation.x = 0;
+	  pose.pose.orientation.y = 0;
+	  pose.pose.orientation.z = 0;
+	  pose.pose.orientation.w = 1;
+	  listener->waitForTransform("/base_link", "map", pose.header.stamp, ros::Duration(0.2));
+	  listener->transformPose("/map", pose, resultPose);
+	  result.x = resultPose.pose.position.x;
+	  result.y = resultPose.pose.position.y;
+	  printf("Main object: %.2f %.2f %.2f %.2f %.2f %.2f %i %i %.2f\n", result.x, result.y, x, y, object.x, object.y, object.numContours, numDetectionAttempts,
+			  armAngle);
+	  if (result.numContours > 1)
+		  reportPosition(result);
+	  return result;
   }
   catch (tf::TransformException &ex) {
     ROS_ERROR("%s", ex.what());
@@ -296,59 +297,61 @@ int updateRobotPosition() {
   }
 }
 
-void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
-  if (stallImage == false)
-    inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
-  inFrame.copyTo(frame);
-  timer.reset();
-  timer.start();
-  updateRobotPosition();
-  numDetectionAttempts++;
-  SSegment segment = segmentation.findSegment(&frame, &imageCoords, segments, minSegmentSize, maxSegmentSize);
-  if (segment.valid == 1) {
-    STrackedObject object = altTransform->transform2D(segment);
-    object                = transformPatternPose(object);
-    detectionStrength += object.numContours;
-    numDetections++;
-  }
-  // posePub.publish(patternPose);
+void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
+{
+	if (stallImage == false)
+		inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
+	inFrame.copyTo(frame);
+	timer.reset();
+	timer.start();
+	updateRobotPosition();
+	numDetectionAttempts++;
+	SSegment segment = segmentation.findSegment(&frame, &imageCoords, segments, minSegmentSize, maxSegmentSize);
+	if (segment.valid == 1 && segment.size > 8000) {
+		STrackedObject object = altTransform->transform2D(segment);
+		STrackedObject placeToDrive = altTransform->getPlaceToDrive(segment);
+		placeToDrive          = transformPatternPose(placeToDrive);
+		detectionStrength += object.numContours;
+		numDetections++;
+	}
+	// posePub.publish(patternPose);
 
-  if (imagePub.getNumSubscribers() != 0) {
-    frame.copyTo(videoFrame);
-    cv_ptr.encoding                 = "bgr8";
-    cv_ptr.image                    = videoFrame;
-    sensor_msgs::ImagePtr imagePtr2 = cv_ptr.toImageMsg();
-    imagePtr2->header.seq           = cv_bridge::toCvShare(msg, "bgr8")->header.seq;
+	if (imagePub.getNumSubscribers() != 0) {
+		frame.copyTo(videoFrame);
+		cv_ptr.encoding                 = "bgr8";
+		cv_ptr.image                    = videoFrame;
+		sensor_msgs::ImagePtr imagePtr2 = cv_ptr.toImageMsg();
+		imagePtr2->header.seq           = cv_bridge::toCvShare(msg, "bgr8")->header.seq;
 
-    try {
-      frame_pub.publish(imagePtr2);
-    }
-    catch (...) {
-      ROS_ERROR("Exception caught during publishing topic %s.", frame_pub.getTopic().c_str());
-    }
-  }
-  // END of segmentation - START calculating global frame coords
-  if (gui) {
-	  imshow("frame", frame);
+		try {
+			frame_pub.publish(imagePtr2);
+		}
+		catch (...) {
+			ROS_ERROR("Exception caught during publishing topic %s.", frame_pub.getTopic().c_str());
+		}
+	}
+	// END of segmentation - START calculating global frame coords
+	if (gui) {
+		imshow("frame", frame);
 
-	  /*processing user input*/
-	  key = waitKey(1) % 256;
-	  if (key == 32)
-		  stallImage = !stallImage;
-	  printf("STALL %i\n", stallImage);
-	  if (key == 'r') {
-		  segmentation.resetColorMap();
-		  histogram     = Mat::zeros(hbins, sbins, CV_32FC1);
-		  storedSamples = Mat::zeros(0, 3, CV_32FC1);
-	  }
-	  if (key == 's')
-		  segmentation.saveColorMap(colorMap.c_str());
-	  if (key == 'c')
-		  saveColors();
-	  if (key >= '1' && key < '9')
-		  segmentType = (key - '0');
-  }
-  imageNumber++;
+		/*processing user input*/
+		key = waitKey(1) % 256;
+		if (key == 32)
+			stallImage = !stallImage;
+		printf("STALL %i\n", stallImage);
+		if (key == 'r') {
+			segmentation.resetColorMap();
+			histogram     = Mat::zeros(hbins, sbins, CV_32FC1);
+			storedSamples = Mat::zeros(0, 3, CV_32FC1);
+		}
+		if (key == 's')
+			segmentation.saveColorMap(colorMap.c_str());
+		if (key == 'c')
+			saveColors();
+		if (key >= '1' && key < '9')
+			segmentType = (key - '0');
+	}
+	imageNumber++;
 }
 
 void mainMouseCallback(int event, int x, int y, int flags, void *userdata) {
@@ -446,57 +449,57 @@ void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr &msg) {
 }
 
 
-bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msgs::wallPatternDetect::Response &res) {
-
+bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msgs::wallPatternDetect::Response &res) 
+{
 	subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
 	res.activated = true;
-  if (req.rotate_arm) {
-	  mbzirc_husky_msgs::Float64 srv;
-	  srv.request.data = -M_PI / 2;
-	  turnArmClient.call(srv);
-	  for (float i = -1; i < 1; i += 1.0 / 3.0) {
-		  srv.request.data = i * M_PI;
-		  turnArmClient.call(srv);
-		  numDetections        = 0;
-		  numDetectionAttempts = 0;
-		  detectionStrength    = 0;
-		  imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-		  while (numDetectionAttempts < 10) {
-			  ros::spinOnce();
-		  }
-		  imageSub.shutdown();
-	  }
-	  srv.request.data = M_PI / 2;
-	  turnArmClient.call(srv);
-	  srv.request.data = 0;
-	  turnArmClient.call(srv);
-  } else {
-	  numDetections        = 0;
-	  numDetectionAttempts = 0;
-	  detectionStrength    = 0;
-	  imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
-	  while (numDetectionAttempts < 10) {
-		  ros::spinOnce();
-	  }
-	  imageSub.shutdown();
-  }
-  subInfo.shutdown();
-  res.detected = detectionStrength;
+	if (req.rotate_arm) {
+		mbzirc_husky_msgs::Float64 srv;
+		srv.request.data = -M_PI / 2;
+		turnArmClient.call(srv);
+		for (float i = -1; i < 1; i += 1.0 / 3.0) {
+			srv.request.data = i * M_PI;
+			turnArmClient.call(srv);
+			numDetections        = 0;
+			numDetectionAttempts = 0;
+			detectionStrength    = 0;
+			imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+			while (numDetectionAttempts < 10) {
+				ros::spinOnce();
+			}
+			imageSub.shutdown();
+		}
+		srv.request.data = M_PI / 2;
+		turnArmClient.call(srv);
+		srv.request.data = 0;
+		turnArmClient.call(srv);
+	} else {
+		numDetections        = 0;
+		numDetectionAttempts = 0;
+		detectionStrength    = 0;
+		imageSub             = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		while (numDetectionAttempts < 10) {
+			ros::spinOnce();
+		}
+		imageSub.shutdown();
+	}
+	subInfo.shutdown();
+	res.detected = detectionStrength;
 
-  // check if we have blue brick in the inventory
-  mbzirc_husky::nextBrickPlacement inventorySrv;
-  inventorySrv.request.offset = 0.0;
-  inventoryQueryClient.call(inventorySrv);
-  if (inventorySrv.response.brickType == 2) {
-    ROS_INFO("We have a blue brick. Moving the arm to hold it down");
-    std_srvs::Trigger trg;
-    holdBricksClient.call(trg);
-  } else {
-    ROS_INFO("No blue brick to hold down. Moving arm to home position");
-    std_srvs::Trigger trg;
-    homeArmClient.call(trg);
-  }
-  return true;
+	// check if we have blue brick in the inventory
+	mbzirc_husky::nextBrickPlacement inventorySrv;
+	inventorySrv.request.offset = 0.0;
+	inventoryQueryClient.call(inventorySrv);
+	if (inventorySrv.response.brickType == 2) {
+		ROS_INFO("We have a blue brick. Moving the arm to hold it down");
+		std_srvs::Trigger trg;
+		holdBricksClient.call(trg);
+	} else {
+		ROS_INFO("No blue brick to hold down. Moving arm to home position");
+		std_srvs::Trigger trg;
+		homeArmClient.call(trg);
+	}
+	return true;
 }
 
 
@@ -509,7 +512,7 @@ int main(int argc, char **argv) {
   n->param("uav_name", uav_name, string());
   n->param("gui", gui, false);
   n->param("debug", debug, false);
-  gui = false;
+  gui = true;
   if (gui) {
     debug = true;
     signal(SIGINT, termHandler);
@@ -523,7 +526,6 @@ int main(int argc, char **argv) {
   n->param("camera_offset", camera_offset, 0.17);
   n->param("wallpattern_height", wallpattern_height, 0.20);
   n->param("colormap_filename", colormap_filename, std::string("rosbag.bin"));
-  gui = false;
   if (gui)   namedWindow("frame", CV_WINDOW_AUTOSIZE);
   if (gui)   namedWindow("histogram", CV_WINDOW_AUTOSIZE);
   if (gui)   namedWindow("roi", CV_WINDOW_AUTOSIZE);

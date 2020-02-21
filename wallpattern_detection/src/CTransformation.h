@@ -43,6 +43,7 @@ class CTransformation
 
 		void saveCalibration(const char *str);
 		void loadCalibration(const char *str);
+		STrackedObject getPlaceToDrive(SSegment o);
 
 		STrackedObject  normalize(STrackedObject o);
 		STrackedObject  transform2D(STrackedObject o);

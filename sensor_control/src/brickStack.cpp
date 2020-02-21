@@ -36,6 +36,7 @@ ros::ServiceClient disposeClient;
 ros::ServiceClient inventoryQueryClient;
 ros::ServiceClient inventoryBuiltClient;
 ros::ServiceClient inventoryRemoveClient;
+ros::ServiceClient brickDetectorClient;
 
 ros::ServiceClient goPatternStart;
 
@@ -48,6 +49,8 @@ ros::NodeHandle *node;
 
 bool end_of_pattern     = false;
 bool started_alignement = false;
+int incomingMessageCount = 0;
+int alignMessageDelayCount = 0;
 
 /* int   activeStorage   = 5; */
 float robotMoveDistance       = 0;
@@ -253,6 +256,17 @@ int moveRobot(float distance, EBehaviour nextBeh = NONE) {
   return 0;
 }
 
+int switchBrickDetection(bool on)
+{
+	incomingMessageCount = 0; 
+	mbzirc_husky_msgs::brickDetect brick_srv;
+	brick_srv.request.activate            = on;
+	brick_srv.request.groundPlaneDistance = 0;
+	brick_srv.request.x                   = 640;
+	brick_srv.request.y                   = 480;
+	brickDetectorClient.call(brick_srv.request, brick_srv.response);
+	return 0;
+}
 
 bool isTerminal(EState state) {
   if (state < TERMINALSTATE)
@@ -637,6 +651,9 @@ int main(int argc, char **argv) {
   inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
   inventoryBuiltClient  = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
   inventoryRemoveClient = n.serviceClient<mbzirc_husky::removeInventory>("/inventory/remove");
+
+//  brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
+//  subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 
   server = new Server(n, "brickStackServer", boost::bind(&actionServerCallback, _1, server), false);
   server->start();
