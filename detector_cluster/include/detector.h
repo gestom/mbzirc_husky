@@ -80,6 +80,8 @@ public:
 
     void subscribe_ptcl(sensor_msgs::PointCloud2 ptcl);
 
+    std::vector<MyPoint> filter_candidates(std::vector<BrickLine> &candidates, int similarities, double dist);
+
 
 private:
 
@@ -105,8 +107,8 @@ private:
     float MAX_BRICK_DIST;           // maximal possible distance of brick detection
     float MAX_HEIGHT;               // maximal possible height of a detection
     float RANSAC_TOLERANCE;         // tolerance of fitting distance per brick
+    std::string LIDAR_FRAME;        // frame in which the lidar sensor is collecting the data
     double BRICK_HEIGHT = 0.2;
-    std::string LIDAR_FRAME = "lidar";      // frame in which you publish the results
     std::string TARGET_FRAME = "map";
 
     void fetch_parameters();
