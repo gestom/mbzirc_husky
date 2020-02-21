@@ -66,7 +66,7 @@ void colorImageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 {
-	groundPlaneDistance = msg->data;
+	groundPlaneDistance = msg->data*1000;
 	printf("Ground plane: %i\n",groundPlaneDistance);
 }
 
