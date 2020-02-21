@@ -774,6 +774,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
                 poi.request.covariance = matched_bricks[i].size();
+		ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {
@@ -791,6 +792,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
                 poi.request.covariance = 0.01;
+		ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {

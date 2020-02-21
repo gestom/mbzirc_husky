@@ -9,7 +9,7 @@ from geometry_msgs.msg import Point
 import numpy as np
 
 distanceFromCluster = 0.5
-requiredObvs = 400
+requiredObvs = 75
 
 pub = None
 pub_str = None
@@ -48,6 +48,7 @@ def appendToCluster(clusIdx, x, y, distX, distY):
 
 def resetCallback(msg):
     global existingClusters
+    print("Resetting clusters")
     existingClusters = []
 
 def ransacCallback(msg):
@@ -127,6 +128,7 @@ def publishBestCluster():
     if bestCluster["observations"] < requiredObvs:
         print("Not enough observations yet, %i/%i", bestCluster["observations"], requiredObvs)
         return
+    print("Publishing cluster with sufficient obvs")
     points.append(Point(x=bestCluster["x"], y=bestCluster["y"], z=0.3))
     points.append(Point(x=bestCluster["distX"], y=bestCluster["distY"], z=0.3))
     msg.points = points

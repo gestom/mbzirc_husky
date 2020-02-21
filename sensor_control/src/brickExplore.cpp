@@ -66,8 +66,8 @@ typedef enum{
 ESprayState state = IDLE;
 ros::NodeHandle* pn;
 
-float tolerance = 0.12;
-float angleTolerance = 0.2;
+float tolerance = 0.03;
+float angleTolerance = 0.05;
 float distanceTolerance = 0.4;
 float distance = 0.3;
 int minPoints = 0;
@@ -93,10 +93,10 @@ float wallPatternLocationY = 0.0f;
 
 bool useRansac = false;
 bool precisePositionFound = false;
-float brickStackRedX = 0.5;
-float brickStackRedY = -12.5;
-float brickStackOrangeX = 8.15;
-float brickStackOrangeY = -12.6;
+float brickStackRedX = 8.456;
+float brickStackRedY = 33.1617;
+float brickStackOrangeX = 1.866;
+float brickStackOrangeY = 31.397;
 
 ros::Subscriber schedulerSub;
 int redBricksRequired = 0;
@@ -658,21 +658,22 @@ void explore()
 
 void moveToBrickPile()
 {
-    /*ROS_INFO("Approaching bricks");
-    moveToBrickPosition(-4.5, 1.5, -0.4, 1.5);
-    ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-2.5, 1.2, -0.0, 1);*/
+	//one is along, two is perp
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(-2.5, 1.5, -0.4, 1.5);
+    moveToBrickPosition(-5.5, 1., -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-1.5, 1.2, -0.0, 1);
-     
+    moveToBrickPosition(-4.5, .6, -0.0, 1);
+    
+	usleep(10000000);
+
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
     std::stringstream ss;
     ss << "hello world ";
     msg.data = ss.str();
     ransac_pub.publish(msg);
+
+    usleep(3500000);
 
     //wait for ransac callback
     precisePositionFound = false;
@@ -932,7 +933,7 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 void finalApproach()
 {
 	ROS_INFO("Final approach");
-	if(moveToBrickPosition(1.3, -0.3, 0.4, 0.3) == 0)//second is perp, one is along
+	if(moveToBrickPosition(1., 1.25, 0.4, 0.4) == 0)//second is perp, one is along
 	{
 		ROS_INFO("Approach successful");
 		state = FINAL;
@@ -1079,7 +1080,7 @@ int main(int argc, char** argv)
 	wallPatternInvestigatorClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	brickPileDetectorClient = n.serviceClient<detector::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
-    scan_sub = n.subscribe("/scan",10, scanCallback);	
+    scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
