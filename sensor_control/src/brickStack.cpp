@@ -49,6 +49,8 @@ ros::NodeHandle *node;
 
 bool end_of_pattern = false;
 bool started_alignement = false;
+int incomingMessageCount = 0;
+int alignMessageDelayCount = 0;
 
 /* int   activeStorage   = 5; */
 float robotMoveDistance = 0;
@@ -264,38 +266,6 @@ int switchBrickDetection(bool on)
 	brick_srv.request.y                   = 480;
 	brickDetectorClient.call(brick_srv.request, brick_srv.response);
 	return 0;
-}
-
-
-int robotAlignLastBrick(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
-{
-	float angle = tf::getYaw(msg->pose.pose.orientation);
-	geometry_msgs::Twist spd;
-	spd.linear.x = spd.angular.z = 0;
-	if (msg->detected){
-		if (incomingMessageCount++ > alignMessageDelayCount) {
-			float angleDiff = (msg->pose.pose.position.y*3-angle);
-			spd.angular.z =  angleDiff*10;
-			spd.linear.x = -msg->pose.pose.position.x;
-			
-			if (fabs(msg->pose.pose.position.y) < 0.08 && fabs(msg->pose.pose.position.x) < 0.02){
-				spd.linear.x = spd.angular.z = 0;
-				printf("Final robot alignment: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
-				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
-				alignRobotWithWall(robotXYMove*0.05,NONE); 
-				return 0;
-			}
-			if ((fabs(angleDiff) < 0.01 && fabs(msg->pose.pose.position.x) < 0.02) || (angle*msg->pose.pose.position.y > 0 && fabs(angle) > 0.2)){
-				printf("Current robot alignment: %i %f %f %f\n", msg->detected, msg->pose.pose.position.x, msg->pose.pose.position.y, angle);
-				anchorPose = robotPose;
-				anchorAngle = tf::getYaw(anchorPose.pose.orientation)-angle;
-				printf("Anchor angle: %.3f %.3f %.3f\n",anchorAngle,tf::getYaw(anchorPose.pose.orientation),angle);
-				moveTurnMove(0.3,ROBOT_ALIGN_X_PHI);
-				return 1;
-			}
-		}
-	}
-	setSpeed(spd);
 }
 
 bool isTerminal(EState state) {
@@ -712,8 +682,8 @@ int main(int argc, char **argv) {
   inventoryBuiltClient  = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
   inventoryRemoveClient = n.serviceClient<mbzirc_husky::removeInventory>("/inventory/remove");
 
-  brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
-  subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
+//  brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
+//  subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 
   server = new Server(n, "brickStackServer", boost::bind(&actionServerCallback, _1, server), false);
   server->start();
