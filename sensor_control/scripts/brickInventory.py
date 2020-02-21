@@ -16,6 +16,7 @@ invLayers = []
 invPositions = []
 
 fn = rospy.get_param('/inventory/filename')
+print(fn)
 
 def readBlueprint():
     global blueprint, bricksCompleted, fn
@@ -36,7 +37,7 @@ def readBlueprint():
 
 def addToInventoryCB(req):
     global invBricks, invLayers, invPositions
-    print("Message received:")
+    print("Add Message received:")
     print(req)
     if req.brickType < 0 or req.brickType > 3 or math.isnan(req.brickType):
         print("Bad brick type added to inventory, ignoring")
@@ -57,6 +58,7 @@ def addToInventoryCB(req):
 
 def getInventoryCB(req):
     global invBricks, invLayers, invPositions
+    print(bricksCompleted[0])
     reply = getInventoryResponse(brickTypes=invBricks,position=invPositions,layer=invLayers)
     print("Request for inventory received")
     return reply
@@ -85,6 +87,8 @@ def accessibleInventoryCB(req):
 
 def removeFromInventoryCB(req):
     global invBricks, invLayers, invPositions
+    print("REMOVING BRICK!!")
+    print(req)
     delIndex = -1
     for i in range(len(invBricks)):
         if invLayers[i] == req.layer:
@@ -196,9 +200,9 @@ def nextBrickPlacementCB(req):
                     return reply
                 else:
                     if brickType == 0:
-                        wallOffset += 0.15 + req.offset
-                    else:
                         wallOffset += 0.3 + req.offset
+                    else:
+                        wallOffset += 0.6 + req.offset
             else:
                 if blueprint[lineIdx][brickIdx] == "R":
                     wallOffset += 0.3 + req.offset
@@ -213,6 +217,7 @@ def brickBuiltCB(req):
     global invBricks, invLayers, invPositions
    
     print("Brick Completed")
+    print(req)
 
     #delete from inventory
     delIndex = None
@@ -238,7 +243,11 @@ def debugFillInventoryCB(req):
     invBricks = [0, 1, 0, 0, 1, 0, 2]
     invLayers = [0, 0, 0, 1, 1, 1, 2]
     invPositions = [0, 2, 1, 0, 2, 1, 3]
-    
+   
+    for i in range(len(bricksCompleted)):
+        for j in range(len(bricksCompleted[i])):
+            bricksCompleted[i][j] = False
+
     return debugFillInventoryResponse()
 
 if __name__ == "__main__":
