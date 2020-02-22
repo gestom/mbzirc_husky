@@ -46,12 +46,12 @@ Iter select_randomly(Iter start, Iter end) {
     return select_randomly(start, end, gen);
 }
 
-array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposal, array<vector<MyPoint>, 4> wall,
-                                               array<cv::Point2d, 2> tar_pt) {
+array<MyPoint, 4> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposal, array<vector<MyPoint>, 4> wall,
+                                               array<cv::Point2d, 4> tar_pt) {
     double min_distance = 10000;
     cv::Mat best_t;
     cv::Mat best_R;
-    array<MyPoint, 2> ret_arr;
+    array<MyPoint, 4> ret_arr;
 
     // how many piles was detected?
     int proposal_size = 0;
@@ -131,9 +131,13 @@ array<MyPoint, 2> BrickDetector::fit_detection(array<vector<MyPoint>, 4> proposa
 
         cv::Mat ret1 = best_R.t() * (cv::Mat(tar_pt[0]) - best_t);
         cv::Mat ret2 = best_R.t() * (cv::Mat(tar_pt[1]) - best_t);
+        cv::Mat ret3 = best_R.t() * (cv::Mat(tar_pt[2]) - best_t);
+        cv::Mat ret4 = best_R.t() * (cv::Mat(tar_pt[3]) - best_t);
 
         ret_arr[0] = MyPoint(ret1.at<double>(0), ret1.at<double>(1), min_distance/proposal_size);
         ret_arr[1] = MyPoint(ret2.at<double>(0), ret2.at<double>(1), min_distance/proposal_size);
+        ret_arr[2] = MyPoint(ret3.at<double>(0), ret3.at<double>(1), min_distance/proposal_size);
+        ret_arr[3] = MyPoint(ret4.at<double>(0), ret4.at<double>(1), min_distance/proposal_size);
 
         return ret_arr;
     }
@@ -315,18 +319,6 @@ vector<BrickLine> BrickDetector::match_detections(vector<BrickLine> lines,
     }
 
     return ret;
-}
-
-void BrickDetector::remove_rotated_segments(double angle_treshold, std::vector<BrickLine> &ret){
-    for (int i = ret.size() - 1; i >= 0 ; i--){
-        MyPoint vec = ret[i][1] - ret[i][0];
-        double angle = atan2(vec.y, vec.x);
-        MyPoint center = GET_CENTER(ret[i][1], ret[i][0]);
-        double angle_to = atan2(center.y, center.x);
-        if (abs(angle_to - angle) - M_PI/2 > angle_treshold){
-            ret.erase(ret.begin() + i);
-        }
-    }
 }
 
 
@@ -582,7 +574,7 @@ void BrickDetector::fetch_parameters() {
     n->param("/detector/max_dist", MAX_DIST, float(20));
     n->param("/detector/max_brick_dist", MAX_BRICK_DIST, float(5));
     n->param("/detector/max_height", MAX_HEIGHT, float(2));
-    n->param("/detector/ransac_tolerance", RANSAC_TOLERANCE, float(0.2));
+    n->param("/detector/ransac_tolerance", RANSAC_TOLERANCE, float(0.05));
     n->param<string>("/detector/lidar_frame", LIDAR_FRAME, "velodyne");
 
 }
@@ -754,15 +746,10 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     candidate_bricks[3] = match_detections(lines[3], 0.8, 0.85, 0.225, 0, 0);
     matched_walls = match_detections(wall_lines, 1.1, 2.0, 0.8, 2, 3);
 
-    for (int i = 0; i < 4; i++){
-        /// TODO: CHECK IF THIS WORKS RIGHT
-        remove_rotated_segments(M_PI/4, candidate_bricks[i]);
-    }
-
     // filtering candidates
     array<vector<MyPoint>, 4> filtered_candidates;
-    filtered_candidates[0] = filter_candidates(candidate_bricks[0], 1, 0.5);
-    filtered_candidates[1] = filter_candidates(candidate_bricks[1], 1, 0.8);
+    filtered_candidates[0] = filter_candidates(candidate_bricks[0], 1, 0.6);
+    filtered_candidates[1] = filter_candidates(candidate_bricks[1], 1, 0.85);
     filtered_candidates[2] = filter_candidates(candidate_bricks[2], 0, 0.5);
     filtered_candidates[3] = filter_candidates(candidate_bricks[3], 0, 0.5);
 
@@ -771,10 +758,10 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     array<vector<MyPoint>, 4> brick_centers = get_centers_in_piles(matched_bricks, pile_centers);
 
     // fit wall shape on my detection
-    array<cv::Point2d, 2> tar_pt = {cv::Point2d(0.0, 0.0), cv::Point2d(2.65, 0.0)};
-    array<MyPoint, 2> way_point = fit_detection(brick_centers, wall_setup, tar_pt);
-    array<cv::Point2d, 2> tar_pt_back = {cv::Point2d(7.3, -0.8), cv::Point2d(4.65, -0.8)};
-    array<MyPoint, 2> way_point_back = fit_detection(brick_centers, wall_setup_back, tar_pt_back);
+    array<cv::Point2d, 4> tar_pt = {cv::Point2d(0.0, 0.0), cv::Point2d(2.0, 0.0), cv::Point2d(3.8, 0), cv::Point2d(5.5, 0)};
+    array<MyPoint, 4> way_point = fit_detection(brick_centers, wall_setup, tar_pt);
+    array<cv::Point2d, 4> tar_pt_back = {cv::Point2d(7.3, -0.8), cv::Point2d(5.3, -0.8), cv::Point2d(3.5, -0.8), cv::Point2d(1.8, -0.8)};
+    array<MyPoint, 4> way_point_back = fit_detection(brick_centers, wall_setup_back, tar_pt_back);
 
     vector<MyPoint> wall_centers = get_wall_centers(matched_walls);
 
@@ -791,7 +778,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
                 poi.request.covariance = matched_bricks[i].size();
-		ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
+		        ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {
@@ -808,7 +795,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
                 poi.request.covariance = 0.01;
-		ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
+		        ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {
@@ -835,9 +822,9 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             if (way_point[0].z > way_point_back[0].z and way_point_back[0].x != 0 and way_point_back[0].y != 0) {
                 way_point = way_point_back;
             }
-            ROS_INFO("BEST POSSIBLE MATCH FOUND!");
 
             if (way_point[0].z < RANSAC_TOLERANCE){
+                ROS_INFO("BEST POSSIBLE MATCH FOUND!");
                 sensor_msgs::PointCloud origin_line1;
                 origin_line1.header.frame_id = LIDAR_FRAME;
                 origin_line1.header.stamp = ros::Time::now();
@@ -853,7 +840,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 pub_pt2.z = 0;
                 origin_line1.points.push_back(pub_pt2);
                 origin_pcl_pub.publish(origin_line1);
-                for (int wp_num = 0; wp_num < 2; wp_num++){
+                for (int wp_num = 0; wp_num < 4; wp_num++){
                     geometry_msgs::Point ret_pt = transform_point(way_point[wp_num], tf_stamped);
                     mbzirc_husky::setPoi poi;
                     poi.request.type = 4 + wp_num;
@@ -893,6 +880,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     centers.color.a = 1.0;
     centers.color.g = 1.0;
 
+    /*
     for (int i = 0; i < 4; i++) {
         if (pile_centers[i].x != 0 and pile_centers[i].y != 0) {
             geometry_msgs::Point pt;
@@ -902,10 +890,22 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             centers.points.push_back(pt);
         }
     }
+     */
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < filtered_candidates[i].size(); j++){
+            geometry_msgs::Point pt;
+            pt.x = filtered_candidates[i][j].x;
+            pt.y = filtered_candidates[i][j].y;
+            pt.z = filtered_candidates[i][j].z;
+            centers.points.push_back(pt);
+        }
+    }
 
     center_pub.publish(centers);
 
     matched_bricks = candidate_bricks;
+    cout << "Candidate bricks: " << candidate_bricks[0].size() << ", " << candidate_bricks[1].size() << ", " <<
+    candidate_bricks[2].size() << " " << candidate_bricks[3].size() << endl;
 
     visualization_msgs::MarkerArray lists;
     visualization_msgs::Marker line_list1;
