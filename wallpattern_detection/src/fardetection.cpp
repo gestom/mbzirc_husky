@@ -307,7 +307,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 	updateRobotPosition();
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame, &imageCoords, segments, minSegmentSize, maxSegmentSize);
-	if (segment.valid == 1 && segment.size > 8000) {
+	if (segment.valid == 1 && segment.size > 6000) {
 		STrackedObject object = altTransform->transform2D(segment);
 		STrackedObject placeToDrive = altTransform->getPlaceToDrive(segment);
 		placeToDrive          = transformPatternPose(placeToDrive);
