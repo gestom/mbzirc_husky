@@ -20,6 +20,7 @@ ros::ServiceClient armHomeClient;
 
 int pickupFailures = 0;
 int stackingFailures = 0;
+int numBricksToPickup = 1;
 
 int main (int argc, char **argv) {
 
@@ -75,6 +76,7 @@ int main (int argc, char **argv) {
             ros::Duration recoveryTime = ros::Duration(10, 0);
 
             mbzirc_husky::brickPickupGoal pickupGoal;
+            pickupGoal.num_bricks_desired = numBricksToPickup;
             actionlib::SimpleClientGoalState pickupState = pickupAC.sendGoalAndWait(pickupGoal, totalMaxDuration, recoveryTime);
 
             if(pickupState != actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -99,6 +101,7 @@ int main (int argc, char **argv) {
             {
                 state = FINDINGSTACKSITE;
                 pickupFailures = 0;
+                numBricksToPickup = 5; // without one red and blue
                 ROS_INFO("Bricks pickup up successfully, moving to stack area and rearranging");
             }
         }
