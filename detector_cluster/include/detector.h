@@ -56,6 +56,8 @@ public:
         build_walls();
     }
 
+    void remove_rotated_segments(double angle_treshold, std::vector<BrickLine> &ret);
+
     geometry_msgs::Point transform_point(MyPoint pt, geometry_msgs::TransformStamped tf);
 
     std::vector<MyPoint> get_wall_centers(std::vector<BrickLine> &lines);
