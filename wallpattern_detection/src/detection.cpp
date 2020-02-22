@@ -43,6 +43,7 @@
 //#define PATTERN_DEBUG
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+void imageCallbackFront(const sensor_msgs::ImageConstPtr& msg);
 
 using namespace std;
 using namespace cv;
@@ -535,7 +536,7 @@ int main(int argc, char** argv)
 	// SUBSCRIBERS
 	ros::ServiceServer service;
 	if (gui){
-		service = n->advertiseService("detectWallpattern", detect);
+//		service = n->advertiseService("detectWallpattern", detect);
 		imagePub = it->advertise("/wallDetectResult", 1);
 	}
 

@@ -60,6 +60,7 @@ EBehaviour behaviour = NONE;
 EBehaviour nextBehaviour = NONE;
 EBehaviour recoveryBehaviour = NONE;
 
+int shouldStop = 0;
 float ransacTolerance = 0.05;
 int behaviourResult = 0;
 int robotXYMove = 1;
@@ -71,6 +72,7 @@ const char *stateStr[] = {
 	"Idle",
 	"Approach 1",
 	"Approach 2",
+	"Approach 3",
 	"resetting arm",		
 	"positioning arm", 	
 	"aligning robot to a brick",	
@@ -99,6 +101,7 @@ typedef enum{
 	IDLE = 0,
 	APPROACH1,
 	APPROACH2,
+	APPROACH3,
 	ARMRESET,		//arm goes to dock position
 	ARMPOSITIONING, 	//arm goes to overview positions
 	ROBOT_ALIGNMENT, 	//arm goes to overview positions
@@ -112,6 +115,7 @@ typedef enum{
 	MOVE_TO_GREEN_BRICK_1,	 //
 	MOVE_TO_GREEN_BRICK_2,	 //
 	MOVE_TO_BLUE_BRICK,	 //
+	MOVE_TO_RED_BRICK_1,	 //
 	MOVE_TO_RED_BRICK_2,	 //
 	TERMINALSTATE,	 	 //marks terminal state
 	FINAL,
@@ -309,8 +313,6 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	float dist = sqrt(dx*dx+dy*dy);
 
 
-
-
 	size_t num_ranges = scan_msg->ranges.size();
 	float x[num_ranges];
 	float y[num_ranges];
@@ -336,6 +338,30 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		}
 	}
 
+    //stop box
+    float stopMinX = -1.5;
+    float stopMaxX = 0.5;
+    float stopMinY = -3.0;
+    float stopMaxY = -0.4;
+
+    for(int i = 0; i < numPoints && moveDistance < 0; i++)
+    {
+        if(x[i] < stopMaxX && x[i] > stopMinX && y[i] < stopMaxY && y[i] > stopMinY)
+        {
+            shouldStop = 0;
+            break;
+        }
+    }
+    shouldStop++; 
+    if(shouldStop > 20 && moveDistance < 0)
+    {
+        spd.linear.x = spd.angular.z = 0;
+        behaviour = nextBehaviour;
+        printf("Movement done(gbox empty): %.3f %.3f\n",dist,moveDistance); 
+        setSpeed(spd);
+        //subscriberScan.shutdown();
+        return 0;
+    }
 
 	int evalA,evalB = 0;
 	int max_iterations = 100;
@@ -408,7 +434,7 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	if (moveDistance < 0) signMove = -1;
 
 	if (maxEvalA + maxEvalB > 50) { spd.angular.z = maxA; spd.linear.x = 0.3;}
-	if (maxEvalA + maxEvalB > 100 && maxB < -1.3 || maxEvalA > 50 && maxEvalB > 50) {spd.angular.z = signMove*(0.57+maxB);} 
+	if (maxEvalA + maxEvalB > 100 && maxB < -1.3 || maxEvalA > 50 && maxEvalB > 50) {spd.angular.z = signMove*(0.67+maxB);} 
 	spd.linear.x = signMove*(fabs(moveDistance) - dist + 0.1);
 
 	if (dist > fabs(moveDistance)) {
@@ -745,6 +771,7 @@ bool shootVelodyne(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response 
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
   num_bricks_desired = goal->num_bricks_desired;
+  activeStorage = 0;
 ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node::getName().c_str(), num_bricks_desired);
 
 	mbzirc_husky::brickPickupResult result;
@@ -758,8 +785,9 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
-				case APPROACH1: if (moveRobot(+2.5) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
-				case APPROACH2: if (moveRobot(-2.5) == 0) nextState =  ARMRESET; else nextState = IDLE; break;
+				case APPROACH1: if (moveRobot(+2.6) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
+				case APPROACH2: if (moveRobot(-4.5) == 0) nextState =  APPROACH3; else nextState = IDLE; break;
+				case APPROACH3: if (moveRobot(1.6) == 0) nextState =  ARMRESET; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
 				case ROBOT_ALIGNMENT: alignRobot(); nextState = ARMALIGNMENT; break;
@@ -772,6 +800,15 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
                if (activeStorage == num_bricks_desired)
                  nextState = FINAL;
                else{
+                // CHICKEN strategy - take 1 red on the first run, then take 3 reds and 2 greens on the second run
+                if (activeStorage == 1)  {nextState = MOVE_TO_RED_BRICK_1;}	// one red brick is removed from before, so after a red is picked up, go for the second red pile
+		if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 	// after two reds, pick up green
+		if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}	// go for second green
+		if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;} 	// go back for one more red
+		if (activeStorage == 5)  {nextState = FINAL;}
+
+                 /* 
+                //ORIGINAL greedy strategy - take 4 reds, 2 greens and 1 blue
 							  if (activeStorage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
 							  if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 		//after the second red, allow only forward phi alignment 
 							  if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}		//after picking up green, allow only backward phi alignment 
@@ -779,12 +816,24 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 							  if (activeStorage == 5)  {nextState = ARMPOSITIONING;}
 							  if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
 							  if (activeStorage == 7)  {nextState = FINAL;}
+                */
+                
               }
 						 }else { nextState = ARMRESET;} break;
+
+        /* 
+        //ORIGINAL greedy strategy
 				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.75); robotXYMove = +1; positionArm();pushBricks(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_BLUE_BRICK: moveRobot(3.45); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
+        */
+        
+        // CHICKEN strategy
+        case MOVE_TO_RED_BRICK_1: moveRobot(0.4); robotXYMove = +1; nextState = ARMPOSITIONING; break;
+        case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.35); robotXYMove = +1; positionArm(); pushBricks(); nextState = ARMPOSITIONING; break;
+        case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
+        case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 			}
 		}
 		usleep(1200000);

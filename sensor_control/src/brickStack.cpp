@@ -82,18 +82,20 @@ typedef enum
   ROBOT_ALIGN_PHI,
   ROBOT_MOVE_CAM,
   ROBOT_MOVE_ODO,
+  ROBOT_TURN_ODO,
   ROBOT_MOVE_SEARCH,
   BEHAVIOUR_NUMBER
 } EBehaviour;
 
 const char *behStr[] = {"None",  "aligning x and phi", "moving and turning to align y", "aligning to correct angle", "moving along area", "moving by odometry",
-                        "number"};
+                        "moving and searching", "turning", "number"};
 
 const char *stateStr[] = {"Idle",
                           "TEST1",
                           "TEST2",
                           "resetting arm",
                           "Find pattern",
+                          "Go to pattern",
                           "Align with pattern",
                           "positioning arm",
                           "aligning robot to a brick",
@@ -122,6 +124,8 @@ typedef enum
   TEST2,
   ARMRESET,          // arm goes to home position
   FINDPATTERN,
+  GOTOPATTERN,
+  TURNATPATTERN,
   ALIGNWITHPATTERN,
   ARMTOSTORAGE,      // arm reaches to storage
   ARMGRASP,          // move down until magnet attaches
@@ -161,6 +165,7 @@ EBehaviour recoveryBehaviour = NONE;
 ros::Publisher twistPub;
 
 float                      moveDistance = 0.4;
+float                      turnDistance = 0.4;
 tf::TransformListener *    listener;
 geometry_msgs::PoseStamped anchorPose;
 geometry_msgs::PoseStamped robotPose;
@@ -241,7 +246,7 @@ int updateRobotPositiona() {
 
 void patternCallBack(const geometry_msgs::PointConstPtr &msg)
 {
-
+	patternDistance = msg->y;
 }
 
 int robotMoveSearch(const sensor_msgs::LaserScanConstPtr &msg) {
@@ -249,12 +254,12 @@ int robotMoveSearch(const sensor_msgs::LaserScanConstPtr &msg) {
   float dx                     = anchorPose.pose.position.x - robotPose.pose.position.x;
   float dy                     = anchorPose.pose.position.y - robotPose.pose.position.y;
   float dist                   = sqrt(dx * dx + dy * dy);
+  printf("Pattern search: %.3f %.3f %.3f\n", dist, patternDistance, moveDistance);
   if (patternDistance > 0){
-	  spd.linear.x   = (patternDistance - 200.0)/100.0;
-	  if (patternDistance < 200){
+	  spd.linear.x   = 0.1; 
+	  if (patternDistance > 370){
 	    spd.linear.x = spd.angular.z = 0;
 	    behaviour = nextBehaviour;
-	    printf("Pattern found: %.3f %.3f\n", dist, moveDistance);
 	    return 0;
 	  } 
   }else{
@@ -294,6 +299,26 @@ int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg) {
   return 1;
 }
 
+int robotTurnOdo(const sensor_msgs::LaserScanConstPtr &msg) {
+  spd.linear.x = spd.angular.z = 0;
+  float angleDiff  = tf::getYaw(anchorPose.pose.orientation) -  tf::getYaw(robotPose.pose.orientation);
+  if (angleDiff > +M_PI) angleDiff -= 2*M_PI;
+  if (angleDiff < -M_PI) angleDiff += 2*M_PI;
+  spd.angular.z = + 0.3;
+  printf("Turning done: %.3f %.3f\n", angleDiff, turnDistance);
+  if (turnDistance < 0){
+    spd.angular.z = -0.2;
+  }
+  if (fabs(angleDiff) > fabs(turnDistance)) {
+    spd.linear.x = spd.angular.z = 0;
+    behaviour                    = nextBehaviour;
+    return 0;
+  }
+  setSpeed(spd);
+  return 1;
+}
+
+
 
 int moveAndSearch(float distance, EBehaviour nextBeh = NONE)
 {
@@ -308,6 +333,20 @@ int moveAndSearch(float distance, EBehaviour nextBeh = NONE)
   behaviour     = ROBOT_MOVE_SEARCH;
   return 0;
 }
+
+int turnRobot(float distance, EBehaviour nextBeh = NONE) {
+  while (updateRobotPosition() < 0) {
+    usleep(50000);
+    ros::spinOnce();
+  }
+  anchorPose   = robotPose;
+  turnDistance = distance;
+  printf("Turn command:  %.3f\n", distance);
+  nextBehaviour = NONE;
+  behaviour     = ROBOT_TURN_ODO;
+  return 0;
+}
+
 
 int moveRobot(float distance, EBehaviour nextBeh = NONE) {
   while (updateRobotPosition() < 0) {
@@ -502,7 +541,7 @@ int switchDetection(bool on)
 void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Server *as) {
   mbzirc_husky::brickStackResult result;
 
-  nextState = ARMTOSTORAGE;
+  nextState = ARMRESET;
   if (fetchNextBrickData() == -1) {
     ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
     nextState = SUCCESS;
@@ -532,7 +571,21 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = ARMRESET;
           break;
         case FINDPATTERN:
-          if (moveAndSearch(2.0))
+	  switchDetection(true); 
+	  if (moveAndSearch(2.0) == 0)
+            nextState = GOTOPATTERN;
+          else
+            nextState = ARMRESET;
+          break;
+	case GOTOPATTERN:
+	  switchDetection(false); 
+	  if (moveRobot(0.3) == 0)
+            nextState = TURNATPATTERN;
+          else
+            nextState = ARMRESET;
+          break;
+	case TURNATPATTERN:
+	  if (turnRobot(M_PI/3))
             nextState = ALIGNWITHPATTERN;
           else
             nextState = ARMRESET;
@@ -636,6 +689,11 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
   state = IDLE;
 }
 
+void wallCallBackFront(const geometry_msgs::PointConstPtr &msg) 
+{
+ 	patternDistance = msg->y;
+}
+
 void wallCallBack(const geometry_msgs::PointConstPtr &msg) 
 {
   started_alignement = true;
@@ -713,6 +771,7 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) {
   // if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg);
   // if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg);
   if (behaviour == ROBOT_MOVE_ODO) robotMoveOdo(msg);
+  if (behaviour == ROBOT_TURN_ODO) robotTurnOdo(msg);
   if (behaviour == ROBOT_MOVE_SEARCH) robotMoveSearch(msg);
   return;
 }
@@ -728,7 +787,7 @@ int main(int argc, char **argv) {
   // dynServer.setCallback(f);
 
   listener         = new tf::TransformListener();
-  subscriberScan   = n.subscribe("/scan", 1, &scanCallBack);
+  subscriberScan   = n.subscribe("/scanlocal", 1, &scanCallBack);
   subscriberOdom   = n.subscribe("/odometry/filtered", 1, &odoCallBack);
   twistPub         = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
   prepareClient    = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/prepare_placing");
@@ -747,7 +806,7 @@ int main(int argc, char **argv) {
   inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
   inventoryBuiltClient  = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
   inventoryRemoveClient = n.serviceClient<mbzirc_husky::removeInventory>("/inventory/remove");
-  subscriberPatternFront       = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
+  subscriberPatternFront       = node->subscribe("/wall_pattern_front", 1, &wallCallBackFront);
 
 //  brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
 //  subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
