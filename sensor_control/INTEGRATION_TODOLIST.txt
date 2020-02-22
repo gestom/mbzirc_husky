@@ -1,0 +1,6 @@
+TODO: single brick pickup actually stops after first brick
+TODO: brickStack no longer moves the robot if it fails to grab a brick from cargo bay
+
+TODO: going for one brick and placing it without any help
+
+TODO: second round of brick pickup does not fail if the first red brick is removed
