@@ -23,6 +23,7 @@ using namespace cv;
 
 typedef struct{
 	float x,y,h,s,v;
+	float xA,yA,xB,yB;
 	float minX, minY,maxX,maxY;
 	float px,py;
 	float v0,v1;
@@ -36,6 +37,7 @@ typedef struct{
 	int contours;
 	float crit;
 	int id;
+	int jumpCount;
 	int size;
 	int type;
 	int combo;

@@ -31,6 +31,69 @@ STrackedObject CTransformation::transform2D(STrackedObject o)
 	return r; 	
 }
 
+STrackedObject CTransformation::getPlaceToDrive(SSegment o)
+{
+	STrackedObject rA,rB;
+	rA.x = hom[0]*o.xA+hom[1]*o.yA+hom[2]; 
+	rA.y = hom[3]*o.xA+hom[4]*o.yA+hom[5];
+	rA.z = hom[6]*o.xA+hom[7]*o.yA+hom[8];
+	rA.x = rA.x/rA.z;
+	rA.y = rA.y/rA.z;
+	rA.z = 0;
+	printf(" %f %f \n",o.xA,o.yA);
+	printf(" %f %f \n",o.xB,o.yB);
+
+	rB.x = hom[0]*o.xB+hom[1]*o.yB+hom[2]; 
+	rB.y = hom[3]*o.xB+hom[4]*o.yB+hom[5];
+	rB.z = hom[6]*o.xB+hom[7]*o.yB+hom[8];
+	rB.x = rB.x/rB.z;
+	rB.y = rB.y/rB.z;
+	rB.z = 0;
+	printf(" %f %f \n",rA.x,rA.y);
+	printf(" %f %f \n",rB.x,rB.y);
+
+	STrackedObject r;
+	rA.validity = o.valid;
+	rB.validity = o.valid;
+	r.validity = o.valid;
+	//create a vector
+	r.x = rA.x - rB.x;
+	r.y = rA.y - rB.y;
+
+	//rotate 90degs
+	STrackedObject p;
+	p.x = -r.y;
+	p.y = r.x;
+
+	//normalise
+	float dist = sqrt(p.x*p.x+p.y*p.y);
+	p.x = p.x/dist;
+	p.y = p.y/dist;
+	printf(" %f %f \n",p.x,p.y);
+
+	//add to origin
+	r.x = rB.x+p.x;
+	r.y = rB.y+p.y;
+
+	return rB; 
+}
+
+STrackedObject CTransformation::getRelativePosition(SSegment o,float h,float cx,float cy,float f)
+{
+	STrackedObject a,b,r;
+	if (f != 0){
+		a.x = (o.xA-cx)/f*h;
+		a.y = (o.yA-cy)/f*h;
+		b.x = (o.xB-cx)/f*h;
+		b.y = (o.yB-cy)/f*h;
+		r.yaw = atan2(a.y-b.y,a.x-b.x);
+		r.x = (a.x + b.x)/2.0;
+		r.y = (a.y + b.y)/2.0;
+		printf("PARAMS: %.3f %.3f %.3f %.3f %.3f\n",a.x,a.y,b.x,b.y,f);
+	}
+	printf("RELATIVE: %.3f %.3f %.3f\n",r.x,r.y,r.yaw);
+	return r; 	
+}
 
 STrackedObject CTransformation::transform2D(SSegment o)
 {
@@ -41,7 +104,6 @@ STrackedObject CTransformation::transform2D(SSegment o)
 	r.x = r.x/r.z;
 	r.y = r.y/r.z;
 	r.z = 0;
-	r.numContours = o.contours;
 	r.validity = o.valid;
 	return r; 	
 }

@@ -950,7 +950,6 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
   }
 
   status          = MOVING;
-  effort_tracking = true;
 
   ROS_INFO("[%s]: Moving down for brick at layer %d", ros::this_node::getName().c_str(), detected_brick.brick_layer);
 
@@ -964,7 +963,6 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
       ROS_ERROR("[%s]: Brick lost, aborting pickup", ros::this_node::getName().c_str());
       setCartesianVelocity(ZERO_VELOCITY);
       status          = IDLE;
-      effort_tracking = false;
       res.success     = false;
       return false;
     }
@@ -1009,6 +1007,7 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
   double stopping_height = (detected_brick.brick_layer * 0.2) - 0.04;
   ROS_INFO("[%s]: Stopping height: %.2f", ros::this_node::getName().c_str(), stopping_height);
 
+  effort_tracking = true;
   grip();
   double magnet_to_ground = end_effector_pose.pos.z() - camera_offset.z() + arm_base_to_ground;
 

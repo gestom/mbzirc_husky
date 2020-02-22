@@ -43,6 +43,8 @@
 
 #define PATTERN_DEBUG
 
+void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+
 using namespace std;
 using namespace cv;
 
@@ -461,9 +463,7 @@ array<vector<Point2d>, 2> runRansac2(vector<SSegment> inSegments, int iterations
             ret[1].push_back(curr_pt);
         }
     }
-
     return ret;
-
 }
 
 void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
@@ -475,6 +475,7 @@ void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 
 void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 {
+	printf("Params update\n");
     cX = msg->K[2];
     cY = msg->K[5];
     fPix = msg->K[0];
@@ -487,7 +488,7 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
     inFrame.copyTo(frame);
 
-    segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
+//    segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
     vector<SSegment> segs_to_ransac;
     int new_size;
     for (int i = 0; i < segmentation.numSegments; i++){
@@ -607,9 +608,8 @@ void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
     got_img = true;
 }
 
-bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
-                     wallpattern_detection::wall_pattern_close::Response &res){
-
+bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,wallpattern_detection::wall_pattern_close::Response &res)
+{
     if (req.activate){
         #ifndef PATTERN_DEBUG
         ros::ServiceClient raise_arm = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
@@ -619,11 +619,9 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
         #endif
             minSegmentSize = 50;
             /// here comes the code of subscriber
-            imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallback2);
-            #ifndef PATTERN_DEBUG
+            imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallback);
             subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
             subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-            #endif
             line_pub = n->advertise<geometry_msgs::Point>("/wall_pattern_line", 1);
 
             got_img = false;
@@ -632,11 +630,8 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,
 
             #ifdef PATTERN_DEBUG
             got_height = true;
-            groundPlaneDistance = 0.52;
+            groundPlaneDistance = 0.52;//TODO
             got_params = true;
-            cX = 327;
-            cY = 237;
-            fPix = 617;
             #endif
 
         int attempts = 0;
@@ -691,25 +686,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
-	/*
-	   STrackedObject object = altTransform->transform2D(segment);
-	   printf("Object: %.2f %.2f %i\n",object.x,object.y,1);
-	   */
-
-	if (segment.valid == 1){
-		/*pZ = segment.z/1000;
-		  pX = (segment.x-cX)/fPix*pZ+cameraXOffset+cameraXAngleOffset*pZ;
-		  pY = (segment.y-cY)/fPix*pZ+cameraYOffset+cameraXAngleOffset*pZ;
-
-		  patternPose.pose.pose.position.x = pX;
-		  patternPose.pose.pose.position.y = pY;
-		  patternPose.pose.pose.position.z = pZ;
-		  patternPose.type = segment.type;
-		  tf2::Quaternion quat_tf;
-		  quat_tf.setRPY(0,0,segment.angle);
-		  patternPose.pose.pose.orientation = tf2::toMsg(quat_tf);
-		  patternPose.detected = true;
-		  patternPose.completelyVisible = (segment.warning == false);*/
+	printf("Incoming");
+	if (segment.valid == 1 && segment.size > 10000) {
+		STrackedObject relativePosition = altTransform->getRelativePosition(segment,groundPlaneDistance,cX,cY,fPix);
+		geometry_msgs::Point pt;
+		pt.x = cos(relativePosition.yaw);
+		pt.y = sin(relativePosition.yaw);
+		pt.z = 1000; 
+		line_pub.publish(pt);
 		numDetections++;
 	}
 	// posePub.publish(patternPose);
@@ -835,7 +819,7 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_ms
 
 	if (req.activate)
 	{
-		imageSub = it->subscribe("/camera/color/image_raw", 1, &imageCallback);
+		imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallback);
 		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
 		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
 

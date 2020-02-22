@@ -317,6 +317,19 @@ vector<BrickLine> BrickDetector::match_detections(vector<BrickLine> lines,
     return ret;
 }
 
+void BrickDetector::remove_rotated_segments(double angle_treshold, std::vector<BrickLine> &ret){
+    for (int i = ret.size() - 1; i >= 0 ; i--){
+        MyPoint vec = ret[i][1] - ret[i][0];
+        double angle = atan2(vec.y, vec.x);
+        MyPoint center = GET_CENTER(ret[i][1], ret[i][0]);
+        double angle_to = atan2(center.y, center.x);
+        if (abs(angle_to - angle) - M_PI/2 > angle_treshold){
+            ret.erase(ret.begin() + i);
+        }
+    }
+}
+
+
 void BrickDetector::filter_on_line(MyPoint p1, MyPoint p2, array<vector<BrickLine>, 4> &ret) {
 
     // compute the line
@@ -741,6 +754,11 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     candidate_bricks[3] = match_detections(lines[3], 0.8, 0.85, 0.225, 0, 0);
     matched_walls = match_detections(wall_lines, 1.1, 2.0, 0.8, 2, 3);
 
+    for (int i = 0; i < 4; i++){
+        /// TODO: CHECK IF THIS WORKS RIGHT
+        remove_rotated_segments(M_PI/4, candidate_bricks[i]);
+    }
+
     // filtering candidates
     array<vector<MyPoint>, 4> filtered_candidates;
     filtered_candidates[0] = filter_candidates(candidate_bricks[0], 1, 0.5);
@@ -765,7 +783,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
     geometry_msgs::TransformStamped tf_stamped;
     try {
         tf_stamped = tf_buffer->lookupTransform(TARGET_FRAME, LIDAR_FRAME, ptcl.header.stamp, ros::Duration(0.2));
-        ROS_INFO("Pushing the pile centers");
         for (int i = 0; i < 4; i++){
             if (pile_centers[i].x != 0 and pile_centers[i].y != 0){
                 geometry_msgs::Point ret_pt = transform_point(pile_centers[i], tf_stamped);
@@ -774,6 +791,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
                 poi.request.covariance = matched_bricks[i].size();
+		ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {
@@ -782,7 +800,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             }
         }
 
-        ROS_INFO("Pushing brick candidates");
         for (int i = 0; i < 4; i++){
             for (int k = 0; k < filtered_candidates[i].size(); k++){
                 geometry_msgs::Point ret_pt = transform_point(filtered_candidates[i][k], tf_stamped);
@@ -791,6 +808,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
                 poi.request.covariance = 0.01;
+		ROS_INFO("Adding pos to sm: %f %f", ret_pt.x, ret_pt.y);
                 if (ros::service::call("set_map_poi", poi)){
                     ROS_INFO("Pile sent to symbolic map");
                 } else {
@@ -799,7 +817,6 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
             }
         }
 
-        ROS_INFO("Pushing big walls");
         for (int i = 0; i < wall_centers.size(); i++){
             geometry_msgs::Point ret_pt = transform_point(pile_centers[i], tf_stamped);
             mbzirc_husky::setPoi poi;

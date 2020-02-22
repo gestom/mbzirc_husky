@@ -66,8 +66,8 @@ typedef enum{
 ESprayState state = IDLE;
 ros::NodeHandle* pn;
 
-float tolerance = 0.12;
-float angleTolerance = 0.2;
+float tolerance = 0.03;
+float angleTolerance = 0.05;
 float distanceTolerance = 0.4;
 float distance = 0.3;
 int minPoints = 0;
@@ -84,7 +84,7 @@ int misdetections = 0;
 //brickStackLocation in map frame
 //bool brickStackLocationKnown = false;
 //bool wallPatternLocationKnown = false;
-bool brickStackLocationKnown = true;
+bool brickStackLocationKnown = false;
 bool wallPatternLocationKnown = true;
 float brickStackLocationX = 0.0f;
 float brickStackLocationY = 0.0f;
@@ -93,10 +93,10 @@ float wallPatternLocationY = 0.0f;
 
 bool useRansac = false;
 bool precisePositionFound = false;
-float brickStackRedX = 0.5;
-float brickStackRedY = -12.5;
-float brickStackOrangeX = 8.15;
-float brickStackOrangeY = -12.6;
+float brickStackRedX = 8.456;
+float brickStackRedY = 33.1617;
+float brickStackOrangeX = 1.866;
+float brickStackOrangeY = 31.397;
 
 ros::Subscriber schedulerSub;
 int redBricksRequired = 0;
@@ -629,26 +629,74 @@ void explore()
     if(symbolicClient.call(srv))
     {
         ROS_INFO("Moving to point");
+
+        ROS_INFO("Zdeneks search for bricks");
+        detector::brick_pile_trigger bpd;
+        bpd.request.activate = true;
+        if(!brickPileDetectorClient.call(bpd))
+            ROS_INFO("Brick pile detector failed to set true");
+
         moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1, 1.5);
 
+        ROS_INFO("Searching for bricks");
+        detector::brick_pile_trigger bpdb;
+        bpdb.request.activate = false;
+        if(!brickPileDetectorClient.call(bpdb))
+            ROS_INFO("Brick pile detector failed to set false");
+
         ROS_INFO("Sending velo points");
-          std_srvs::Trigger srv;
-          wprosbagClient.call(srv);
+        std_srvs::Trigger srv;
+        wprosbagClient.call(srv);
 
-          /*ROS_INFO("Searching for bricks");
-          detector::brick_pile_detector bpd;
-          m.request.activate = true;
-          if(!brickPileDetectorClient.call(bpd))
-          ROS_INFO("Brick pile detector failed to call");*/
-
-          ROS_INFO("Calling wall pattern detect");
+        /*ROS_INFO("Calling wall pattern detect");
           mbzirc_husky_msgs::wallPatternDetect m;
           m.request.activate = true;
           m.request.rotate_arm = true;
-          wallSearchClient.call(m);
+          wallSearchClient.call(m);*/
 
         ROS_INFO("Finished calling wp search");
-        usleep(2000000); 
+        usleep(2000000);
+
+        /*float reqCovar = 0.5;
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 4;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }
+
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 5;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }
+
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 6;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }
+
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 7;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }*/
     }
     else
     {
@@ -658,21 +706,22 @@ void explore()
 
 void moveToBrickPile()
 {
-    /*ROS_INFO("Approaching bricks");
-    moveToBrickPosition(-4.5, 1.5, -0.4, 1.5);
-    ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-2.5, 1.2, -0.0, 1);*/
+	//one is along, two is perp
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(-2.5, 1.5, -0.4, 1.5);
+    moveToBrickPosition(-5.5, 1., -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-1.5, 1.2, -0.0, 1);
-     
+    moveToBrickPosition(-4.5, .6, -0.0, 1);
+    
+	usleep(10000000);
+
     //yeah this is copied from online, but it only needs to trigger ransac reset
     std_msgs::String msg;
     std::stringstream ss;
     ss << "hello world ";
     msg.data = ss.str();
     ransac_pub.publish(msg);
+
+    usleep(3500000);
 
     //wait for ransac callback
     precisePositionFound = false;
@@ -854,7 +903,16 @@ void investigateWallPattern(float approachAngle)
 
 void investigateBricks(float approachAngle)
 {
-    
+	mbzirc_husky::getPoi srv;
+	srv.request.type = 4;
+	if(symbolicClient.call(srv))
+	{
+		if(srv.response.covariance[0] > covariancePattern)
+        {
+            float centreX = srv.response.x[0];
+            float centreY = srv.response.y[0];
+        }
+    }
 }
 
 int moveToMapPoint(float x, float y, float orientationZ, float orientationW, float tolerance)
@@ -932,7 +990,7 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 void finalApproach()
 {
 	ROS_INFO("Final approach");
-	if(moveToBrickPosition(1.3, -0.3, 0.4, 0.3) == 0)//second is perp, one is along
+	if(moveToBrickPosition(1., 1.25, 0.4, 0.4) == 0)//second is perp, one is along
 	{
 		ROS_INFO("Approach successful");
 		state = FINAL;
@@ -1000,8 +1058,20 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                 {
                     mbzirc_husky::getPoi srvB;
                     srvB.request.type = 4 + i;
+             
+                    float bestRedX = 0.0f;
+                    float bestRedY = 0.0f;
+                    float bestOtherX = 0.0f;
+                    float bestOtherY = 0.0f;
+                    
                     if(symbolicClient.call(srvB))
                     {
+                        if(i == 0)
+                        {
+                            bestRedX = srvB.response.x[0];
+                            bestRedY = srvB.response.y[0];
+                        }
+
                         if(srvB.response.covariance[0] == 666)
                         {
                             brickStackLocationKnown = true;
@@ -1079,7 +1149,7 @@ int main(int argc, char** argv)
 	wallPatternInvestigatorClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
 	brickPileDetectorClient = n.serviceClient<detector::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
-    scan_sub = n.subscribe("/scan",10, scanCallback);	
+    scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
