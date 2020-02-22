@@ -155,7 +155,7 @@ bool cornerCheck(std::vector<cv::Point2d> corn,cv::Point3d query){
 	double A4 = sqrt(u4*(u4-a4)*(u4-b4)*(u4-b1));
 	printf(" %f %f %f %f %f %f %f %f %f  ", A1,A2,A3,A4,area,A1+A2+A3+A4, u1,u2,u3,u4);
 	//Floating point 
-	if( abs(area - (A1+A2+A3+A4)) < 0.000001){
+	if( abs(area - (A1+A2+A3+A4)) < 1){
 		return true;
 	}
 	if(area>(A1+A2+A3+A4)) return true;
