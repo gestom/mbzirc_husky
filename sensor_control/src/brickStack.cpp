@@ -555,14 +555,13 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
   state = IDLE;
 }
 
-void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
-  if (msg->x < 999) {
-    started_alignement = true;
-  }
-  float angle = atan2(msg->y, msg->x);
+void wallCallBack(const geometry_msgs::PointConstPtr &msg) 
+{
+  if (msg->x < 999)  started_alignement = true;
+  float angle = msg->z; 
   printf("Angle %f\n", angle);
   geometry_msgs::Twist spd;
-  spd.angular.z = -angle;
+  spd.angular.z = -angle-msg->y;
   if (not end_of_pattern) {
     spd.linear.x = -0.1;
   }

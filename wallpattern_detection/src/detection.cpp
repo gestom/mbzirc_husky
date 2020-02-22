@@ -41,7 +41,7 @@
 #include <algorithm>
 #include <mbzirc_husky_msgs/Gen3ArmStatus.h>
 
-#define PATTERN_DEBUG
+//#define PATTERN_DEBUG
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 
@@ -679,6 +679,7 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,wa
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
+	got_img = true;
 	if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
 	inFrame.copyTo(frame);
 	timer.reset();
@@ -687,12 +688,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
 	printf("Incoming");
-	if (segment.valid == 1 && segment.size > 10000) {
+	if (segment.valid == 1 && segment.size > 1500) {
 		STrackedObject relativePosition = altTransform->getRelativePosition(segment,groundPlaneDistance,cX,cY,fPix);
 		geometry_msgs::Point pt;
-		pt.x = cos(relativePosition.yaw);
-		pt.y = sin(relativePosition.yaw);
-		pt.z = 1000; 
+		if (segment.size > 10000){
+			pt.x = relativePosition.x;
+			pt.y = relativePosition.y;
+			pt.z = relativePosition.yaw;
+		        if (relativePosition.d < 0.3) pt.x = 1000;	
+		}
 		line_pub.publish(pt);
 		numDetections++;
 	}
