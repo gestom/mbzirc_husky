@@ -40,6 +40,7 @@ ros::ServiceClient wallSearchClient;
 ros::ServiceClient brickPileDetectorClient;
 ros::ServiceClient wallPatternInvestigatorClient;
 ros::Subscriber scan_sub;
+ros::Subscriber podvod_sub;
 ros::Publisher ransac_pub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
@@ -179,6 +180,36 @@ double dist(double x1, double y1, double x2, double y2)
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
 
+void podvodCallback(const std_msgs::String::ConstPtr& msg)
+{	
+    brickStackLocationKnown = true;
+	
+    char* ch;
+	ch = strtok(strdup(msg->data.c_str()), " ");
+	int varIdx = 0;
+
+	while(ch != NULL)
+	{
+		if(varIdx == 0)
+			brickStackRedX = atof(ch);
+		else if(varIdx == 1)
+			brickStackRedY = atof(ch);
+		else if(varIdx == 2)
+			brickStackOrangeX = atof(ch);
+		else if(varIdx == 3)
+			brickStackOrangeY = atof(ch);
+		else if(varIdx == 4)
+        {
+            wallPatternLocationKnown = true;
+			wallPatternLocationX = atof(ch);
+        }
+		else if(varIdx == 5)
+			wallPatternLocationY = atof(ch);
+		varIdx++;
+		ch = strtok(NULL, " ");
+	}
+
+}
 
 void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 {
@@ -1198,6 +1229,7 @@ int main(int argc, char** argv)
 	brickPileDetectorClient = n.serviceClient<detector::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
+    podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
