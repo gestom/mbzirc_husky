@@ -16,12 +16,12 @@
 #include <wallpattern_detection/detectedobject.h>
 #include <wallpattern_detection/ObjectWithType.h>
 #include <wallpattern_detection/ObjectWithTypeArray.h>
+#include <mbzirc_husky_msgs/wallPatternDetect.h>
+#include <mbzirc_husky_msgs/wallPatternPosition.h>
+#include <wallpattern_detection/wall_pattern_close.h>
 #include <ros/package.h>
 #include <tf/transform_listener.h>
 #include "opencv2/ml/ml.hpp"
-#include <mbzirc_husky_msgs/wallPatternDetect.h>
-#include <wallpattern_detection/wallpattern_detectionConfig.h>
-#include <mbzirc_husky_msgs/wallPatternPosition.h>
 #include <ros/console.h>
 
 #include <sys/time.h>
@@ -36,7 +36,6 @@
 #include <sensor_msgs/image_encodings.h>
 #include <nav_msgs/Odometry.h>
 #include <random>
-#include <wallpattern_detection/wall_pattern_close.h>
 #include <mbzirc_husky_msgs/Float64.h>
 #include <algorithm>
 #include <mbzirc_husky_msgs/Gen3ArmStatus.h>
@@ -116,6 +115,7 @@ ros::Publisher objectPublisher;
 ros::Subscriber localOdomSub;
 ros::Subscriber armInfo;
 ros::Publisher line_pub;
+ros::Publisher front_pub;
 
 SSegment currentSegment;
 SSegment lastSegment;
@@ -187,17 +187,6 @@ void reconfigureCallback(wallpattern_detection::wallpattern_detectionConfig &con
 
 void learnSegments(int number);
 
-void graspCallback(const std_msgs::Int32 &msg)
-{
-  if (msg.data == -1 || msg.data == -2){
-    offset.x = diffPose.x*0.5;
-    offset.y = diffPose.y*0.5;
-  }else{
-    offset.x = 0;
-    offset.y = 0;
-  }
-}
-
 void saveColors()
 {
 	if (detectedObjects == 4){
@@ -227,30 +216,6 @@ void saveColors()
 	}
 }
 
-static array<int, 2> twoLargest(const int *values, int len, int mid_idx){
-    int largestA = -1, largestB = -1;
-    int idx1 = -1;
-    int idx2 = -1;
-
-    for (int idx = 0; idx < len; idx++) {
-        if (idx != mid_idx){
-            if(values[idx] >= largestA) {
-                largestB = largestA;
-                idx2 = idx1;
-                largestA = values[idx];
-                idx1 = idx;
-            } else if (values[idx] >= largestB) {
-                largestB = values[idx];
-                idx2 = idx;
-            }
-        }
-    }
-
-    if (largestA == 0) idx1 = 0;
-    if (largestB == 0) idx2 = 0;
-    return { idx1, idx2 };
-}
-
 float sgn(float a)
 {
 	if (a<0) return -1;
@@ -271,200 +236,6 @@ static Point2d transform_using_h(Point2d pt){
     return pta;
 }
 
-array<vector<Point2d>, 3> runRansac3(vector<SSegment> inSegments, int iterations, int hist_size, int bins_num){
-
-    int RANSAC_ITERATIONS = iterations;
-    double HIST_SIZE = hist_size;
-    int BINS_NUM = bins_num;          /// this has to be odd
-    int top_inliers = 0;
-    array<Point2d, 2> top_result;
-    double area_diff = 500;
-    int top_bin_idx = 0;
-    int center_bin = int(BINS_NUM/2);
-    double max_dist = HIST_SIZE*center_bin - HIST_SIZE/2;           /// beware segfault
-    int arr_len = inSegments.size();
-
-    // prepare points and random number generator
-    mt19937 rng(rd());
-    uniform_int_distribution<int> uni(0, arr_len - 1);
-    Point2d all_points[arr_len];
-    for (int el = 0; el < arr_len; el++){
-        all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
-        /*
-        cout << "roundess: " << inSegments[el].roundness << endl;
-        cout << "circularity: " << inSegments[el].circularity << endl;
-        cout << "size: " << inSegments[el].size << endl;
-        */
-    }
-
-    for (int it_num = 0; it_num < RANSAC_ITERATIONS; it_num++){
-        // init round
-        int id1 = uni(rng);
-        int id2 = uni(rng);
-        if (abs(inSegments[id1].size - inSegments[id2].size) < area_diff){
-            int curr_hist[BINS_NUM];
-            for (int i = 0; i < BINS_NUM; i++){
-                curr_hist[i] = 0;
-            }
-            Point2d pt1 = all_points[uni(rng)];
-            Point2d pt2 = all_points[uni(rng)];
-            Point2d vec = pt1 - pt2;
-            Point2d norm_vec(-vec.y, vec.x);
-            double c = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
-            Point3d line_eq(norm_vec.x, norm_vec.y, c);
-            double line_size = norm(norm_vec);
-
-            // compute all distances a fill the bins
-            for (int el = 0; el < arr_len; el++){
-                double curr_size = inSegments[el].size;
-                Point2d curr_pt = all_points[el];
-                double dist = (line_eq.x*curr_pt.x + line_eq.y*curr_pt.y + line_eq.z)/line_size;
-                if (dist < max_dist and abs(inSegments[id1].size - inSegments[el].size) < area_diff){
-                    int curr_bin = int(round(dist/HIST_SIZE)) + center_bin;
-                    curr_hist[curr_bin]++;
-                }
-            }
-            /*
-            cout << it_num << ": ";
-            for (int i = 0; i < BINS_NUM; i++){
-                cout << curr_hist[i] << " ";
-            }
-            cout << endl;
-            */
-            // compute inliers
-            array<int, 2> two_top_idxs = twoLargest(curr_hist, BINS_NUM, center_bin);
-            int idx1 = two_top_idxs[0] - center_bin;
-            int idx2 = two_top_idxs[1] - center_bin;
-            int inlier_num = curr_hist[center_bin];
-            if (idx1 == -idx2 and idx1 != 0){
-                /// this is reason why we use histogram - detect 3 colinear lines
-                inlier_num += curr_hist[two_top_idxs[0]] + curr_hist[two_top_idxs[1]];
-            }
-
-            // set top fits
-            if (inlier_num > top_inliers){
-                top_inliers = inlier_num;
-                top_bin_idx = abs(idx1);
-                top_result = {pt1, pt2};
-            }
-        }
-    }
-
-    /// get all inliers
-
-    array<vector<Point2d>, 3> ret;
-    // compute distances
-    Point2d pt1 = top_result[0];
-    Point2d pt2 = top_result[1];
-    Point2d vec = pt1 - pt2;
-    Point2d norm_vec(-vec.y, vec.x);
-    double c = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
-    Point3d line_eq(norm_vec.x, norm_vec.y, c);
-    double line_size = norm(norm_vec);
-    for (int el = 0; el < arr_len; el++){
-        Point2d curr_pt = all_points[el];
-        double dist = (line_eq.x*curr_pt.x + line_eq.y*curr_pt.y + line_eq.z)/line_size;
-        if (dist < max_dist){
-            int curr_bin = int(round(dist/HIST_SIZE));
-            if (curr_bin == -top_bin_idx){
-                ret[0].push_back(curr_pt);
-            } else if (curr_bin == 0){
-                ret[1].push_back(curr_pt);
-            } else if (curr_bin == top_bin_idx){
-                ret[2].push_back(curr_pt);
-            }
-        }
-    }
-
-    return ret;
-
-}
-
-
-array<vector<Point2d>, 2> runRansac2(vector<SSegment> inSegments, int iterations, double inlier_dist){
-
-    int RANSAC_ITERATIONS = iterations;
-    int top_inliers = 0;
-    array<Point2d, 3> top_result;
-    double area_diff = 500;
-    int top_bin_idx = 0;
-    int arr_len = inSegments.size();
-
-    // prepare points and random number generator
-    mt19937 rng(rd());
-    uniform_int_distribution<int> uni(0, arr_len-1);
-    Point2d all_points[arr_len];
-    for (int el = 0; el < arr_len; el++){
-        all_points[el] = Point2d(inSegments[el].x, inSegments[el].y);
-        /*
-        cout << "roundess: " << inSegments[el].roundness << endl;
-        cout << "circularity: " << inSegments[el].circularity << endl;
-        cout << "size: " << inSegments[el].size << endl;
-        */
-    }
-
-    for (int it_num = 0; it_num < RANSAC_ITERATIONS; it_num++){
-        // init round
-        int id1 = uni(rng);
-        int id2 = uni(rng);
-        if (abs(inSegments[id1].size - inSegments[id2].size) < area_diff){
-            int curr_inliers = 0;
-            Point2d pt1 = all_points[uni(rng)];
-            Point2d pt2 = all_points[uni(rng)];
-            Point2d pt3 = all_points[uni(rng)];
-            Point2d vec = pt1 - pt2;
-            Point2d norm_vec(-vec.y, vec.x);
-            double c1 = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
-            double c2 = -(norm_vec.x * pt3.x + norm_vec.y * pt3.y);
-            Point3d line_eq1(norm_vec.x, norm_vec.y, c1);
-            Point3d line_eq2(norm_vec.x, norm_vec.y, c2);
-            double line_size = norm(norm_vec);
-
-            // compute all distances a fill the bins
-            for (int el = 0; el < arr_len; el++){
-                double curr_size = inSegments[el].size;
-                Point2d curr_pt = all_points[el];
-                double dist1 = (line_eq1.x*curr_pt.x + line_eq1.y*curr_pt.y + line_eq1.z)/line_size;
-                double dist2 = (line_eq2.x*curr_pt.x + line_eq2.y*curr_pt.y + line_eq2.z)/line_size;
-                if ((dist1 < inlier_dist or dist2 < inlier_dist) and abs(inSegments[id1].size - inSegments[el].size) < area_diff){
-                    curr_inliers++;
-                }
-            }
-
-            // set top fits
-            if (curr_inliers > top_inliers){
-                top_inliers = curr_inliers;
-                top_result = {pt1, pt2, pt3};
-            }
-        }
-    }
-
-    /// get all inliers
-
-    array<vector<Point2d>, 2> ret;
-    // compute distances
-    Point2d pt1 = top_result[0];
-    Point2d pt2 = top_result[1];
-    Point2d pt3 = top_result[2];
-    Point2d vec = pt1 - pt2;
-    Point2d norm_vec(-vec.y, vec.x);
-    double c1 = -(norm_vec.x * pt1.x + norm_vec.y * pt1.y);
-    double c2 = -(norm_vec.x * pt3.x + norm_vec.y * pt3.y);
-    Point3d line_eq1(norm_vec.x, norm_vec.y, c1);
-    Point3d line_eq2(norm_vec.x, norm_vec.y, c2);
-    double line_size = norm(norm_vec);
-    for (int el = 0; el < arr_len; el++){
-        Point2d curr_pt = all_points[el];
-        double dist1 = (line_eq1.x*curr_pt.x + line_eq1.y*curr_pt.y + line_eq1.z)/line_size;
-        double dist2 = (line_eq2.x*curr_pt.x + line_eq2.y*curr_pt.y + line_eq2.z)/line_size;
-        if (dist1 < inlier_dist){
-            ret[0].push_back(curr_pt);
-        } else if (dist2 < inlier_dist){
-            ret[1].push_back(curr_pt);
-        }
-    }
-    return ret;
-}
 
 void magnetHeightCallback(const std_msgs::Float64ConstPtr& msg)
 {
@@ -482,143 +253,32 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
     got_params = true;
 }
 
-void imageCallback2(const sensor_msgs::ImageConstPtr& msg)
+bool getPatternFront(wallpattern_detection::wall_pattern_close::Request  &req,wallpattern_detection::wall_pattern_close::Response &res)
 {
-    // close detection from above
-    if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
-    inFrame.copyTo(frame);
-
-//    segmentation.findSeparatedSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
-    vector<SSegment> segs_to_ransac;
-    int new_size;
-    for (int i = 0; i < segmentation.numSegments; i++){
-        if (segmentation.segmentArray[i].warning < 1){
-            segs_to_ransac.push_back(segmentation.segmentArray[i]);
-        }
-    }
-
-    int lines_num = 0;
-
-    SSegment b_seg = segmentation.biggest_segment;
-    if (b_seg.warningTop == 1){
-	    mbzirc_husky_msgs::Vector7 msg;
-	    for (int i = 0;i<7;i++) msg.request.data[i] = 0;
-	    msg.request.data[5] = 0.1;
-	    move_arm.call(msg);
-	    printf("MoveUP!\n");
-    }
-
-    if (not segs_to_ransac.empty()){
-
-        array<vector<Point2d>, 3> ret_ransac3 = runRansac3(segs_to_ransac, 500, 20, 35);
-        array<vector<Point2d>, 2> ret_ransac2 = runRansac2(segs_to_ransac, 500, 20);
-
-        int r3_sum = ret_ransac3[0].size() + ret_ransac3[1].size() + ret_ransac3[2].size();
-        int r2_sum = ret_ransac2[0].size() + ret_ransac2[1].size();
-
-        #ifdef PATTERN_DEBUG
-        for (int i = 0; i < segmentation.numSegments; i++){
-        drawMarker(frame, Point2d(segmentation.segmentArray[i].x, segmentation.segmentArray[i].y), Scalar(255, 0, 0), MARKER_SQUARE);
-        }
-        for (int i = 0; i < 3; i++){
-            for (int j = 0; j < ret_ransac3[i].size(); j++){
-                drawMarker(frame, ret_ransac3[i][j], Scalar(0, 0, 255), MARKER_CROSS);
-            }
-        }
-        drawMarker(frame, Point(segmentation.biggest_segment.x, segmentation.biggest_segment.y), Scalar(0, 255, 0), MARKER_STAR);
-
-        imshow("frame", frame);
-        key = waitKey(1)%256;
-        #endif
-
-        ROS_INFO_STREAM("Found " << segmentation.numSegments << " segments");
-        if (ret_ransac3[0].size() > 1 and ret_ransac3[2].size() > 1 and ret_ransac3[1].size() > 3){
-            lines_num = 3;
-        } else if (ret_ransac2[0].size() > 2 and ret_ransac2[1].size() > 2 and r2_sum > 6) {
-            lines_num = 2;
-        } else if (ret_ransac3[1].size() > 3){
-            lines_num = 1;
-        }
-
-        geometry_msgs::Point pt;
-        if (got_height and got_img and got_params and b_seg.size > 500) {
-            if (lines_num == 3) {
-                Point2d pt1 = transform_using_h(ret_ransac3[1][0]);
-                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1]);
-	 		
-                Point2d vec = pt2 - pt1;
-                Point2d norm_vec = Point2d(-vec.y, vec.x);
-                vec = (vec / norm(vec)) * r3_sum;
-                double dist = (pt1.x * norm_vec.x + pt1.y * norm_vec.y) / norm(norm_vec);
-                pt.x = vec.x;
-                pt.y = vec.y;
-                pt.z = dist;
-            } else if (lines_num == 2) {
-                Point2d pt1 = transform_using_h(ret_ransac2[0][0]);
-                Point2d pt2 = transform_using_h(ret_ransac2[0][ret_ransac2[0].size() - 1]);
-                Point2d vec = pt2 - pt1;
-                vec = (vec / norm(vec)) * r2_sum;
-                pt.x = vec.x;
-                pt.y = vec.y;
-                pt.z = -1000;
-            } else if (lines_num == 1) {
-                Point2d pt1 = transform_using_h(ret_ransac3[1][0]);
-                Point2d pt2 = transform_using_h(ret_ransac3[1][ret_ransac3[1].size() - 1]);
-                Point2d vec = pt2 - pt1;
-                vec = (vec / norm(vec)) * double(ret_ransac3[1].size());
-                pt.x = vec.x;
-                pt.y = vec.y;
-                pt.z = -1000;
-            }
-            // cout << "camera params: " << fPix << " " << cX << " " << cY << " " << groundPlaneDistance << endl;
-
-            if (pt.x < 0) {
-                pt.x = -pt.x;
-                pt.y = -pt.y;
-                pt.z = -pt.z;
-            }
-
-            int *corner_max = max_element(b_seg.cornerX, b_seg.cornerX + 3);
-            int *corner_min = min_element(b_seg.cornerX, b_seg.cornerX + 3);
-            if (not (*corner_min < left_edge and *corner_max > right_edge)){
-                pt.x = 1000;
-                pt.y = 1000;
-                pt.z = 1000;
-                ROS_INFO_STREAM("End of pattern found!");
-                line_pub.publish(pt);
-            }
-            if (lines_num > 0){
-                line_pub.publish(pt);
-            }
-        }
-
-
-    #ifdef PATTERN_DEBUG
-        if (gui){
-            imshow("frame",frame);
-            key = waitKey(1)%256;
-	    }
-    #endif
-
-    }
-
-
-
-    // ROS_INFO_STREAM("courners: " << b_seg.cornerX[0] << " : " << b_seg.cornerX[1] << " : " << b_seg.cornerX[2] << " : " << b_seg.cornerX[3] << endl);
-    got_img = true;
+	if (req.activate){
+		ros::ServiceClient homeArmClient = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+		std_srvs::Trigger trg;
+		homeArmClient.call(trg);
+		/// here comes the code of subscriber
+		imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallbackFront);
+		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
+	}else{
+		imageSub.shutdown();
+		subInfo.shutdown();
+	}
+        return true;
 }
+
 
 bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,wallpattern_detection::wall_pattern_close::Response &res)
 {
     if (req.activate){
-        #ifndef PATTERN_DEBUG
         ros::ServiceClient raise_arm = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
         mbzirc_husky_msgs::Float64 msg;
         msg.request.data = 0;
-        if (raise_arm.call(msg)){
-        #endif
-            minSegmentSize = 50;
-            /// here comes the code of subscriber
+        if (raise_arm.call(msg))
+	{
+	    /// here comes the code of subscriber
             imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallback);
             subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
             subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
@@ -628,13 +288,7 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,wa
             got_height = false;
             got_params = false;
 
-            #ifdef PATTERN_DEBUG
-            got_height = true;
-            groundPlaneDistance = 0.52;//TODO
-            got_params = true;
-            #endif
-
-        int attempts = 0;
+	    int attempts = 0;
             while (not(got_img and got_height and got_params) && attempts < 15){
                 ros::spinOnce();
                 usleep(300000);
@@ -677,6 +331,25 @@ bool getPatternAbove(wallpattern_detection::wall_pattern_close::Request  &req,wa
     }
 }
 
+void imageCallbackFront(const sensor_msgs::ImageConstPtr& msg)
+{
+	got_img = true;
+	if (stallImage == false) inFrame = cv_bridge::toCvShare(msg, "bgr8")->image;
+	inFrame.copyTo(frame);
+	timer.reset();
+	timer.start();
+
+	numDetectionAttempts++;
+	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
+	if (segment.valid == 1 && segment.size > 5000) {
+		geometry_msgs::Point pt;
+		pt.x = segment.x;
+		pt.y = segment.y;
+		front_pub.publish(pt);
+		numDetections++;
+	}
+}
+
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	got_img = true;
@@ -687,7 +360,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 	numDetectionAttempts++;
 	SSegment segment = segmentation.findSegment(&frame,&imageCoords,segments,minSegmentSize,maxSegmentSize);
-	printf("Incoming");
 	if (segment.valid == 1 && segment.size > 1500) {
 		STrackedObject relativePosition = altTransform->getRelativePosition(segment,groundPlaneDistance,cX,cY,fPix);
 		geometry_msgs::Point pt;
@@ -698,6 +370,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 		line_pub.publish(pt);
 		numDetections++;
 	}
+
+
+
 	// posePub.publish(patternPose);
 	if (imagePub.getNumSubscribers() != 0){
 		frame.copyTo(videoFrame);
@@ -806,57 +481,8 @@ void histogramMouseCallback(int event, int x, int y, int flags, void* userdata)
   }
 }
 
-//to speed up termination
-void termHandler(int s){
-  exit(1); 
-}
-
 void armStatusCallback(const mbzirc_husky_msgs::Gen3ArmStatusConstPtr &msg) {
   armAngle = msg->joint_angles[5]+1.628826;
-}
-
-
-bool detect(mbzirc_husky_msgs::wallPatternDetect::Request  &req, mbzirc_husky_msgs::wallPatternDetect::Response &res)
-{
-
-	if (req.activate)
-	{
-		imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallback);
-		subHeight = n->subscribe("/kinova/arm_manager/camera_to_ground", 1, magnetHeightCallback);
-		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
-
-		groundPlaneDistance = req.groundPlaneDistance;
-		numDetections = 0;
-		numDetectionAttempts = 0;
-		int attempts = 0;
-		while (numDetectionAttempts == 0 && attempts < 20){
-			ros::spinOnce();
-			usleep(100000);
-			attempts++;
-		}
-		if (numDetections > 0){
-			ROS_INFO("Brick detected.");
-			res.patternPose = patternPose.pose;
-			res.detected = true;
-			res.activated = true;
-		}else if (numDetectionAttempts > 0){
-			ROS_INFO("Brick not detected.");
-			res.detected = false;
-			res.activated = true;
-		}else{
-			ROS_INFO("Depth image not incoming. Is realsense on?");
-			res.detected = false;
-			res.activated = false;
-		}
-	} else
-	{
-		res.detected = false;
-		res.activated = false;
-		subHeight.shutdown();
-		imageSub.shutdown();
-		subInfo.shutdown();
-	}
-	return true;
 }
 
 
@@ -882,13 +508,9 @@ int main(int argc, char** argv)
 	n->param("gui", gui, false);
 	n->param("debug", debug, false);
 	move_arm = n->serviceClient<mbzirc_husky_msgs::Vector7>("/kinova/arm_manager/goto_angles_relative");
+	front_pub = n->advertise<geometry_msgs::Point>("/wall_pattern_front", 1);
 
 	gui = false;
-
-	if (gui) {
-		debug = true;
-		signal (SIGINT,termHandler);
-	}
 
 	if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
 	if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
@@ -901,6 +523,7 @@ int main(int argc, char** argv)
 	armInfo  = n->subscribe("/kinova/arm_manager/status", 1, armStatusCallback);
 
 	ros::ServiceServer service2 = n->advertiseService("start_top_wall_detector", getPatternAbove);
+	ros::ServiceServer service3 = n->advertiseService("detectPattern", getPatternFront);
 
 	// initialize dynamic reconfiguration feedback
 
@@ -914,7 +537,6 @@ int main(int argc, char** argv)
 	if (gui){
 		service = n->advertiseService("detectWallpattern", detect);
 		imagePub = it->advertise("/wallDetectResult", 1);
-		ros::Subscriber subGrasp = n->subscribe("grasping_result", 1, &graspCallback, ros::TransportHints().tcpNoDelay());
 	}
 
 	// Debugging PUBLISHERS
