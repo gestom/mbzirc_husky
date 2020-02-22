@@ -1,6 +1,6 @@
 int32 position
 int32 layer
-int32 num_of_waypoints
+bool keep_pressed
 ---
 bool success
 string message

@@ -1,6 +1,8 @@
-#goal has bearing in radians to estimated bricks
-int64 dummy
+# goal - set the number of bricks to be picked up
+int64 num_bricks_desired 
 ----
-int64 result 
+# result
+int64 num_bricks_picked 
 ----
-int64 dummy
+# feedback
+int64 num_bricks_current

@@ -65,6 +65,7 @@ int behaviourResult = 0;
 int robotXYMove = 1;
 int alignMessageDelayCount = 30;
 int velodynePacketCount = 0;
+int num_bricks_desired = 1;
 
 const char *stateStr[] = { 
 	"Idle",
@@ -669,6 +670,11 @@ int prepareStorage()
 int storeBrick()
 {
 	mbzirc_husky_msgs::StoragePosition srv = getStoragePosition(activeStorage);
+  if (activeStorage + 1 == num_bricks_desired){ // next brick is the last one, do not raise arm after it is placed
+    srv.request.keep_pressed = true;
+  } else {
+    srv.request.keep_pressed = srv.request.layer > 1;
+  }
 	if (brickStoreClient.call(srv)) {
 		ROS_INFO("BRICK STORED IN POSITION %d", activeStorage);
 		mbzirc_husky::addInventory inventSrv;
@@ -738,6 +744,7 @@ bool shootVelodyne(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response 
 
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
+  num_bricks_desired = goal->num_bricks_desired;
 	mbzirc_husky::brickPickupResult result;
 	state = ARMRESET;	//TODO
 	state = APPROACH1;	//TODO
@@ -760,13 +767,17 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMPOSITIONING; break;
 				case BRICKSTORE: if (storeBrick() == 0){
 							 printf("STORAGE status %i\n",activeStorage);
-							 if (activeStorage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
-							 if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 		//after the second red, allow only forward phi alignment 
-							 if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}		//after picking up green, allow only backward phi alignment 
-							 if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;}
-							 if (activeStorage == 5)  {nextState = ARMPOSITIONING;}
-							 if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
-							 if (activeStorage == 7)  {nextState = FINAL;}
+               if (activeStorage == num_bricks_desired)
+                 nextState = FINAL;
+               else{
+							  if (activeStorage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
+							  if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 		//after the second red, allow only forward phi alignment 
+							  if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}		//after picking up green, allow only backward phi alignment 
+							  if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;}
+							  if (activeStorage == 5)  {nextState = ARMPOSITIONING;}
+							  if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
+							  if (activeStorage == 7)  {nextState = FINAL;}
+              }
 						 }else { nextState = ARMRESET;} break;
 				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.75); robotXYMove = +1; positionArm();pushBricks(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;

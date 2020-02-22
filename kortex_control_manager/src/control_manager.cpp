@@ -47,6 +47,29 @@ typedef enum
   FAILED
 } ActionStatus;
 
+typedef enum
+{
+  HOME = 0,
+  RAISE_CAM,
+  PREPARE_GRIP,
+  DESCEND,
+  LIFT,
+  GOTO_STORAGE,
+  STORE,
+  DESCEND_STORAGE,
+  LIFT_STORAGE,
+  PREPARE_PLACE,
+  PLACE,
+  SET_JOINT_VELOCITY,
+  PUSH_ASIDE,
+  ALIGN,
+  EMERGENCY_HOME
+} Command;
+
+const char *command_names[] = {"HOME",       "RAISE CAM",       "PREPARE GRIP",  "DESCEND",       "LIFT",  "GOTO STORAGE",
+                               "STORE",      "DESCEND STORAGE", "LIFT STORAGE",  "PREPARE PLACE", "PLACE", "SET JOINT VELOCITY",
+                               "PUSH ASIDE", "ALIGN",           "EMERGENCY HOME"};
+
 /* utils //{ */
 
 /* quaternionToEuler //{ */
@@ -198,6 +221,7 @@ bool getting_gripper_feedback  = false;
 bool getting_realsense_brick   = false;
 bool brick_reliable            = false;
 bool effort_tracking           = false;
+bool pressing_brick            = false;
 
 std::vector<double> joint_angles;
 Pose3d              end_effector_pose;
@@ -207,6 +231,7 @@ std::vector<double> effort_difference_samples;
 double              accumulated_effort_difference;
 
 MotionStatus status;
+Command      last_command;
 Brick        detected_brick;
 
 ros::Time last_brick_time;
@@ -419,6 +444,9 @@ void setJointVelocity(std::vector<double> velocity) {
 
 /* callbackAlignArmService //{ */
 bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+
+  last_command = Command::ALIGN;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot align_arm, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -641,6 +669,8 @@ bool callbackGoToAnglesRelativeService(mbzirc_husky_msgs::Vector7Request &req, m
 /* callbackGoToStorageService //{ */
 bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
 
+  last_command = Command::GOTO_STORAGE;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToStorage\", not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -730,6 +760,10 @@ bool callbackGoToStorageService(mbzirc_husky_msgs::StoragePosition::Request &req
 
 /* callbackHomingService //{ */
 bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+
+  Command prev_command = last_command;
+  last_command         = Command::HOME;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -748,6 +782,7 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
   bool goal_reached = goToAnglesAction(home_angles);
 
   if (!goal_reached) {
+    last_command = Command::EMERGENCY_HOME;
     ROS_WARN("[%s]: Cannot home directly, trying the fallback home position", ros::this_node::getName().c_str());
     goal_reached = goToAnglesAction(fallback_home_angles);
     if (goal_reached) {
@@ -757,8 +792,26 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
       goal_reached = goToAnglesAction(fallback_home_angles);
     }
   }
-  if (!goal_reached) {
-    ROS_FATAL("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
+  if (!goal_reached && prev_command == Command::RAISE_CAM) {
+    ROS_INFO("[%s]: Arm stuck at raised position. Trying to unblock by velocity command", ros::this_node::getName().c_str());
+    std::vector<double> goal_velocity;
+    std::vector<double> zero_velocity;
+    for (int i = 0; i < DOF; i++) {
+      goal_velocity.push_back(0.0);
+      zero_velocity.push_back(0.0);
+    }
+    goal_velocity[0]     = 0.2;
+    goal_velocity[3]     = 0.2;
+    ros::Time start_time = ros::Time::now();
+    while (ros::ok() && (ros::Time::now() - start_time).toSec() < 2.0) {
+      setJointVelocity(goal_velocity);
+      ros::Duration(0.02).sleep();
+    }
+    setJointVelocity(zero_velocity);
+    ROS_INFO("[%s]: Trying to home AGAIN", ros::this_node::getName().c_str());
+    goal_reached = goToAnglesAction(home_angles);
+  } else {
+    ROS_WARN("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
   }
   status      = IDLE;
   res.success = goal_reached;
@@ -768,6 +821,8 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
 
 /* callbackLiftBrickService //{ */
 bool callbackLiftBrickService([[maybe_unused]] mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
+
+  last_command = Command::LIFT;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -808,6 +863,8 @@ bool callbackLiftBrickService([[maybe_unused]] mbzirc_husky_msgs::Float64Request
 
 /* callbackPlaceBrickService //{ */
 bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
+
+  last_command = Command::PLACE;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
@@ -883,6 +940,8 @@ bool callbackLookDownPatternService([[maybe_unused]] std_srvs::TriggerRequest &r
 /* callbackLiftBrickStorageService //{ */
 bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &req, mbzirc_husky_msgs::StoragePositionResponse &res) {
 
+  last_command = Command::LIFT_STORAGE;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot move, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -937,6 +996,8 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 /* callbackPickupBrickService //{ */
 bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
+  last_command = Command::LIFT;
+
   if (status != IDLE) {
     ROS_ERROR("[%s]: Cannot start \"pickup brick\", arm is not IDLE!", ros::this_node::getName().c_str());
     res.success = false;
@@ -949,7 +1010,7 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
     return false;
   }
 
-  status          = MOVING;
+  status = MOVING;
 
   ROS_INFO("[%s]: Moving down for brick at layer %d", ros::this_node::getName().c_str(), detected_brick.brick_layer);
 
@@ -962,8 +1023,8 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
     if (!getting_realsense_brick) {
       ROS_ERROR("[%s]: Brick lost, aborting pickup", ros::this_node::getName().c_str());
       setCartesianVelocity(ZERO_VELOCITY);
-      status          = IDLE;
-      res.success     = false;
+      status      = IDLE;
+      res.success = false;
       return false;
     }
     Eigen::Vector3d brick_euler = quaternionToEuler(detected_brick.pose.rot);
@@ -1050,6 +1111,8 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
 /* callbackPrepareGrippingService //{ */
 bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
+  last_command = Command::PREPARE_GRIP;
+
   if (!getting_joint_angles) {
     ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
     res.success = false;
@@ -1079,6 +1142,8 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
 
 /* callbackPreparePlacingService //{ */
 bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+
+  last_command = Command::PREPARE_PLACE;
 
   if (!getting_joint_angles) {
     ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
@@ -1111,6 +1176,8 @@ bool callbackPreparePlacingService([[maybe_unused]] std_srvs::TriggerRequest &re
 /* callbackRaiseCameraService //{ */
 bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
+  last_command = Command::RAISE_CAM;
+
   if (!getting_joint_angles) {
     ROS_ERROR("[%s]: Cannot move, internal arm feedback missing!", ros::this_node::getName().c_str());
     res.success = false;
@@ -1122,9 +1189,6 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
     res.success = false;
     return false;
   }
-
-
-
 
 
   // TODO this fucker hangs and makes me want to hang myself
@@ -1165,6 +1229,7 @@ bool callbackRaiseCameraService(mbzirc_husky_msgs::Float64Request &req, mbzirc_h
 
 /* callbackSetJointVelocityService //{ */
 bool callbackSetJointVelocityService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_husky_msgs::Vector7Response &res) {
+  last_command = Command::SET_JOINT_VELOCITY;
   std::vector<double> velocity;
   std::vector<double> zero_velocity;
   for (int i = 0; i < DOF; i++) {
@@ -1185,6 +1250,7 @@ bool callbackSetJointVelocityService(mbzirc_husky_msgs::Vector7Request &req, mbz
 
 /* callbackStoreBrickService //{ */
 bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+  last_command = Command::STORE;
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot store brick, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -1217,21 +1283,33 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
   Pose3d goal_pose = end_effector_pose;
   goal_pose.pos.z() -= descent;
 
-  if (goToAction(goal_pose)) {
+
+  bool goal_reached = goToAction(goal_pose);
+
+  if (goal_reached && brick_attached) {
     ROS_INFO("[%s]: Descent successful, releasing the brick", ros::this_node::getName().c_str());
     ungrip();
+  } else {
+    ROS_WARN("[%s]: Brick store unsuccessful!", ros::this_node::getName().c_str());
+    res.success = false;
+    return false;
   }
 
   ros::spinOnce();
   ros::Duration(0.2).sleep();
   ros::spinOnce();
   goal_pose = end_effector_pose;
-  if (req.layer != 2) {  // keep blue brick pressed
+
+  // request will tell us if we want to keep the arm down
+  if (goal_reached && req.keep_pressed) {
+    ROS_INFO("[%s]: Arm will be rested on brick P-%d, L-%d", ros::this_node::getName().c_str(), req.position, req.layer);
+    pressing_brick = true;
+  }
+
+  if (!req.keep_pressed) {
     goal_pose.pos.z() += descent;
   }
-  // TODO do not home after this
   goToAction(goal_pose);
-
 
   if (!brick_attached) {
     res.success = true;
@@ -1244,6 +1322,7 @@ bool callbackStoreBrickService(mbzirc_husky_msgs::StoragePosition::Request &req,
 
 /* callbackPushBricksAsideService //{ */
 bool callbackPushBricksAsideService([[maybe_unused]] std_srvs::TriggerRequest &req, std_srvs::TriggerResponse &res) {
+  last_command = Command::PUSH_ASIDE;
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot push bricks, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -1331,6 +1410,7 @@ bool callbackPressBricksService([[maybe_unused]] std_srvs::TriggerRequest &req, 
 
 /* callbackPickupStorageService //{ */
 bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
+  last_command = Command::LIFT_STORAGE;
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot pickup brick from storage, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -1524,7 +1604,7 @@ void callbackJointStateTopic(const sensor_msgs::JointStateConstPtr &msg) {
       if (status == MOVING && accumulated_effort_difference > effort_threshold) {
         ROS_WARN("[%s]: Effort spike detected!", ros::this_node::getName().c_str());
       }
-      //TODO stop movement here
+      // TODO stop movement here
       publisher_effort_changes.publish(msg);
     }
   }
@@ -1646,6 +1726,8 @@ void statusTimer([[maybe_unused]] const ros::TimerEvent &evt) {
     detected_brick.pose.pos.y() = 0.0;
     status                      = IDLE;
   }
+
+  status_msg.last_command = command_names[last_command];
 
   publisher_arm_status.publish(status_msg);
 
@@ -1772,6 +1854,7 @@ int main(int argc, char **argv) {
     joint_angles.push_back(0);
     last_effort.push_back(0);
   }
+  last_command = Command::HOME;
 
   // action clients
   action_client_goto_.reset(new actionlib::SimpleActionClient<pouring_msgs::MoveGroupAction>(nh, "execute_trajectory", false));

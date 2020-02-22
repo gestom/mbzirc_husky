@@ -91,6 +91,9 @@ float brickStackLocationY = 0.0f;
 float wallPatternLocationX = 0.0f;
 float wallPatternLocationY = 0.0f;
 
+float investigateX = 0.0f;
+float investigateY = 0.0f;
+
 bool useRansac = false;
 bool precisePositionFound = false;
 float brickStackRedX = 8.456;
@@ -648,11 +651,11 @@ void explore()
         std_srvs::Trigger srv;
         wprosbagClient.call(srv);
 
-        /*ROS_INFO("Calling wall pattern detect");
+        ROS_INFO("Calling wall pattern detect");
           mbzirc_husky_msgs::wallPatternDetect m;
           m.request.activate = true;
           m.request.rotate_arm = true;
-          wallSearchClient.call(m);*/
+          wallSearchClient.call(m);
 
         ROS_INFO("Finished calling wp search");
         usleep(2000000);
@@ -903,15 +906,57 @@ void investigateWallPattern(float approachAngle)
 
 void investigateBricks(float approachAngle)
 {
-	mbzirc_husky::getPoi srv;
-	srv.request.type = 4;
-	if(symbolicClient.call(srv))
-	{
-		if(srv.response.covariance[0] > covariancePattern)
+    moveToMapPoint(investigateX, investigateY, 0, 1, 5); 
+
+    float redX = 0.0f;
+    float redY = 0.0f;
+    float otherX = 0.0f;
+    float otherY = 0.0f;
+    float otherCovar = 0.0f;
+
+    for(int brickIdx = 0; brickIdx < 4; brickIdx++)
+    {
+        mbzirc_husky::getPoi srvB;
+        srvB.request.type = 4 + brickIdx;
+
+        if(symbolicClient.call(srvB))
         {
-            float centreX = srv.response.x[0];
-            float centreY = srv.response.y[0];
+            for(int i = 0; i < 5; i++)
+            {
+                float dx = srvB.response.x[i];
+                float dy = srvB.response.y[i];
+                float distance = sqrt(dx*dx+dy*dy);
+
+                if(distance < 10)
+                {
+                     if(brickIdx == 0)
+                     {
+                        redX = srvB.response.x[i];
+                        redY = srvB.response.y[i];
+                     }
+                     else
+                     {
+                        if(srvB.response.covariance[i] > otherCovar)
+                        {
+                            otherCovar = srvB.response.covariance[i];
+                            otherX = srvB.response.x[i];
+                            otherY = srvB.response.y[i];
+                        }
+                     }
+                }
+            }
         }
+        else
+            ROS_INFO("Symbolic map call failed!");
+    }
+    if(otherCovar > 1)
+    {
+        brickStackLocationKnown = true;
+        brickStackRedX = redX;
+        brickStackRedY = redX;
+        brickStackOrangeX = otherX;
+        brickStackOrangeY = otherY;
+        state = EXPLORINGBRICKS;
     }
 }
 
@@ -1054,32 +1099,19 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
             if(!brickStackLocationKnown)
             {
                 ROS_INFO("Looking For bricks");
+
                 for(int i = 0; i < 4; i++)
                 {
                     mbzirc_husky::getPoi srvB;
                     srvB.request.type = 4 + i;
-             
-                    float bestRedX = 0.0f;
-                    float bestRedY = 0.0f;
-                    float bestOtherX = 0.0f;
-                    float bestOtherY = 0.0f;
-                    
+
                     if(symbolicClient.call(srvB))
                     {
-                        if(i == 0)
+                        if(srvB.response.covariance[0] > 0.4)
                         {
-                            bestRedX = srvB.response.x[0];
-                            bestRedY = srvB.response.y[0];
-                        }
-
-                        if(srvB.response.covariance[0] == 666)
-                        {
-                            brickStackLocationKnown = true;
-                            brickStackLocationX = srvB.response.x[0];
-                            brickStackLocationY = srvB.response.y[0];
-                        }
-                        else if(srvB.response.covariance[0] > covarianceBricks)
-                        {
+                            ROS_INFO("Strong candidate to investigate");
+                            investigateX = srvB.response.x[0];
+                            investigateY = srvB.response.y[0];
                             state = INVESTIGATEBRICKS;
                         }
                     }
