@@ -41,7 +41,7 @@ int hypothesisIdx[8];
 bool patternRecognised = false;
 
 //Clustering reconfigure
-double tolerance = 0.5;
+double tolerance = 1.0;
 double banTolerance = 0.5;
 
 
@@ -433,8 +433,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			return true;
 			break;
 		case 7: if(req.covariance == 666 && orangeFound == false){
-				blueBricks.clear();
-				blueBricks.push_back(vPoint);
+				orangeBricks.clear();
+				orangeBricks.push_back(vPoint);
 				ROS_INFO("Orange  bricks found!!!");
 				orangeFound = true;
 				res.res = true;

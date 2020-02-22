@@ -84,7 +84,7 @@ int misdetections = 0;
 //brickStackLocation in map frame
 //bool brickStackLocationKnown = false;
 //bool wallPatternLocationKnown = false;
-bool brickStackLocationKnown = true;
+bool brickStackLocationKnown = false;
 bool wallPatternLocationKnown = true;
 float brickStackLocationX = 0.0f;
 float brickStackLocationY = 0.0f;
@@ -629,26 +629,74 @@ void explore()
     if(symbolicClient.call(srv))
     {
         ROS_INFO("Moving to point");
+
+        ROS_INFO("Zdeneks search for bricks");
+        detector::brick_pile_trigger bpd;
+        bpd.request.activate = true;
+        if(!brickPileDetectorClient.call(bpd))
+            ROS_INFO("Brick pile detector failed to set true");
+
         moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1, 1.5);
 
+        ROS_INFO("Searching for bricks");
+        detector::brick_pile_trigger bpdb;
+        bpdb.request.activate = false;
+        if(!brickPileDetectorClient.call(bpdb))
+            ROS_INFO("Brick pile detector failed to set false");
+
         ROS_INFO("Sending velo points");
-          std_srvs::Trigger srv;
-          wprosbagClient.call(srv);
+        std_srvs::Trigger srv;
+        wprosbagClient.call(srv);
 
-          /*ROS_INFO("Searching for bricks");
-          detector::brick_pile_detector bpd;
-          m.request.activate = true;
-          if(!brickPileDetectorClient.call(bpd))
-          ROS_INFO("Brick pile detector failed to call");*/
-
-          ROS_INFO("Calling wall pattern detect");
+        /*ROS_INFO("Calling wall pattern detect");
           mbzirc_husky_msgs::wallPatternDetect m;
           m.request.activate = true;
           m.request.rotate_arm = true;
-          wallSearchClient.call(m);
+          wallSearchClient.call(m);*/
 
         ROS_INFO("Finished calling wp search");
-        usleep(2000000); 
+        usleep(2000000);
+
+        /*float reqCovar = 0.5;
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 4;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }
+
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 5;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }
+
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 6;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }
+
+        mbzirc_husky::getPoi srv;
+        srv.request.type = 7;
+        if(symbolicClient.call(srv))
+        {
+            if(srv.response.covariance[0] > reqCovar)
+            {
+                state = INVESTIGATEBRICKS;
+            }
+        }*/
     }
     else
     {
@@ -855,7 +903,16 @@ void investigateWallPattern(float approachAngle)
 
 void investigateBricks(float approachAngle)
 {
-    
+	mbzirc_husky::getPoi srv;
+	srv.request.type = 4;
+	if(symbolicClient.call(srv))
+	{
+		if(srv.response.covariance[0] > covariancePattern)
+        {
+            float centreX = srv.response.x[0];
+            float centreY = srv.response.y[0];
+        }
+    }
 }
 
 int moveToMapPoint(float x, float y, float orientationZ, float orientationW, float tolerance)
@@ -1001,8 +1058,20 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                 {
                     mbzirc_husky::getPoi srvB;
                     srvB.request.type = 4 + i;
+             
+                    float bestRedX = 0.0f;
+                    float bestRedY = 0.0f;
+                    float bestOtherX = 0.0f;
+                    float bestOtherY = 0.0f;
+                    
                     if(symbolicClient.call(srvB))
                     {
+                        if(i == 0)
+                        {
+                            bestRedX = srvB.response.x[0];
+                            bestRedY = srvB.response.y[0];
+                        }
+
                         if(srvB.response.covariance[0] == 666)
                         {
                             brickStackLocationKnown = true;

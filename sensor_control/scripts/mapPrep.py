@@ -4,8 +4,8 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/tower/map.yaml"
-maxObservableDistance = 8
+filename = "../maps/arena/map.yaml"
+maxObservableDistance = 6.5
 
 rotAmount = 0.02
 mvAmount = 1

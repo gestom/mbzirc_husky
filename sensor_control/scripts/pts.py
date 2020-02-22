@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
-z = -0.4
+z = -0.
 ztol = 0.4
 scale = 0.05
 
 fn = "/home/george/datasets/MBZIRC_pointcloud/tower2.pts"
+fn = "/mnt/ssd/mbzirc_bricks.pts"
 
 img = np.zeros((4000, 4000, 3), dtype=np.uint8)
 origin = (2000, 2000)
