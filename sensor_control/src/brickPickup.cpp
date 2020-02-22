@@ -350,7 +350,7 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
             break;
         }
     }
-    if(shouldStop)
+    if(shouldStop && moveDistance < 0)
     {
         spd.linear.x = spd.angular.z = 0;
         behaviour = nextBehaviour;
