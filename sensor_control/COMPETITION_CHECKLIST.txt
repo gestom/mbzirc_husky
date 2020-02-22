@@ -1,0 +1,22 @@
+HARDWARE:
+TP-link removed and robot connected to T1
+battery pushed all the way to the back
+battery cover installed
+cargo bay aligned with arrows
+cables around arm are ok, gripper and camera plugged in
+
+DRIVERS:
+arm driver starts (first panel should read "You can start planning now") (if not, then reboot)
+check realsense driver (rostopic hz on both color and depth)
+move arm into home position
+laserscan is running
+localization is running
+
+AUTONOMY:
+robot is localized
+inventory is started
+correct safety margins are set (arena limits, acceleration limits ...)
+correct number of bricks to be picked up on first run (in the brickStateMachine)
+start all state machines
+
+push the robot into the arena and pray
