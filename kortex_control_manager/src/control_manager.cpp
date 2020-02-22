@@ -63,12 +63,13 @@ typedef enum
   SET_JOINT_VELOCITY,
   PUSH_ASIDE,
   ALIGN,
-  EMERGENCY_HOME
+  EMERGENCY_HOME,
+  USER_GOTO
 } Command;
 
 const char *command_names[] = {"HOME",       "RAISE CAM",       "PREPARE GRIP",  "DESCEND",       "LIFT",  "GOTO STORAGE",
                                "STORE",      "DESCEND STORAGE", "LIFT STORAGE",  "PREPARE PLACE", "PLACE", "SET JOINT VELOCITY",
-                               "PUSH ASIDE", "ALIGN",           "EMERGENCY HOME"};
+                               "PUSH ASIDE", "ALIGN",           "EMERGENCY HOME", "USER GOTO"};
 
 /* utils //{ */
 
@@ -535,6 +536,8 @@ bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std
 /* callbackGoToService //{ */
 bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
+	last_command = Command::USER_GOTO;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goTo\", not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -565,6 +568,8 @@ bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_
 
 /* callbackGoToRelativeService //{ */
 bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
+
+	last_command = Command::USER_GOTO;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToRelative\", not initialized!", ros::this_node::getName().c_str());
@@ -600,6 +605,8 @@ bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req,
 /* callbackGoToAnglesService //{ */
 bool callbackGoToAnglesService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_husky_msgs::Vector7Response &res) {
 
+	last_command = Command::USER_GOTO;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToAngles\", not initialized!", ros::this_node::getName().c_str());
     res.success = false;
@@ -634,6 +641,8 @@ bool callbackGoToAnglesService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_hu
 /* callbackGoToAnglesRelativeService //{ */
 
 bool callbackGoToAnglesRelativeService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_husky_msgs::Vector7Response &res) {
+
+	last_command = Command::USER_GOTO;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToAnglesRelative\", not initialized!", ros::this_node::getName().c_str());
@@ -996,7 +1005,7 @@ bool callbackLiftBrickStorageService(mbzirc_husky_msgs::StoragePositionRequest &
 /* callbackPickupBrickService //{ */
 bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
 
-  last_command = Command::LIFT;
+  last_command = Command::DESCEND;
 
   if (status != IDLE) {
     ROS_ERROR("[%s]: Cannot start \"pickup brick\", arm is not IDLE!", ros::this_node::getName().c_str());
