@@ -17,5 +17,5 @@ size_tolerance: 0.04          # each brick should be size % BRICK_SIZE == 0
 max_brick_dist: 12            # maximal possible distance of brick detection
 max_dist: 25                  # maximal distance for detecting bigger objects
 max_height: 2                 # maximal possible height of detection
-ransac_tolerance: 0.1         # tolerance of matching distance per each brick
+ransac_tolerance: 0.05        # tolerance of matching distance per each brick
 lidar_frame: "velodyne"       # lidar frame

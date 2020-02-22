@@ -56,8 +56,6 @@ public:
         build_walls();
     }
 
-    void remove_rotated_segments(double angle_treshold, std::vector<BrickLine> &ret);
-
     geometry_msgs::Point transform_point(MyPoint pt, geometry_msgs::TransformStamped tf);
 
     std::vector<MyPoint> get_wall_centers(std::vector<BrickLine> &lines);
@@ -77,8 +75,8 @@ public:
     std::array<std::vector<MyPoint>, 4> get_centers_in_piles(std::array<std::vector<BrickLine>, 4> &lines,
                                                             std::array<MyPoint, 4> &piles);
 
-    std::array<MyPoint, 2>
-    fit_detection(std::array<std::vector<MyPoint>, 4> proposal, std::array<std::vector<MyPoint>, 4> wall, std::array<cv::Point2d, 2> tar_pt);
+    std::array<MyPoint, 4>
+    fit_detection(std::array<std::vector<MyPoint>, 4> proposal, std::array<std::vector<MyPoint>, 4> wall, std::array<cv::Point2d, 4> tar_pt);
 
     void subscribe_ptcl(sensor_msgs::PointCloud2 ptcl);
 

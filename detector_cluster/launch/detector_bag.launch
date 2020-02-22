@@ -11,6 +11,6 @@
 
     </node>
 
-    <node name="rosbag" pkg="rosbag" type="play" args="--loop --rate=2 $(find detector)/bags/mapping.bag" output="screen"/>
+    <node name="rosbag" pkg="rosbag" type="play" args="--loop --rate=1 $(find detector)/bags/mapping.bag" output="screen"/>
 
 </launch>
