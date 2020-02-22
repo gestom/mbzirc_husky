@@ -21,6 +21,6 @@ network:
 
   robot_names: [
 
-    uav60, uav61, uav62, uav63, uav64, uav65, uav66, uav67, uav68, uav69, uav70, uav71, husky-robot, stibipet,
+    uav60, uav61, uav62, uav63, uav64, uav65, uav66, uav67, uav68, uav69, uav70, uav71, huskyrobot, stibipet,
 
   ]

@@ -1,8 +1,8 @@
 <launch>
 	<group ns="nogo">
-        <node name="no_go" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/arena/map-nogo.yaml" respawn="true" output="screen">
+        <node name="no_go" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/tennis-high/map-nogo.yaml" respawn="true" output="screen">
 			<remap from="map" to="no_go"/>	
 		</node>
 	</group>
-    <node name="map_server" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/arena/map.yaml" respawn="true" output="screen" />
+    <node name="map_server" type="map_server" pkg="map_server" args="$(find mbzirc_husky)/maps/tennis-high/map.yaml" respawn="true" output="screen" />
 </launch>
