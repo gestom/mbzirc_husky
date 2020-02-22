@@ -746,6 +746,7 @@ bool shootVelodyne(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response 
 void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Server* as) 
 {
   num_bricks_desired = goal->num_bricks_desired;
+  activeStorage = 0;
 ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node::getName().c_str(), num_bricks_desired);
 
 	mbzirc_husky::brickPickupResult result;
