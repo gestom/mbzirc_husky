@@ -25,6 +25,9 @@
 #include <visualization_msgs/Marker.h>
 #include <mbzirc_husky/patternAlignement.h>
 
+float alignMoveDirection = 1;
+int alignForwardMoves = 1;
+bool alignFinished = false; 
 ros::ServiceClient homeClient;
 ros::ServiceClient armStorageClient;
 ros::ServiceClient graspBrickClient;
@@ -278,9 +281,7 @@ int armToStorage() {
   mbzirc_husky_msgs::StoragePosition srv;
   srv.request.layer            = next_storage_layer;
   srv.request.position         = next_storage_position;
-  srv.request.num_of_waypoints = 0;
   // mbzirc_husky_msgs::StoragePosition srv = getStoragePosition(activeStorage);
-  // srv.request.num_of_waypoints           = 1;
   ROS_INFO("PREPARING ARM TO %d, LAYER %d", srv.request.position, srv.request.layer);
   if (armStorageClient.call(srv)) {
     ROS_INFO("ARM READY FOR PICKUP");
@@ -293,7 +294,6 @@ int graspBrick() {
   mbzirc_husky_msgs::StoragePosition srv;
   srv.request.layer            = next_storage_layer;
   srv.request.position         = next_storage_position;
-  srv.request.num_of_waypoints = 0;
   ROS_INFO("PICKUP FROM %d, LAYER %d", srv.request.position, srv.request.layer);
   if (graspBrickClient.call(srv)) {
     ROS_INFO("BRICK PICKED UP");
@@ -308,7 +308,6 @@ int liftBrick() {
   mbzirc_husky_msgs::StoragePosition srv;
   srv.request.position         = next_storage_position;
   srv.request.layer            = next_storage_layer;
-  srv.request.num_of_waypoints = 0;
 
   if (liftBrickClient.call(srv)) {
     ROS_INFO("BRICK LIFTED");
@@ -557,24 +556,38 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
 
 void wallCallBack(const geometry_msgs::PointConstPtr &msg) 
 {
-  if (msg->x < 999)  started_alignement = true;
+  started_alignement = true;
   float angle = msg->z; 
-  printf("Angle %f\n", angle);
   geometry_msgs::Twist spd;
-  spd.angular.z = -angle-msg->y;
-  if (not end_of_pattern) {
-    spd.linear.x = -0.1;
+  spd.angular.z = -angle +msg->y*alignMoveDirection;
+  printf("%f %f %f %i %f\n",msg->x,msg->y,msg->z,pattern_end_accumulator,alignMoveDirection);
+  if (end_of_pattern) 
+  {
+	  if (fabs(msg->y) < 0.05){
+		  alignFinished = true;
+	  }else{
+		  printf("Direction switch\n");
+		  alignMoveDirection = 1;
+		  alignForwardMoves = 0;
+		  end_of_pattern = false;
+		  pattern_end_accumulator=-30;
+	  }
+  }else{
+  	spd.linear.x = 0.1*alignMoveDirection;
   }
-  if (std::abs(msg->z) < 999) {
-    if (pattern_end_accumulator-- < 0)
-      pattern_end_accumulator = 0;
-    spd.angular.z = msg->z;
+  if (alignMoveDirection == 1){
+	  if (alignForwardMoves++ > 150) alignMoveDirection = -1;
   }
-  if (std::abs(msg->x) > 999) {
-    pattern_end_accumulator++;
-    spd.linear.x  = 0.0;
-    spd.angular.z = 0.0;
+  if (std::abs(msg->x) < 999) {
+	  if (pattern_end_accumulator-- < 0) pattern_end_accumulator = 0;
   }
+  if (std::abs(msg->x) > 999 && alignMoveDirection == -1) {
+	  pattern_end_accumulator++;
+	  spd.linear.x  = 0.0;
+	  spd.angular.z = 0.0;
+  }
+
+
   if (pattern_end_accumulator > 30) {
     ROS_INFO("END OF THE PATTERN - START BRICK STACK %i\n", pattern_end_accumulator);
     end_of_pattern = true;
@@ -584,26 +597,28 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg)
 }
 
 bool startWallCallBack(mbzirc_husky::patternAlignement::Request &req, mbzirc_husky::patternAlignement::Response &res) {
-  if (req.trigger) {
-    started_alignement      = false;
-    end_of_pattern          = false;
-    pattern_end_accumulator = 0;
-    subscriberPattern       = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
-    for (int i = 0; i < 10; i++) {
-      usleep(200000);
-      ros::spinOnce();
-    }
-    if (started_alignement == false) {
-      res.success = false;
-      subscriberPattern.shutdown();
-      return false;
-    }
-    while (end_of_pattern == false) {
-      usleep(50000);
-      ros::spinOnce();
-    }
-    subscriberPattern.shutdown();
-  } else {
+	if (req.trigger) {
+		alignMoveDirection = -1;
+		started_alignement      = false;
+		end_of_pattern          = false;
+		alignFinished = false;
+		pattern_end_accumulator = 0;
+		subscriberPattern       = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
+		for (int i = 0; i < 10; i++) {
+			usleep(200000);
+			ros::spinOnce();
+		}
+		if (started_alignement == false) {
+			res.success = false;
+			subscriberPattern.shutdown();
+			return false;
+		}
+		while (alignFinished == false) {
+			usleep(50000);
+			ros::spinOnce();
+		}
+		subscriberPattern.shutdown();
+	} else {
     subscriberPattern.shutdown();
     res.success = true;
     return true;

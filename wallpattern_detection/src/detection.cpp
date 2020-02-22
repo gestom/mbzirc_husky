@@ -691,12 +691,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	if (segment.valid == 1 && segment.size > 1500) {
 		STrackedObject relativePosition = altTransform->getRelativePosition(segment,groundPlaneDistance,cX,cY,fPix);
 		geometry_msgs::Point pt;
-		if (segment.size > 10000){
-			pt.x = relativePosition.x;
-			pt.y = relativePosition.y;
-			pt.z = relativePosition.yaw;
-		        if (relativePosition.d < 0.3) pt.x = 1000;	
-		}
+		pt.x = relativePosition.x;
+		pt.y = relativePosition.y;
+		pt.z = relativePosition.yaw;
+		if (relativePosition.d < 0.3) pt.x = 1000;	
 		line_pub.publish(pt);
 		numDetections++;
 	}

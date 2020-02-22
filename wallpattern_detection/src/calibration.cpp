@@ -165,22 +165,22 @@ int detection_type = 0;
 //parameter reconfiguration
 void reconfigureCallback(wallpattern_detection::wallpattern_detectionConfig &config, uint32_t level)
 {
-    // ROS_INFO("Reconfigure Request: %lf %lf %lf %lf %lf %lf %lf", config.outputImageIndex);
-    outputImageIndex = config.outputImageIndex;
-    manualThreshold = config.manualThreshold;
-    maxSegmentSize = config.maxBlobSize;
-    minSegmentSize = config.minBlobSize;
-    segmentation.minCircularity = config.minCircularity;
-    minRoundness = config.minRoundness;
-    circleDiameter = config.objectDiameter;
-    histogramScale = config.histogramScale;
-    visualDistanceToleranceRatio = config.visualDistanceToleranceRatio;
-    visualDistanceToleranceAbsolute = config.visualDistanceToleranceAbsolute;
-    longObjectDetection = config.longObject;
-    // ROS_INFO("Reconfigure Request min circularity, min convexity: %lf %lf %lf", config.minCircularity, config.manualThreshold,circleDiameter);
-    //outerDimMaster = config.masterDiameter/100.0;
-    //distanceTolerance = config.distanceTolerance/100.0;
-    //detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
+	// ROS_INFO("Reconfigure Request: %lf %lf %lf %lf %lf %lf %lf", config.outputImageIndex);
+	outputImageIndex = config.outputImageIndex;
+	manualThreshold = config.manualThreshold;
+	maxSegmentSize = config.maxBlobSize;
+	minSegmentSize = config.minBlobSize;
+	segmentation.minCircularity = config.minCircularity;
+	minRoundness = config.minRoundness;
+	circleDiameter = config.objectDiameter;
+	histogramScale = config.histogramScale;
+	visualDistanceToleranceRatio = config.visualDistanceToleranceRatio;
+	visualDistanceToleranceAbsolute = config.visualDistanceToleranceAbsolute;
+	longObjectDetection = config.longObject;
+	// ROS_INFO("Reconfigure Request min circularity, min convexity: %lf %lf %lf", config.minCircularity, config.manualThreshold,circleDiameter);
+	//outerDimMaster = config.masterDiameter/100.0;
+	//distanceTolerance = config.distanceTolerance/100.0;
+	//detector->reconfigure(config.initialCircularityTolerance, config.finalCircularityTolerance, config.areaRatioTolerance,config.centerDistanceToleranceRatio,config.centerDistanceToleranceAbs);
 }
 
 void learnSegments(int number);
