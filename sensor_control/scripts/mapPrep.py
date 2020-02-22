@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-filename = "../maps/tennis-no-bricks/map.yaml"
+filename = "../maps/arena/map.yaml"
 maxObservableDistance = 6.5
 
 rotAmount = 0.02

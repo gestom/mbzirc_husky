@@ -631,17 +631,17 @@ void explore()
         ROS_INFO("Moving to point");
 
         ROS_INFO("Zdeneks search for bricks");
-        detector::brick_pile_detector bpd;
-        m.request.activate = true;
+        detector::brick_pile_trigger bpd;
+        bpd.request.activate = true;
         if(!brickPileDetectorClient.call(bpd))
             ROS_INFO("Brick pile detector failed to set true");
 
         moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1, 1.5);
 
         ROS_INFO("Searching for bricks");
-        detector::brick_pile_detector bpd;
-        m.request.activate = false;
-        if(!brickPileDetectorClient.call(bpd))
+        detector::brick_pile_trigger bpdb;
+        bpdb.request.activate = false;
+        if(!brickPileDetectorClient.call(bpdb))
             ROS_INFO("Brick pile detector failed to set false");
 
         ROS_INFO("Sending velo points");

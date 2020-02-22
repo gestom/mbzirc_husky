@@ -41,7 +41,7 @@ int hypothesisIdx[8];
 bool patternRecognised = false;
 
 //Clustering reconfigure
-double tolerance = 0.5;
+double tolerance = 1.0;
 double banTolerance = 0.5;
 
 
@@ -433,8 +433,8 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 			return true;
 			break;
 		case 7: if(req.covariance == 666 && orangeFound == false){
-				blueBricks.clear();
-				blueBricks.push_back(vPoint);
+				orangeBricks.clear();
+				orangeBricks.push_back(vPoint);
 				ROS_INFO("Orange  bricks found!!!");
 				orangeFound = true;
 				res.res = true;
@@ -503,8 +503,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 		case 1: if(!dronePile.empty()){
 
 				std::sort(dronePile.begin(), dronePile.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -532,8 +532,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			break;
 		case 2:	if(!droneDelivery.empty()){
 				std::sort(droneDelivery.begin(), droneDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -560,8 +560,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			break;
 		case 3: if(!robotDelivery.empty()){
 				std::sort(robotDelivery.begin(), robotDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -588,8 +588,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			break;
 		case 4: if(!redBricks.empty()){
 				std::sort(redBricks.begin(), redBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -616,8 +616,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			break;
 		case 5: if(!greenBricks.empty()){
 				std::sort(greenBricks.begin(), greenBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -644,8 +644,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			break;
 		case 6:	if(!blueBricks.empty()){
 				std::sort(blueBricks.begin(), blueBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -672,8 +672,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 			break;
 		case 7: if(!orangeBricks.empty()){
 				std::sort(orangeBricks.begin(), orangeBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1077,8 +1077,8 @@ int main(int argc, char** argv)
 			symMsg.dronePile.clear();
 			
 			std::sort(robotDelivery.begin(), robotDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1098,8 +1098,8 @@ int main(int argc, char** argv)
 			}
 
 			std::sort(droneDelivery.begin(), droneDelivery.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1118,8 +1118,8 @@ int main(int argc, char** argv)
 				symMsg.droneDelivery.push_back(msg_point);
 			}
 			std::sort(redBricks.begin(), redBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1139,8 +1139,8 @@ int main(int argc, char** argv)
 			}
 
 			std::sort(blueBricks.begin(), blueBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1159,8 +1159,8 @@ int main(int argc, char** argv)
 				symMsg.blueBricks.push_back(msg_point);
 			}
 			std::sort(orangeBricks.begin(), orangeBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1179,8 +1179,8 @@ int main(int argc, char** argv)
 				symMsg.orangeBricks.push_back(msg_point);
 			}
 			std::sort(greenBricks.begin(), greenBricks.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		
@@ -1199,8 +1199,8 @@ int main(int argc, char** argv)
 				symMsg.greenBricks.push_back(msg_point);
 			}
 			std::sort(dronePile.begin(), dronePile.end(), [](const std::vector<cv::Point3d> & a, const std::vector<cv::Point3d> & b){ 
-						int sumA = 0;
-						int sumB = 0;
+						float sumA = 0;
+						float sumB = 0;
 						for(int i = 0; i < a.size();i++){
 						sumA+= a[i].z;
 						}		

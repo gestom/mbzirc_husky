@@ -44,6 +44,7 @@ class CTransformation
 		void saveCalibration(const char *str);
 		void loadCalibration(const char *str);
 		STrackedObject getPlaceToDrive(SSegment o);
+		STrackedObject getRelativePosition(SSegment o,float h,float cx,float cy,float f);
 
 		STrackedObject  normalize(STrackedObject o);
 		STrackedObject  transform2D(STrackedObject o);

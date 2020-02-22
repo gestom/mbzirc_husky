@@ -40,6 +40,8 @@ STrackedObject CTransformation::getPlaceToDrive(SSegment o)
 	rA.x = rA.x/rA.z;
 	rA.y = rA.y/rA.z;
 	rA.z = 0;
+	printf(" %f %f \n",o.xA,o.yA);
+	printf(" %f %f \n",o.xB,o.yB);
 
 	rB.x = hom[0]*o.xB+hom[1]*o.yB+hom[2]; 
 	rB.y = hom[3]*o.xB+hom[4]*o.yB+hom[5];
@@ -47,6 +49,8 @@ STrackedObject CTransformation::getPlaceToDrive(SSegment o)
 	rB.x = rB.x/rB.z;
 	rB.y = rB.y/rB.z;
 	rB.z = 0;
+	printf(" %f %f \n",rA.x,rA.y);
+	printf(" %f %f \n",rB.x,rB.y);
 
 	STrackedObject r;
 	rA.validity = o.valid;
@@ -65,12 +69,32 @@ STrackedObject CTransformation::getPlaceToDrive(SSegment o)
 	float dist = sqrt(p.x*p.x+p.y*p.y);
 	p.x = p.x/dist;
 	p.y = p.y/dist;
+	printf(" %f %f \n",p.x,p.y);
 
 	//add to origin
 	r.x = rB.x+p.x;
 	r.y = rB.y+p.y;
 
-	return r; 
+	return rB; 
+}
+
+STrackedObject CTransformation::getRelativePosition(SSegment o,float h,float cx,float cy,float f)
+{
+	STrackedObject a,b,r;
+	if (f != 0){
+		a.x = (o.xA-cx)/f*h;
+		a.y = (o.yA-cy)/f*h;
+		b.x = (o.xB-cx)/f*h;
+		b.y = (o.yB-cy)/f*h;
+		r.yaw = atan2(a.y-b.y,a.x-b.x);
+		if (r.yaw > +M_PI/2) r.yaw -= M_PI;
+		if (r.yaw < -M_PI/2) r.yaw += M_PI;
+		r.x = (a.x + b.x)/2.0;
+		r.y = (a.y + b.y)/2.0;
+		r.d = fmax(a.x,b.x);
+		printf("PARAMS: %.3f %.3f %.3f %.3f %.3f\n",a.x,a.y,b.x,b.y,f);
+	}
+	return r; 	
 }
 
 STrackedObject CTransformation::transform2D(SSegment o)
