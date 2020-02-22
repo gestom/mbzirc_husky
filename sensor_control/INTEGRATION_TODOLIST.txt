@@ -1,3 +1,6 @@
+TODO: install new wifi antenna
+TODO: remove TP-Link and use T1 for all of the following tests
+
 TODO: single brick pickup actually stops after first brick
 TODO: brickStack no longer moves the robot if it fails to grab a brick from cargo bay
 
