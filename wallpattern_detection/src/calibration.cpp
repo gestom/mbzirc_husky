@@ -408,7 +408,7 @@ int main(int argc, char** argv)
 	    mbzirc_husky_msgs::Float64 msg;
 	    msg.request.data = 0;
 
-	    if (raise_arm.call(msg))  ROS_ERROR("Unable to hajitla");
+	    if (raise_arm.call(msg) == false)  ROS_ERROR("Unable to hajitla");
 	    if (gui) namedWindow("frame", CV_WINDOW_AUTOSIZE);
 	    if (gui) namedWindow("histogram", CV_WINDOW_AUTOSIZE);
 	    if (gui) namedWindow("roi", CV_WINDOW_AUTOSIZE);
