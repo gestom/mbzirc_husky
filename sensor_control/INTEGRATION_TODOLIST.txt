@@ -3,13 +3,14 @@ TODO: remove TP-Link and
 
 ! USE T1 NETWORK FOR ALL THE FOLLOWING TESTS !
 
+
+
 ########################################################
 
 TODO: pattern far detection into approach and alignment
 
 TODO: exploration into approach, check if camera sees a brick
 
-TODO: single brick pickup actually stops after first brick (action goal num_bricks_desired = 1)
 
 TODO: second round of brick pickup goes for RED -> drive -> RED -> drive -> GREEN -> drive back -> GREEN -> drive back -> RED -> END  (action goal num_bricks_desired = 5)
 TODO: check if arm is rested on the last brick
@@ -25,3 +26,7 @@ TODO: placing one brick and going back for more bricks
 !! THIS NEEDS TO WORK BEFORE THE COMPETITION !!
 
 TODO: going for one brick and placing it without any help
+
+
+DONE:
+	single brick pickup actually stops after first brick (action goal num_bricks_desired = 1) DONE

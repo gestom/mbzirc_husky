@@ -43,6 +43,7 @@
 //#define PATTERN_DEBUG
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+void imageCallbackFront(const sensor_msgs::ImageConstPtr& msg);
 
 using namespace std;
 using namespace cv;
@@ -256,9 +257,9 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 bool getPatternFront(wallpattern_detection::wall_pattern_close::Request  &req,wallpattern_detection::wall_pattern_close::Response &res)
 {
 	if (req.activate){
-		ros::ServiceClient homeArmClient = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
-		std_srvs::Trigger trg;
-		homeArmClient.call(trg);
+		//ros::ServiceClient homeArmClient = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+		//std_srvs::Trigger trg;
+		//homeArmClient.call(trg);
 		/// here comes the code of subscriber
 		imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallbackFront);
 		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
@@ -535,7 +536,7 @@ int main(int argc, char** argv)
 	// SUBSCRIBERS
 	ros::ServiceServer service;
 	if (gui){
-		service = n->advertiseService("detectWallpattern", detect);
+//		service = n->advertiseService("detectWallpattern", detect);
 		imagePub = it->advertise("/wallDetectResult", 1);
 	}
 

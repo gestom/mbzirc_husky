@@ -788,6 +788,14 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
   status = HOMING;
 
   ungrip();
+
+  if(end_effector_pose.pos.z() < 0.3){
+	  ROS_INFO("[%s]: Avoiding plexi before actual homing...", ros::this_node::getName().c_str());
+	  Pose3d goal_pose = end_effector_pose;
+	  goal_pose.pos.z() = 0.35;
+	  goToAction(goal_pose);
+  }
+
   bool goal_reached = goToAnglesAction(home_angles);
 
   if (!goal_reached) {
