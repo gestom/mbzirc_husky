@@ -256,9 +256,9 @@ void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg)
 bool getPatternFront(wallpattern_detection::wall_pattern_close::Request  &req,wallpattern_detection::wall_pattern_close::Response &res)
 {
 	if (req.activate){
-		ros::ServiceClient homeArmClient = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
-		std_srvs::Trigger trg;
-		homeArmClient.call(trg);
+		//ros::ServiceClient homeArmClient = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
+		//std_srvs::Trigger trg;
+		//homeArmClient.call(trg);
 		/// here comes the code of subscriber
 		imageSub = it->subscribe("/camera/color/image_raw", 1, imageCallbackFront);
 		subInfo = n->subscribe("/camera/color/camera_info", 1, cameraInfoCallback);
