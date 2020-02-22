@@ -345,7 +345,19 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
     for(int i = 0; i < numPoints; i++)
     {
         if(x[i] < stopMaxX && x[i] > stopMinX && y[i] < stopMaxY && y[i] > stopMinY)
+        {
             shouldStop = false;
+            break;
+        }
+    }
+    if(shouldStop)
+    {
+        spd.linear.x = spd.angular.z = 0;
+        behaviour = nextBehaviour;
+        printf("Movement done(gbox empty): %.3f %.3f\n",dist,moveDistance); 
+        setSpeed(spd);
+        //subscriberScan.shutdown();
+        return 0;
     }
 
 	int evalA,evalB = 0;
