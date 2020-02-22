@@ -1,21 +1,7 @@
-TODO: install new wifi antenna
-TODO: remove TP-Link and 
-
-! USE T1 NETWORK FOR ALL THE FOLLOWING TESTS !
-
-
 
 ########################################################
 
-TODO: pattern far detection into approach and alignment
-
-TODO: exploration into approach, check if camera sees a brick
-
-
-TODO: second round of brick pickup goes for RED -> drive -> RED -> drive -> GREEN -> drive back -> GREEN -> drive back -> RED -> END  (action goal num_bricks_desired = 5)
-TODO: check if arm is rested on the last brick
-
-TODO: drive around manually with 5 bricks with arm holding one of them
+TODO: pattern approach is a part of brickStack
 
 TODO: brickStack should no longer move the robot, if it fails to grab a brick from cargo bay
 
@@ -25,8 +11,18 @@ TODO: placing one brick and going back for more bricks
 
 !! THIS NEEDS TO WORK BEFORE THE COMPETITION !!
 
+USE T1 NETWORK FOR THIS
 TODO: going for one brick and placing it without any help
 
+TODO: install new wifi antenna
+TODO: remove TP-Link and 
+
+########################################################
 
 DONE:
 	single brick pickup actually stops after first brick (action goal num_bricks_desired = 1) DONE
+  drive around manually with 5 bricks with arm holding one of them
+  second round of brick pickup goes for RED -> drive -> RED -> drive -> GREEN -> drive back -> GREEN -> drive back -> RED -> END  (action goal num_bricks_desired = 5)
+  exploration into approach, check if camera sees a brick
+  pattern far detection into approach and alignment
+  arm is rested on the last brick
