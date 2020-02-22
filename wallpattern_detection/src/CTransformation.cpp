@@ -73,6 +73,23 @@ STrackedObject CTransformation::getPlaceToDrive(SSegment o)
 	return r; 
 }
 
+STrackedObject CTransformation::getRelativePosition(SSegment o,float h,float cx,float cy,float f)
+{
+	STrackedObject a,b,r;
+	if (f != 0){
+		a.x = (o.xA-cx)/f*h;
+		a.y = (o.yA-cy)/f*h;
+		b.x = (o.xB-cx)/f*h;
+		b.y = (o.yB-cy)/f*h;
+		r.yaw = atan2(a.y-b.y,a.x-b.x);
+		r.x = (a.x + b.x)/2.0;
+		r.y = (a.y + b.y)/2.0;
+		printf("PARAMS: %.3f %.3f %.3f %.3f %.3f\n",a.x,a.y,b.x,b.y,f);
+	}
+	printf("RELATIVE: %.3f %.3f %.3f\n",r.x,r.y,r.yaw);
+	return r; 	
+}
+
 STrackedObject CTransformation::transform2D(SSegment o)
 {
 	STrackedObject r;
