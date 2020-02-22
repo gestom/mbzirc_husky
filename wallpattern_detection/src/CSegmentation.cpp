@@ -391,10 +391,10 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 	for (int i = 0;i< numSegments;i++) printf("Segment %i %i %f %f %.0f-%.0f %.0f-%.0f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].y,segmentArray[i].minX,segmentArray[i].maxX,segmentArray[i].minY,segmentArray[i].maxY);
 	result = segmentArray[0];
 	SSegment s = result;
-	s.xA = (s.x+s.v0*s.m0*2);
-	s.yA = (s.y+s.v1*s.m0*2);	
-	s.xB = (s.x-s.v0*s.m0*2);
-	s.yB = (s.y-s.v1*s.m0*2);	
+	s.xA = (s.x-s.v0*s.m0*2);
+	s.yA = (s.y-s.v1*s.m0*2);	
+	s.xB = (s.x+s.v0*s.m0*2);
+	s.yB = (s.y+s.v1*s.m0*2);	
 	printf("MAIN %i %f %f %.3f-%.3f %.3f-%.3f\n",s.size,s.x,s.y,s.xA,s.yA,s.xB,s.yB);
 	result = s;
 	if (drawSegments){
