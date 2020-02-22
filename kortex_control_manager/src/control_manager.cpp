@@ -67,8 +67,8 @@ typedef enum
   USER_GOTO
 } Command;
 
-const char *command_names[] = {"HOME",       "RAISE CAM",       "PREPARE GRIP",  "DESCEND",       "LIFT",  "GOTO STORAGE",
-                               "STORE",      "DESCEND STORAGE", "LIFT STORAGE",  "PREPARE PLACE", "PLACE", "SET JOINT VELOCITY",
+const char *command_names[] = {"HOME",       "RAISE CAM",       "PREPARE GRIP",   "DESCEND",       "LIFT",  "GOTO STORAGE",
+                               "STORE",      "DESCEND STORAGE", "LIFT STORAGE",   "PREPARE PLACE", "PLACE", "SET JOINT VELOCITY",
                                "PUSH ASIDE", "ALIGN",           "EMERGENCY HOME", "USER GOTO"};
 
 /* utils //{ */
@@ -536,7 +536,7 @@ bool callbackAlignArmService([[maybe_unused]] std_srvs::TriggerRequest &req, std
 /* callbackGoToService //{ */
 bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
-	last_command = Command::USER_GOTO;
+  last_command = Command::USER_GOTO;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goTo\", not initialized!", ros::this_node::getName().c_str());
@@ -569,7 +569,7 @@ bool callbackGoToService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_
 /* callbackGoToRelativeService //{ */
 bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req, mbzirc_husky_msgs::EndEffectorPoseResponse &res) {
 
-	last_command = Command::USER_GOTO;
+  last_command = Command::USER_GOTO;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToRelative\", not initialized!", ros::this_node::getName().c_str());
@@ -605,7 +605,7 @@ bool callbackGoToRelativeService(mbzirc_husky_msgs::EndEffectorPoseRequest &req,
 /* callbackGoToAnglesService //{ */
 bool callbackGoToAnglesService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_husky_msgs::Vector7Response &res) {
 
-	last_command = Command::USER_GOTO;
+  last_command = Command::USER_GOTO;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToAngles\", not initialized!", ros::this_node::getName().c_str());
@@ -642,7 +642,7 @@ bool callbackGoToAnglesService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_hu
 
 bool callbackGoToAnglesRelativeService(mbzirc_husky_msgs::Vector7Request &req, mbzirc_husky_msgs::Vector7Response &res) {
 
-	last_command = Command::USER_GOTO;
+  last_command = Command::USER_GOTO;
 
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot execute \"goToAnglesRelative\", not initialized!", ros::this_node::getName().c_str());
@@ -819,8 +819,9 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
     setJointVelocity(zero_velocity);
     ROS_INFO("[%s]: Trying to home AGAIN", ros::this_node::getName().c_str());
     goal_reached = goToAnglesAction(home_angles);
-  } else {
-    ROS_WARN("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
+  }
+  if(!goal_reached){
+    ROS_FATAL("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
   }
   status      = IDLE;
   res.success = goal_reached;
@@ -1118,6 +1119,7 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
 //}
 
 /* callbackPrepareGrippingService //{ */
+// WATCH OUT! NEW! Request sets angular offset for camera now!
 bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   last_command = Command::PREPARE_GRIP;
@@ -1138,12 +1140,15 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
 
-  bool goal_reached = goToAnglesAction(gripping_angles);
+  
+  std::vector<double> goal_angles;
+  for (int i = 0; i < DOF; i++) {
+    goal_angles.push_back(gripping_angles[i]);
+  }
+  goal_angles[5] += req.data;
 
-  Pose3d goal_pose = gripping_pose;
-  goal_pose.pos.z() += req.data;
+  bool goal_reached = goToAnglesAction(goal_angles);
 
-  goToAction(goal_pose);
   res.success = goal_reached;
   return goal_reached;
 }
