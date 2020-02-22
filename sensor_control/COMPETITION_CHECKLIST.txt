@@ -4,6 +4,7 @@ battery pushed all the way to the back
 battery cover installed
 cargo bay aligned with arrows
 cables around arm are ok, gripper and camera plugged in
+duct tape in cargo bay
 
 DRIVERS:
 arm driver starts (first panel should read "You can start planning now") (if not, then reboot)
