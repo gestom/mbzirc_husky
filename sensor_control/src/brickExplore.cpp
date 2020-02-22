@@ -45,6 +45,7 @@ ros::Publisher point_pub;
 ros::Publisher point_two_pub;
 ros::Publisher point_of_inter_pub;
 ros::Publisher debugVisualiser;
+ros::Publisher bricksVisualiser;
 
 typedef enum{
 	IDLE = 0,
@@ -926,7 +927,6 @@ void investigateBricks(float approachAngle)
 		int iterations = 5;
 		if(srvB.response.x.size() < iterations)
 			iterations = srvB.response.x.size();
-
 		for(int i = iterations-1; i >= 0 ; i--)
 		{
 			float dx = abs(srvB.response.x[i] - investigateX);
@@ -964,8 +964,8 @@ void investigateBricks(float approachAngle)
         brickStackRedY = redY;
         brickStackOrangeX = otherX;
         brickStackOrangeY = otherY;
-     	ROS_INFO("BRICKS FOUND");
      	state = EXPLORINGBRICKS;
+        ROS_INFO("FOUND BRICKS: %f %f %f %f", redX, redY, otherX, otherY);
 	return;
     }
     else
@@ -1186,6 +1186,7 @@ int main(int argc, char** argv)
    	pn = &n;
     movebaseAC = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
     debugVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/debug", 1);
+    bricksVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/bricks", 10);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);

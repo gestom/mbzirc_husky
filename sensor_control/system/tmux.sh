@@ -29,6 +29,7 @@ tmux select-layout tiled
 tmux new-window -n:"Arm"
 tmux send-keys 'roslaunch kortex_driver kortex_driver.launch start_rviz:=false start_moveit:=true'
 tmux split-window -h
+sleep 0.2
 tmux send-keys 'roslaunch iiwa_moveit_pouring moveit_action.launch'
 tmux split-window -h
 sleep 0.2
@@ -43,7 +44,7 @@ tmux split-window -h
 tmux send-keys 'rosrun mbzirc_husky brickPickup'
 tmux split-window -h
 sleep 0.2
-tmux send-keys 'roslaunch mbzirc_husky symbolicMap'
+tmux send-keys 'roslaunch mbzirc_husky symbolicMap.launch'
 tmux split-window -h
 sleep 0.2
 tmux send-keys 'rosrun mbzirc_husky brickExplore'
@@ -60,9 +61,10 @@ tmux split-window -h
 sleep 0.2
 tmux send-keys 'rostopic echo /kinova/arm_manager/status'
 tmux split-window -h
-sleep 0.2
+sleep 0.3
 tmux send-keys 'roslaunch mbzirc_husky inventory.launch'
 tmux select-layout tiled
+sleep 0.2
 tmux new-window -n:"Detectors"
 tmux send-keys 'rosrun mbzirc_husky ransac_clusterer.py'
 sleep 0.2

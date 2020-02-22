@@ -310,8 +310,6 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	float dist = sqrt(dx*dx+dy*dy);
 
 
-
-
 	size_t num_ranges = scan_msg->ranges.size();
 	float x[num_ranges];
 	float y[num_ranges];
@@ -337,6 +335,30 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		}
 	}
 
+    //stop box
+    float stopMinX = -1.5;
+    float stopMaxX = 0.0;
+    float stopMinY = -3.0;
+    float stopMaxY = -0.4;
+    bool shouldStop = true;
+
+    for(int i = 0; i < numPoints; i++)
+    {
+        if(x[i] < stopMaxX && x[i] > stopMinX && y[i] < stopMaxY && y[i] > stopMinY)
+        {
+            shouldStop = false;
+            break;
+        }
+    }
+    if(shouldStop && moveDistance < 0)
+    {
+        spd.linear.x = spd.angular.z = 0;
+        behaviour = nextBehaviour;
+        printf("Movement done(gbox empty): %.3f %.3f\n",dist,moveDistance); 
+        setSpeed(spd);
+        //subscriberScan.shutdown();
+        return 0;
+    }
 
 	int evalA,evalB = 0;
 	int max_iterations = 100;
