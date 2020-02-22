@@ -23,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
     detector
     #    mrs_lib
     mbzirc_husky_msgs
+    wallpattern_detection 
     detector
     )
 
