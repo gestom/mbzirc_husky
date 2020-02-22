@@ -1118,6 +1118,7 @@ bool callbackPickupBrickService([[maybe_unused]] std_srvs::Trigger::Request &req
 //}
 
 /* callbackPrepareGrippingService //{ */
+// WATCH OUT! NEW! Request sets angular offset for camera now!
 bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzirc_husky_msgs::Float64Response &res) {
 
   last_command = Command::PREPARE_GRIP;
@@ -1138,12 +1139,15 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
 
-  bool goal_reached = goToAnglesAction(gripping_angles);
+  
+  std::vector<double> goal_angles;
+  for (int i = 0; i < DOF; i++) {
+    goal_angles.push_back(gripping_angles[i]);
+  }
+  goal_angles[5] -= req.data;
 
-  Pose3d goal_pose = gripping_pose;
-  goal_pose.pos.z() += req.data;
+  bool goal_reached = goToAnglesAction(goal_angles);
 
-  goToAction(goal_pose);
   res.success = goal_reached;
   return goal_reached;
 }
