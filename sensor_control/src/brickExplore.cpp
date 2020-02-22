@@ -45,6 +45,7 @@ ros::Publisher point_pub;
 ros::Publisher point_two_pub;
 ros::Publisher point_of_inter_pub;
 ros::Publisher debugVisualiser;
+ros::Publisher bricksVisualiser;
 
 typedef enum{
 	IDLE = 0,
@@ -921,7 +922,7 @@ void investigateBricks(float approachAngle)
 
         if(symbolicClient.call(srvB))
         {
-            for(int i = 0; i < 5; i++)
+            for(int i = 0; i < 3; i++)
             {
                 float dx = srvB.response.x[i];
                 float dy = srvB.response.y[i];
@@ -949,13 +950,14 @@ void investigateBricks(float approachAngle)
         else
             ROS_INFO("Symbolic map call failed!");
     }
-    if(otherCovar > 1)
+    if(otherCovar > 2)
     {
         brickStackLocationKnown = true;
         brickStackRedX = redX;
-        brickStackRedY = redX;
+        brickStackRedY = redY;
         brickStackOrangeX = otherX;
         brickStackOrangeY = otherY;
+        ROS_INFO("FOUND BRICKS: %f %f %f %f", redX, redY, otherX, otherY);
         state = EXPLORINGBRICKS;
     }
 }
@@ -1171,6 +1173,7 @@ int main(int argc, char** argv)
    	pn = &n;
     movebaseAC = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
     debugVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/debug", 1);
+    bricksVisualiser = n.advertise<visualization_msgs::Marker>("/brickExplore/bricks", 10);
 	// Dynamic reconfiguration server
 	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig> dynServer;
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);
