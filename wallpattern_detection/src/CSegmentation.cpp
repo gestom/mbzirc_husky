@@ -390,8 +390,14 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 	qsort(segmentArray,numSegments,sizeof(SSegment),compareSegments);
 	for (int i = 0;i< numSegments;i++) printf("Segment %i %i %f %f %.0f-%.0f %.0f-%.0f\n",i,segmentArray[i].size,segmentArray[i].x,segmentArray[i].y,segmentArray[i].minX,segmentArray[i].maxX,segmentArray[i].minY,segmentArray[i].maxY);
 	result = segmentArray[0];
+	SSegment s = result;
+	s.xA = (s.x+s.v0*s.m0*2);
+	s.yA = (s.y+s.v1*s.m0*2);	
+	s.xB = (s.x-s.v0*s.m0*2);
+	s.yB = (s.y-s.v1*s.m0*2);	
+	printf("MAIN %i %f %f %.3f-%.3f %.3f-%.3f\n",s.size,s.x,s.y,s.xA,s.yA,s.xB,s.yB);
+	result = s;
 	if (drawSegments){
-		SSegment s = result;
 		for (float a = 0;a<6.28;a+=0.01){
 			float fx = s.x+cos(a)*s.v0*s.m0*2+s.v1*s.m1*2*sin(a);
 			float fy = s.y+s.v1*s.m0*2*cos(a)-s.v0*s.m1*2*sin(a);
@@ -401,18 +407,12 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 			if (x > 0 && y > 0 && x<width && y<height) image->at<Vec3b>(y,x) = Vec3f(255,0,255); 
 			x = (int)(s.x+s.v0*s.m0*2+10*cos(a)+0.5);
 			y = (int)(s.y+s.v1*s.m0*2+10*sin(a)+0.5);
-			s.xA = x;
-			s.yA = y;	
 			if (x > 0 && y > 0 && x<width && y<height) image->at<Vec3b>(y,x) = Vec3f(255,0,255); 
 			x = (int)(s.x-s.v0*s.m0*2+10*cos(a)+0.5);
 			y = (int)(s.y-s.v1*s.m0*2+10*sin(a)+0.5);
-			s.xB = x;
-			s.yB = y;	
 			if (x > 0 && y > 0 && x<width && y<height) image->at<Vec3b>(y,x) = Vec3f(255,0,255); 
 		}
-
-
-		//vykreslime vysledek
+				//vykreslime vysledek
 		int j = 0;
 		for (int i = 0;i<len;i++){
 			j = buffer[i];
