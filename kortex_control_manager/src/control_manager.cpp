@@ -819,8 +819,9 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
     setJointVelocity(zero_velocity);
     ROS_INFO("[%s]: Trying to home AGAIN", ros::this_node::getName().c_str());
     goal_reached = goToAnglesAction(home_angles);
-  } else {
-    ROS_WARN("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
+  }
+  if(!goal_reached){
+    ROS_FATAL("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
   }
   status      = IDLE;
   res.success = goal_reached;
@@ -1144,7 +1145,7 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   for (int i = 0; i < DOF; i++) {
     goal_angles.push_back(gripping_angles[i]);
   }
-  goal_angles[5] -= req.data;
+  goal_angles[5] += req.data;
 
   bool goal_reached = goToAnglesAction(goal_angles);
 
