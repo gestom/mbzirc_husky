@@ -96,8 +96,8 @@ float investigateY = 0.0f;
 
 bool useRansac = false;
 bool precisePositionFound = false;
-float brickStackRedX = 8.456;
-float brickStackRedY = 33.1617;
+float brickStackRedX = -0;
+float brickStackRedY = 0;
 float brickStackOrangeX = 1.866;
 float brickStackOrangeY = 31.397;
 
@@ -906,7 +906,7 @@ void investigateWallPattern(float approachAngle)
 
 void investigateBricks(float approachAngle)
 {
-    moveToMapPoint(investigateX, investigateY, 0, 1, 5); 
+    moveToMapPoint(investigateX, investigateY, 0, 1, 10); 
 
     float redX = 0.0f;
     float redY = 0.0f;
@@ -916,48 +916,63 @@ void investigateBricks(float approachAngle)
 
     for(int brickIdx = 0; brickIdx < 4; brickIdx++)
     {
+	    if(brickIdx == 1)
+		    continue;
         mbzirc_husky::getPoi srvB;
         srvB.request.type = 4 + brickIdx;
 
         if(symbolicClient.call(srvB))
-        {
-            for(int i = 0; i < 5; i++)
-            {
-                float dx = srvB.response.x[i];
-                float dy = srvB.response.y[i];
-                float distance = sqrt(dx*dx+dy*dy);
+	{
+		int iterations = 5;
+		if(srvB.response.x.size() < iterations)
+			iterations = srvB.response.x.size();
 
-                if(distance < 10)
-                {
-                     if(brickIdx == 0)
-                     {
-                        redX = srvB.response.x[i];
-                        redY = srvB.response.y[i];
-                     }
-                     else
-                     {
-                        if(srvB.response.covariance[i] > otherCovar)
-                        {
-                            otherCovar = srvB.response.covariance[i];
-                            otherX = srvB.response.x[i];
-                            otherY = srvB.response.y[i];
-                        }
-                     }
-                }
-            }
-        }
+		for(int i = iterations-1; i >= 0 ; i--)
+		{
+			float dx = abs(srvB.response.x[i] - investigateX);
+			float dy = abs(srvB.response.y[i] - investigateY);
+			float dist = sqrt(dx*dx+dy*dy);
+			ROS_INFO("INVINFO %i %f %f %f", brickIdx, dx, dy, dist);
+
+			if(dist < 10)
+			{
+				if(brickIdx == 0)
+				{
+					redX = srvB.response.x[i];
+					redY = srvB.response.y[i];
+				}
+				else
+				{
+					if(srvB.response.covariance[i] >= otherCovar)
+					{
+						otherCovar = srvB.response.covariance[i];
+						otherX = srvB.response.x[i];
+						otherY = srvB.response.y[i];
+					}
+				}
+			}
+		}
+	}
         else
             ROS_INFO("Symbolic map call failed!");
     }
-    if(otherCovar > 1)
+    ROS_INFO("INVESTIGATION INFO %f %f %f %f", redX, redY, otherX, otherY);
+    if(otherCovar > 0.5)
     {
         brickStackLocationKnown = true;
         brickStackRedX = redX;
-        brickStackRedY = redX;
+        brickStackRedY = redY;
         brickStackOrangeX = otherX;
         brickStackOrangeY = otherY;
-        state = EXPLORINGBRICKS;
+     	ROS_INFO("BRICKS FOUND");
+     	state = EXPLORINGBRICKS;
+	return;
     }
+    else
+    {
+	state = EXPLORINGBRICKS;
+    }
+    ROS_INFO("CANDIDATE NOT GOOD");
 }
 
 int moveToMapPoint(float x, float y, float orientationZ, float orientationW, float tolerance)
