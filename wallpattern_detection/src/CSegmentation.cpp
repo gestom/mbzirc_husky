@@ -395,7 +395,7 @@ SSegment CSegmentation::findSegment(Mat *image,Mat *coords,SSegment *output,int 
 	s.yA = (s.y-s.v1*s.m0*2);	
 	s.xB = (s.x+s.v0*s.m0*2);
 	s.yB = (s.y+s.v1*s.m0*2);	
-	printf("MAIN %i %f %f %.3f-%.3f %.3f-%.3f\n",s.size,s.x,s.y,s.xA,s.yA,s.xB,s.yB);
+	printf("MAIN %i %i %f %f %.3f-%.3f %.3f-%.3f\n",s.size,s.contourPoints,s.x,s.y,s.xA,s.yA,s.xB,s.yB);
 	result = s;
 	if (drawSegments){
 		for (float a = 0;a<6.28;a+=0.01){

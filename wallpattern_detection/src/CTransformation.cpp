@@ -87,11 +87,13 @@ STrackedObject CTransformation::getRelativePosition(SSegment o,float h,float cx,
 		b.x = (o.xB-cx)/f*h;
 		b.y = (o.yB-cy)/f*h;
 		r.yaw = atan2(a.y-b.y,a.x-b.x);
+		if (r.yaw > +M_PI/2) r.yaw -= M_PI;
+		if (r.yaw < -M_PI/2) r.yaw += M_PI;
 		r.x = (a.x + b.x)/2.0;
 		r.y = (a.y + b.y)/2.0;
+		r.d = fmax(a.x,b.x);
 		printf("PARAMS: %.3f %.3f %.3f %.3f %.3f\n",a.x,a.y,b.x,b.y,f);
 	}
-	printf("RELATIVE: %.3f %.3f %.3f\n",r.x,r.y,r.yaw);
 	return r; 	
 }
 
