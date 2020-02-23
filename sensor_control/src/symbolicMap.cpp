@@ -482,7 +482,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	int incoming_type = req.type;
 	cv::Point3d point;
 
-    publishBricks();
+    //publishBricks();
 
 	ROS_INFO("Get point service of type %i ", req.type);	
 	switch (incoming_type){
@@ -937,7 +937,7 @@ void organisePath()
 	delete[] xs;
 	delete[] ys;
 }
-
+/*
 void publishBricks()
 {
     visualization_msgs::Marker msg;
@@ -1067,7 +1067,7 @@ void publishBricks()
         msg.pose.position.y = y;
         brickVisualiser.publish(msg);
     }
-}
+}*/
 
 void publishWaypoints()
 {
