@@ -30,6 +30,8 @@ int main (int argc, char **argv) {
     ros::init(argc, argv, "brickStateMachine");
     ros::NodeHandle n;
 
+    n.getParam("numBricksToPickup", numBricksToPickup);
+
     armHomeClient = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm"); 
     std_srvs::Trigger srv;
     if(!armHomeClient.call(srv))

@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="mbzirc_husky" name="brickStateMachine" type="brickStateMachine" output="screen">
+		<param name="filename" value="$(find mbzirc_husky)/config/brickStateMachine.yaml"/> 
+	</node>
+</launch>
