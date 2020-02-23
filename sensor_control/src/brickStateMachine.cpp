@@ -20,7 +20,7 @@ ros::ServiceClient armHomeClient;
 
 int pickupFailures = 0;
 int stackingFailures = 0;
-int numBricksToPickup = 1;
+int numBricksToPickup = 5;
 
 int main (int argc, char **argv) {
 
@@ -45,7 +45,7 @@ int main (int argc, char **argv) {
     ROS_INFO("Waiting for pickup...");
     pickupAC.waitForServer();
     ROS_INFO("Waiting for stack...");
-    //stackAC.waitForServer();
+    stackAC.waitForServer();
     ROS_INFO("Action servers started, sending goal."); 
 
     while(ros::ok())
@@ -72,7 +72,7 @@ int main (int argc, char **argv) {
         else if(state == PICKINGUP)
         {
             //bricks found and approached, switch to brick pickup, which only has t seconds to run, then t seconds to recover before going back to exploration
-            ros::Duration totalMaxDuration = ros::Duration(500, 0);
+            ros::Duration totalMaxDuration = ros::Duration(750, 0);
             ros::Duration recoveryTime = ros::Duration(10, 0);
 
             mbzirc_husky::brickPickupGoal pickupGoal;
