@@ -33,6 +33,7 @@ Server *server;
 
 float moveDistance = 0.4;
 float turnDistance = 0.4;
+float turnMoveSpeed = -0.1;
 typedef enum{
 	NONE,
 	ROBOT_ALIGN_X_PHI,
@@ -43,6 +44,7 @@ typedef enum{
 	ROBOT_MOVE_SCAN,
 	ROBOT_MOVE_ODO,
 	ROBOT_TURN_ODO,
+	ROBOT_TURN_MOVE_ODO,
 	BEHAVIOUR_NUMBER
 }EBehaviour;
 
@@ -56,6 +58,7 @@ const char *behStr[] = {
 	"moving along wall",
 	"moving by odometry",
 	"turning by odometry",
+	"turning and moving by odometry",
 	"number"
 };
 
@@ -157,6 +160,8 @@ geometry_msgs::PoseStamped robotPose;
 geometry_msgs::PoseStamped robotOdoPose;
 geometry_msgs::Twist spd;
 float anchorAngle = 0;
+
+bool checkForGap = false;
 float wallAngleOffset = 0;
 
 //service clients for the arm
@@ -203,7 +208,8 @@ void setSpeed(geometry_msgs::Twist speed)
 }
 
 
-int updateRobotPosition() {
+int updateRobotPosition() 
+{
 	robotPose = robotOdoPose;
 	return 0;
 }
@@ -233,6 +239,21 @@ int updateRobotPositionold()
 		return -1;
 	}
 }
+
+int turnMoveRobot(float distance, float speed,EBehaviour nextBeh = NONE) {
+  while (updateRobotPosition() < 0) {
+    usleep(50000);
+    ros::spinOnce();
+  }
+  anchorPose   = robotPose;
+  turnDistance = distance;
+  turnMoveSpeed = speed;
+  printf("Turn command:  %.3f\n", distance);
+  nextBehaviour = NONE;
+  behaviour     = ROBOT_TURN_MOVE_ODO;
+  return 0;
+}
+
 
 int turnRobot(float distance, EBehaviour nextBeh = NONE) {
   while (updateRobotPosition() < 0) {
@@ -363,27 +384,28 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
     //stop box
     float stopMinX = -1.5;
     float stopMaxX = 0.5;
-    float stopMinY = -3.0;
+    float stopMinY = -1.5;
     float stopMaxY = -0.4;
-
-    for(int i = 0; i < numPoints && moveDistance < 0; i++)
-    {
-        if(x[i] < stopMaxX && x[i] > stopMinX && y[i] < stopMaxY && y[i] > stopMinY)
-        {
-            shouldStop = 0;
-            break;
-        }
-    }
-    shouldStop++; 
-    if(shouldStop > 20 && moveDistance < 0)
-    {
-        spd.linear.x = spd.angular.z = 0;
-        behaviour = nextBehaviour;
-        printf("Movement done(gbox empty): %.3f %.3f\n",dist,moveDistance); 
-        setSpeed(spd);
-        //subscriberScan.shutdown();
-        return 0;
-    }
+    if (checkForGap){
+	    for(int i = 0; i < numPoints ; i++)
+	    {
+		    if(x[i] < stopMaxX && x[i] > stopMinX && y[i] < stopMaxY && y[i] > stopMinY)
+		    {
+			    shouldStop = 0;
+			    break;
+		    }
+	    }
+	    shouldStop++;
+	    if(shouldStop > 20)
+	    {
+		    spd.linear.x = spd.angular.z = 0;
+		    behaviour = nextBehaviour;
+		    printf("Movement done(gbox empty): %.3f %.3f\n",dist,moveDistance); 
+		    setSpeed(spd);
+		    //subscriberScan.shutdown();
+		    return 0;
+	    }
+    } 
 
 	int evalA,evalB = 0;
 	int max_iterations = 100;
@@ -473,13 +495,14 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 
 
 
-int moveRobot(float distance,EBehaviour nextBeh = NONE)
+int moveRobot(float distance,bool checkGap = false,EBehaviour nextBeh = NONE)
 {
 	updateRobotPosition();
 	anchorPose = robotPose;
 	moveDistance = distance;
 	printf("Move command:  %.3f\n",distance); 
 	nextBehaviour = nextBeh;
+	checkForGap = checkGap;
 	behaviour = ROBOT_MOVE_SCAN;
 	return 0;
 }
@@ -593,6 +616,26 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
         return;
 }
 
+int robotTurnMoveOdo(const sensor_msgs::LaserScanConstPtr &msg)
+{
+	spd.linear.x = spd.angular.z = 0;
+	spd.linear.x = turnMoveSpeed;
+	float angleDiff  = tf::getYaw(anchorPose.pose.orientation) -  tf::getYaw(robotPose.pose.orientation);
+	if (angleDiff > +M_PI) angleDiff -= 2*M_PI;
+	if (angleDiff < -M_PI) angleDiff += 2*M_PI;
+	spd.angular.z = + 0.3;
+	printf("Turning done: %.3f %.3f\n", angleDiff, turnDistance);
+	if (turnDistance < 0){
+		spd.angular.z = -0.2;
+	}
+	if (fabs(angleDiff) > fabs(turnDistance)) {
+		spd.linear.x = spd.angular.z = 0;
+		behaviour                    = nextBehaviour;
+		return 0;
+	}
+	setSpeed(spd);
+	return 1;
+}
 int robotTurnOdo(const sensor_msgs::LaserScanConstPtr &msg)
 {
 	spd.linear.x = spd.angular.z = 0;
@@ -626,6 +669,7 @@ void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg)
 	if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg); 
 	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
 	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
+	if (behaviour == ROBOT_TURN_MOVE_ODO)  robotTurnMoveOdo(msg); 
 	return;
 }
 
@@ -826,11 +870,11 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
-				case LEAVING_BRICKS_1: turnRobot(-1.0); nextState = LEAVING_BRICKS_2;break; 
-				case LEAVING_BRICKS_2: moveRobot(-2.0); nextState = LEAVING_BRICKS_3;break; 
-				case LEAVING_BRICKS_3: turnRobot(1.0); nextState = FINAL;break; 
+				case LEAVING_BRICKS_1: turnMoveRobot(-0.6,-0.3); nextState = LEAVING_BRICKS_2;break; 
+				case LEAVING_BRICKS_2: moveRobot(-1.5); nextState = LEAVING_BRICKS_3;break; 
+				case LEAVING_BRICKS_3: turnRobot(0.6); nextState = FINAL;break; 
 				case APPROACH1: if (moveRobot(+2.6) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
-				case APPROACH2: if (moveRobot(-4.5) == 0) nextState =  APPROACH3; else nextState = IDLE; break;
+				case APPROACH2: if (moveRobot(-4.5,true) == 0) nextState =  APPROACH3; else nextState = IDLE; break;
 				case APPROACH3: if (moveRobot(1.6) == 0) nextState =  ARMRESET; else nextState = IDLE; break;
 				case ARMRESET: switchDetection(false); if (resetArm() == 0) nextState = ARMPOSITIONING; else nextState = ARMRESET; break;
 				case ARMPOSITIONING: if (positionArm() == 0) {switchDetection(true);  nextState = ROBOT_ALIGNMENT;} else recoveryState = ARMPOSITIONING; break;
@@ -839,10 +883,13 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 				case ARMDESCENT: if (descentArm() == 0){ nextState = ARMPICKUP;} else nextState = ARMALIGNMENT; switchDetection(false); break;
 				case ARMPICKUP:  if (pickupBrick() == 0) nextState = ARMSTORAGE; else nextState = ARMALIGNMENT; break;
 				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMPOSITIONING; break;
+
+        			// CHICKEN strategy
 				case MOVE_TO_RED_BRICK_1: moveRobot(0.4); robotXYMove = +1; nextState = ARMPOSITIONING; break;
-				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.35); robotXYMove = +1; positionArm(); pushBricks(); nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.35); robotXYMove = +1; /*positionArm();*/ pushBricks(); nextState = ARMPOSITIONING; break;
 				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
+
 				case BRICKSTORE: if (storeBrick() == 0){
 							 printf("STORAGE status %i\n",activeStorage);
                if (activeStorage == num_bricks_desired){
@@ -877,7 +924,6 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 				case MOVE_TO_BLUE_BRICK: moveRobot(3.45); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
         */
         
-        // CHICKEN strategy
 			}
 		}
 		usleep(1200000);

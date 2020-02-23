@@ -5,6 +5,7 @@ from std_msgs.msg import String
 import time
 import random
 
+fn = "../maps/arena/wps.txt"
 pointArray = []
 
 def callback(msg):
@@ -12,14 +13,23 @@ def callback(msg):
     print(msg.point.x, msg.point.y)
     pointArray.append([msg.point.x, msg.point.y])
 
-    if len(pointArray) > 3:
+    if len(pointArray) > 4:
         del pointArray[0]
+        print("Additional points, removing oldest")
+
+    if len(pointArray) > 3:
+        print("Writing file: " + fn)
+        with open(fn, "w") as f:
+            for i in pointArray:
+                f.write(str(i[0]) + " " + str(i[1]) + "\n")
+
 
 if __name__ == "__main__":
     rospy.init_node("podvod")
 
     pub = rospy.Publisher("/podvod", String, queue_size=10)
     rospy.Subscriber("/clicked_point", PointStamped, callback)
+    #rospy.spin()
     rate = rospy.Rate(2)
     while not rospy.is_shutdown():
 

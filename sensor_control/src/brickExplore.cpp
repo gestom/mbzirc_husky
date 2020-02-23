@@ -89,11 +89,13 @@ int misdetections = 0;
 //bool brickStackLocationKnown = false;
 //bool wallPatternLocationKnown = false;
 bool brickStackLocationKnown = false;
-bool wallPatternLocationKnown = true;
+bool wallPatternLocationKnown = false;
 float brickStackLocationX = 0.0f;
 float brickStackLocationY = 0.0f;
 float wallPatternLocationX = 0.0f;
 float wallPatternLocationY = 0.0f;
+float wallPatternOrX = 0.0f;
+float wallPatternOrY = 0.0f;
 
 float investigateX = 0.0f;
 float investigateY = 0.0f;
@@ -208,6 +210,10 @@ void podvodCallback(const std_msgs::String::ConstPtr& msg)
 		}
 		else if(varIdx == 5)
 			wallPatternLocationY = atof(ch);
+		else if(varIdx == 6)
+			wallPatternOrX = atof(ch);
+		else if(varIdx == 7)
+			wallPatternOrY = atof(ch);
 		varIdx++;
 		ch = strtok(NULL, " ");
 	}
@@ -1022,10 +1028,10 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 	goal.target_pose.pose.orientation.z = 1;
 	goal.target_pose.pose.orientation.w = 0;
 
-	movebaseAC->sendGoal(goal);
 
     if(tolerance != 0)
     {
+	movebaseAC->sendGoal(goal);
         while(ros::ok())
         {	
             usleep(500000);
@@ -1052,6 +1058,9 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 
                 if (sqrt(dx*dx+dy*dy) < tolerance)
                 {
+			move_base_msgs::MoveBaseGoal goal2;
+			
+			movebaseAC->sendGoal(goal2);
                     break;
                 }
             }
@@ -1064,6 +1073,7 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
     }
     else
     {
+	movebaseAC->sendGoalAndWait(goal);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
         ROS_INFO("Move base state %s", mbState.getText());
 
@@ -1126,7 +1136,8 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                 printf("POS: %f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
                 printf("WWW: %f %f %f\n" ,dx,dy,theta);
 
-                moveToMapPoint(brickStackRedX, brickStackRedY, quat_tf.z(), quat_tf.w(), 2);
+                moveToMapPoint(brickStackRedX, brickStackRedY, quat_tf.z(), quat_tf.w(), 0);
+
                 state = FINAL;
             }
             /*if(brickStackLocationKnown && wallPatternLocationKnown)
@@ -1186,7 +1197,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
             }*/
 
 
-            explore();
+            //explore();
         }
         else if(state == INVESTIGATEWP)
         {
@@ -1212,19 +1223,27 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
             finalApproach();
         }
         else if(state == MOVINGTOSTACKSITE)
-        {
-            if(podvod)
-            {
-                moveToMapPoint(wallPatternLocationX, wallPatternLocationY, 0, 1, 2);
-                state = FINAL;
-            }
-        }
+	{
+		if(podvod)
+		{
+			float dx = wallPatternLocationX - wallPatternOrX;
+			float dy = wallPatternLocationY - wallPatternOrY;
+
+			float theta = atan2(dy, dx);
+
+			tf2::Quaternion quat_tf;
+			quat_tf.setRPY(0, 0, theta); // orientationOffset + PI);
+
+			moveToMapPoint(wallPatternLocationX, wallPatternLocationY, 0, 1, 2);
+			state = FINAL;
+		}
+	}
         else if(state == STACKAPPROACH)
         {
             state = FINAL;
         }
 	ROS_INFO("explore AS looped");
-        usleep(100);
+        usleep(100000);
     }
 	if (state == FINAL) state = SUCCESS; else state = FAIL;
 	if (state == SUCCESS) 	server->setSucceeded(result);
@@ -1234,8 +1253,51 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     state = IDLE;	
 }
 
+void loadPodvod()
+{
+	ROS_INFO("Loading podvod file");
+
+	std::ifstream loadFile("/home/husky/mbzirc_ws/src/mbzirc_husky/sensor_control/maps/arena/wps.txt");
+
+	int varIdx = 0;
+	float x, y;
+	while(loadFile >> x >> y)
+	{
+		ROS_INFO("loaded pos %f %f", x, y);
+
+		if(varIdx == 0)
+		{	
+			brickStackRedX = x;
+			brickStackRedY = y;
+		}
+		else if(varIdx == 1)
+		{
+			brickStackOrangeX = x;
+			brickStackOrangeY = y;
+		}
+		else if(varIdx == 2)
+		{
+			wallPatternLocationKnown = true;
+			wallPatternLocationX = x;
+			wallPatternLocationY = y;
+		}
+		else if(varIdx == 3)
+		{
+			wallPatternOrX = x;
+			wallPatternOrY = y;
+		}
+		varIdx++;
+	}
+	loadFile.close();
+	ROS_INFO("Finished loading podvod file");
+	ROS_INFO("%f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
+	ROS_INFO("%f %f %f %f", wallPatternLocationX, wallPatternLocationY, wallPatternOrX, wallPatternOrY);
+	podvod = true;
+}
+
 int main(int argc, char** argv)
 {
+	loadPodvod();
 	ros::init(argc, argv, "brickExplore");
 	ros::NodeHandle n;
    	pn = &n;
@@ -1253,7 +1315,7 @@ int main(int argc, char** argv)
 	brickPileDetectorClient = n.serviceClient<mbzirc_husky_msgs::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
-    podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
+    //podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
