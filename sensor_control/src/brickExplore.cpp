@@ -40,6 +40,7 @@ ros::ServiceClient wallSearchClient;
 ros::ServiceClient brickPileDetectorClient;
 ros::ServiceClient wallPatternInvestigatorClient;
 ros::Subscriber scan_sub;
+ros::Subscriber podvod_sub;
 ros::Publisher ransac_pub;
 ros::Publisher point_pub;
 ros::Publisher point_two_pub;
@@ -79,6 +80,8 @@ float dispConst = 3;
 float fwSpeed = 0.1;
 int covarianceBricks = 500;
 int covariancePattern = 1500;
+
+bool podvod = false;
 
 int misdetections = 0;
 
@@ -179,6 +182,37 @@ double dist(double x1, double y1, double x2, double y2)
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
 
+void podvodCallback(const std_msgs::String::ConstPtr& msg)
+{	
+	brickStackLocationKnown = true;
+	podvod = true;
+	ROS_INFO("PODVOD ACTIVATED");    
+	char* ch;
+	ch = strtok(strdup(msg->data.c_str()), " ");
+	int varIdx = 0;
+
+	while(ch != NULL)
+	{
+		if(varIdx == 0)
+			brickStackRedX = atof(ch);
+		else if(varIdx == 1)
+			brickStackRedY = atof(ch);
+		else if(varIdx == 2)
+			brickStackOrangeX = atof(ch);
+		else if(varIdx == 3)
+			brickStackOrangeY = atof(ch);
+		else if(varIdx == 4)
+		{
+			wallPatternLocationKnown = true;
+			wallPatternLocationX = atof(ch);
+		}
+		else if(varIdx == 5)
+			wallPatternLocationY = atof(ch);
+		varIdx++;
+		ch = strtok(NULL, " ");
+	}
+
+}
 
 void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 {
@@ -712,9 +746,9 @@ void moveToBrickPile()
 {
 	//one is along, two is perp
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(-5.5, 1., -0.4, 1.5);
+    moveToBrickPosition(4, 3., -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-4.5, .6, -0.0, 1);
+    moveToBrickPosition(2.5, 1.5, -0.0, 1);
     
 	usleep(10000000);
 
@@ -1080,12 +1114,28 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
         {
-            if(brickStackLocationKnown && wallPatternLocationKnown)
+            if(podvod)
+            {
+                float dx = brickStackOrangeX - brickStackRedX;
+                float dy = brickStackOrangeY - brickStackRedY;
+
+                float theta = atan2(dy, dx);
+
+                tf2::Quaternion quat_tf;
+                quat_tf.setRPY(0, 0, theta); // orientationOffset + PI);
+                printf("POS: %f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
+                printf("WWW: %f %f %f\n" ,dx,dy,theta);
+
+                moveToMapPoint(brickStackRedX, brickStackRedY, quat_tf.z(), quat_tf.w(), 2);
+                state = FINAL;
+            }
+            /*if(brickStackLocationKnown && wallPatternLocationKnown)
             {
                 ROS_INFO("Locations already known, moving straight to them");
                 state = MOVINGTOBRICKS;
                 continue;
             }
+
 
             //check for candidate wall patterns
             if(!wallPatternLocationKnown)
@@ -1133,7 +1183,8 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                     else
                         ROS_INFO("Symbolic map call failed!");
                 }
-            }
+            }*/
+
 
             explore();
         }
@@ -1162,7 +1213,11 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         }
         else if(state == MOVINGTOSTACKSITE)
         {
-            state = STACKAPPROACH;
+            if(podvod)
+            {
+                moveToMapPoint(wallPatternLocationX, wallPatternLocationY, 0, 1, 2);
+                state = FINAL;
+            }
         }
         else if(state == STACKAPPROACH)
         {
@@ -1198,6 +1253,7 @@ int main(int argc, char** argv)
 	brickPileDetectorClient = n.serviceClient<detector::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
+    podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);

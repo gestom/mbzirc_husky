@@ -23,6 +23,7 @@ ros::NodeHandle* pn;
 ros::Publisher waypointVisualiser;
 ros::Publisher waypointRangeVisualiser;
 ros::Publisher waypointPathVisualiser;
+ros::Publisher brickVisualiser;
 ros::Publisher symbolicMapPublisher;
 
 mbzirc_husky::symbolicMap symMsg;
@@ -481,6 +482,8 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	int incoming_type = req.type;
 	cv::Point3d point;
 
+    publishBricks();
+
 	ROS_INFO("Get point service of type %i ", req.type);	
 	switch (incoming_type){
 		case 0: if(!waypoints.empty()){
@@ -935,6 +938,137 @@ void organisePath()
 	delete[] ys;
 }
 
+void publishBricks()
+{
+    visualization_msgs::Marker msg;
+    msg.header.frame_id = "map";
+    msg.header.stamp = ros::Time::now();
+    msg.id = 0;
+
+    msg.pose.position.z = 0.2;
+
+    msg.scale.x = 0.7;
+    msg.scale.y = 0.7;
+    msg.scale.z = 0.7;
+
+    msg.color.a = 1;
+    msg.color.r = 1;
+    msg.color.g = 0;
+    msg.color.b = 1;
+
+    msg.type = visualization_msgs::Marker::SPHERE;
+
+    float x = 0;
+    float y = 0;
+    float maxCovar = 0;
+
+    if(redBricks.size() > 0)
+    {
+        msg.id += 1;
+        x = 0;
+        y = 0;
+        maxCovar = 0;
+
+        for(int i = 0; i < redBricks.size(); i++)
+        {
+            if(redBricks[i].covariance > maxCovar)
+            {
+                maxCovar = redBricks[i].covariance;
+                x = redBricks[i].x;
+                y = redBricks[i].y;
+            }
+        }
+        msg.color.a = 1;
+        msg.color.r = 1;
+        msg.color.g = 0;
+        msg.color.b = 0;
+
+
+        msg.pose.position.x = x;
+        msg.pose.position.y = y;
+        brickVisualiser.publish(msg);
+    }
+
+    if(greenBricks.size() > 0)
+    {
+        msg.id += 1;
+        x = 0;
+        y = 0;
+        maxCovar = 0;
+
+        for(int i = 0; i < greenBricks.size(); i++)
+        {
+            if(greenBricks[i].covariance > maxCovar)
+            {
+                maxCovar = greenBricks[i].covariance;
+                x = greenBricks[i].x;
+                y = greenBricks[i].y;
+            }
+        }
+        msg.color.a = 1;
+        msg.color.r = 0;
+        msg.color.g = 1;
+        msg.color.b = 0;
+
+        msg.pose.position.x = x;
+        msg.pose.position.y = y;
+        brickVisualiser.publish(msg);
+    }
+
+    if(blueBricks.size() > 0)
+    {
+        msg.id += 1;
+        x = 0;
+        y = 0;
+        maxCovar = 0;
+
+        for(int i = 0; i < blueBricks.size(); i++)
+        {
+            if(blueBricks[i].covariance > maxCovar)
+            {
+                maxCovar = blueBricks[i].covariance;
+                x = blueBricks[i].x;
+                y = blueBricks[i].y;
+            }
+        }
+        msg.color.a = 1;
+        msg.color.r = 0;
+        msg.color.g = 0;
+        msg.color.b = 1;
+
+        msg.pose.position.x = x;
+        msg.pose.position.y = y;
+        brickVisualiser.publish(msg);
+    }
+
+    if(orangeBricks.size() > 0)
+    {
+        msg.id += 1;
+        x = 0;
+        y = 0;
+        maxCovar = 0;
+
+        for(int i = 0; i < orangeBricks.size(); i++)
+        {
+            if(orangeBricks[i].covariance > maxCovar)
+            {
+                maxCovar = orangeBricks[i].covariance;
+                x = orangeBricks[i].x;
+                y = orangeBricks[i].y;
+            }
+        }
+        msg.color.a = 1;
+        msg.color.r = 1;
+        msg.color.g = 1;
+        msg.color.b = 0;
+
+
+        msg.pose.position.x = x;
+        msg.pose.position.y = y;
+        brickVisualiser.publish(msg);
+    }
+}
+
 void publishWaypoints()
 {
 	if(waypoints.size() == 0){
@@ -1027,6 +1161,7 @@ int main(int argc, char** argv)
 	waypointVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypoints", 100);
 	waypointRangeVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointRanges", 100);
 	waypointPathVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointPath", 100);
+	brickVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/bricks", 100);
 	symbolicMapPublisher = n.advertise<mbzirc_husky::symbolicMap>("/symbolicMap/status",1);
 	// service servers
 	ros::ServiceServer set_map_srv = n.advertiseService("set_map_poi", setPointCallback);

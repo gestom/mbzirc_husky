@@ -1,10 +1,7 @@
 global_frame: map
 robot_base_frame: base_link
 
-footprint: [[-0.3, -0.4],
-            [0.3, -0.4],
-            [0.3, 0.4],
-            [-0.3, -0.4]]
+footprint: [[0.495, 0.335], [0.495, -0.335], [-0.495, -0.335], [-0.495, 0.335]]
 
 footprint_padding: 0.01
 

@@ -72,7 +72,7 @@ tmux split-window -h
 tmux send-keys 'roslaunch detector detector.launch'
 sleep 0.2
 tmux split-window
-tmux send-keys ''
+tmux send-keys 'rosrun mbzirc_husky podvod.py'
 sleep 0.2
 tmux split-window -h
 tmux send-keys ''
