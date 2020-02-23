@@ -126,7 +126,7 @@ int main (int argc, char **argv) {
         }
         else if(state == STACKING)
         {
-            ros::Duration totalMaxDuration = ros::Duration(600, 0);
+            ros::Duration totalMaxDuration = ros::Duration(750, 0);
             ros::Duration recoveryTime = ros::Duration(10, 0);
 
             mbzirc_husky::brickStackGoal stackGoal;
