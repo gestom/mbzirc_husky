@@ -773,7 +773,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         for (int i = 0; i < 4; i++){
             if (pile_centers[i].x != 0 and pile_centers[i].y != 0){
                 geometry_msgs::Point ret_pt = transform_point(pile_centers[i], tf_stamped);
-                mbzirc_husky::setPoi poi;
+                mbzirc_husky_msgs::setPoi poi;
                 poi.request.type = 4 + i;
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
@@ -790,7 +790,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
         for (int i = 0; i < 4; i++){
             for (int k = 0; k < filtered_candidates[i].size(); k++){
                 geometry_msgs::Point ret_pt = transform_point(filtered_candidates[i][k], tf_stamped);
-                mbzirc_husky::setPoi poi;
+                mbzirc_husky_msgs::setPoi poi;
                 poi.request.type = 4 + i;
                 poi.request.x = ret_pt.x;
                 poi.request.y = ret_pt.y;
@@ -806,7 +806,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
         for (int i = 0; i < wall_centers.size(); i++){
             geometry_msgs::Point ret_pt = transform_point(pile_centers[i], tf_stamped);
-            mbzirc_husky::setPoi poi;
+            mbzirc_husky_msgs::setPoi poi;
             poi.request.type = 2;
             poi.request.x = ret_pt.x;
             poi.request.y = ret_pt.y;
@@ -842,7 +842,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
                 origin_pcl_pub.publish(origin_line1);
                 for (int wp_num = 0; wp_num < 4; wp_num++){
                     geometry_msgs::Point ret_pt = transform_point(way_point[wp_num], tf_stamped);
-                    mbzirc_husky::setPoi poi;
+                    mbzirc_husky_msgs::setPoi poi;
                     poi.request.type = 4 + wp_num;
                     poi.request.x = ret_pt.x;
                     poi.request.y = ret_pt.y;
@@ -1061,7 +1061,7 @@ void BrickDetector::subscribe_ptcl(sensor_msgs::PointCloud2 ptcl) // callback
 
 // bool start_detecting
 
-bool velodyne_callback(detector::brick_pile_trigger::Request &req, detector::brick_pile_trigger::Response &res) {
+bool velodyne_callback(mbzirc_husky_msgs::brick_pile_trigger::Request &req, mbzirc_husky_msgs::brick_pile_trigger::Response &res) {
     ROS_INFO("Service called");
 
     if (req.activate == true){

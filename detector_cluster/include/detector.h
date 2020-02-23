@@ -28,8 +28,8 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <mbzirc_husky/setPoi.h>
-#include <detector/brick_pile_trigger.h>
+#include <mbzirc_husky_msgs/setPoi.h>
+#include <mbzirc_husky_msgs/brick_pile_trigger.h>
 
 #define LEN_MULTIPLIER (0.03271908282177614)    // SPECIFIC FOR VLP16
 #define INV_SQRT_2PI (0.3989422804014327)
@@ -135,6 +135,6 @@ private:
 
 };
 
-bool velodyne_callback(detector::brick_pile_trigger::Request &req, detector::brick_pile_trigger::Response &res);
+bool velodyne_callback(mbzirc_husky_msgs::brick_pile_trigger::Request &req, mbzirc_husky_msgs::brick_pile_trigger::Response &res);
 
 #endif

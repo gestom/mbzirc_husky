@@ -12,7 +12,7 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PointStamped.h>
 #include <mbzirc_husky_msgs/Float64.h>
-#include <mbzirc_husky/getPoi.h>
+#include <mbzirc_husky_msgs/getPoi.h>
 #include <mbzirc_husky_msgs/brickGoal.h>
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
@@ -27,7 +27,7 @@
 #include <math.h>
 #include <mbzirc_husky_msgs/wallPatternDetect.h>
 #include <std_srvs/Trigger.h>
-#include <detector/brick_pile_trigger.h>
+#include <mbzirc_husky_msgs/brick_pile_trigger.h>
 #define PI 3.14159265358979
 
 typedef actionlib::SimpleActionServer<mbzirc_husky::brickExploreAction> Server;
@@ -662,14 +662,14 @@ void preciseLocationCallback(const std_msgs::String::ConstPtr& msg)
 
 void explore()
 {
-    mbzirc_husky::getPoi srv;
+    mbzirc_husky_msgs::getPoi srv;
     srv.request.type = 0;
     if(symbolicClient.call(srv))
     {
         ROS_INFO("Moving to point");
 
         ROS_INFO("Zdeneks search for bricks");
-        detector::brick_pile_trigger bpd;
+        mbzirc_husky_msgs::brick_pile_trigger bpd;
         bpd.request.activate = true;
         if(!brickPileDetectorClient.call(bpd))
             ROS_INFO("Brick pile detector failed to set true");
@@ -677,7 +677,7 @@ void explore()
         moveToMapPoint(srv.response.x[0], srv.response.y[0], 0, 1, 1.5);
 
         ROS_INFO("Searching for bricks");
-        detector::brick_pile_trigger bpdb;
+        mbzirc_husky_msgs::brick_pile_trigger bpdb;
         bpdb.request.activate = false;
         if(!brickPileDetectorClient.call(bpdb))
             ROS_INFO("Brick pile detector failed to set false");
@@ -696,7 +696,7 @@ void explore()
         usleep(2000000);
 
         /*float reqCovar = 0.5;
-        mbzirc_husky::getPoi srv;
+        mbzirc_husky_msgs::getPoi srv;
         srv.request.type = 4;
         if(symbolicClient.call(srv))
         {
@@ -706,7 +706,7 @@ void explore()
             }
         }
 
-        mbzirc_husky::getPoi srv;
+        mbzirc_husky_msgs::getPoi srv;
         srv.request.type = 5;
         if(symbolicClient.call(srv))
         {
@@ -716,7 +716,7 @@ void explore()
             }
         }
 
-        mbzirc_husky::getPoi srv;
+        mbzirc_husky_msgs::getPoi srv;
         srv.request.type = 6;
         if(symbolicClient.call(srv))
         {
@@ -726,7 +726,7 @@ void explore()
             }
         }
 
-        mbzirc_husky::getPoi srv;
+        mbzirc_husky_msgs::getPoi srv;
         srv.request.type = 7;
         if(symbolicClient.call(srv))
         {
@@ -876,7 +876,7 @@ int moveToBrickPosition(float x, float y, float orientationOffset, float toleran
 
 void investigateWallPattern(float approachAngle)
 {
-	mbzirc_husky::getPoi srv;
+	mbzirc_husky_msgs::getPoi srv;
 	srv.request.type = 3;
 	if(symbolicClient.call(srv))
 	{
@@ -953,7 +953,7 @@ void investigateBricks(float approachAngle)
     {
 	    if(brickIdx == 1)
 		    continue;
-        mbzirc_husky::getPoi srvB;
+        mbzirc_husky_msgs::getPoi srvB;
         srvB.request.type = 4 + brickIdx;
 
         if(symbolicClient.call(srvB))
@@ -1141,7 +1141,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
             if(!wallPatternLocationKnown)
             {
                 ROS_INFO("Looking For wall pattern");
-                mbzirc_husky::getPoi srvWP;
+                mbzirc_husky_msgs::getPoi srvWP;
                 srvWP.request.type = 3;
                 if(symbolicClient.call(srvWP))
                 {
@@ -1167,7 +1167,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 
                 for(int i = 0; i < 4; i++)
                 {
-                    mbzirc_husky::getPoi srvB;
+                    mbzirc_husky_msgs::getPoi srvB;
                     srvB.request.type = 4 + i;
 
                     if(symbolicClient.call(srvB))
@@ -1247,10 +1247,10 @@ int main(int argc, char** argv)
   	dynamic_reconfigure::Server<mbzirc_husky::brick_pileConfig>::CallbackType f = boost::bind(&dynamicReconfigureCallback, _1, _2);
   	dynServer.setCallback(f);
 	prepareClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/prepare_gripping");
-	symbolicClient = n.serviceClient<mbzirc_husky::getPoi>("/get_map_poi");
+	symbolicClient = n.serviceClient<mbzirc_husky_msgs::getPoi>("/get_map_poi");
 	wprosbagClient = n.serviceClient<std_srvs::Trigger>("/shootVelodyne");
 	wallPatternInvestigatorClient = n.serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
-	brickPileDetectorClient = n.serviceClient<detector::brick_pile_trigger>("/start_brick_pile_detector");
+	brickPileDetectorClient = n.serviceClient<mbzirc_husky_msgs::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
     podvod_sub = n.subscribe("/podvod",10, podvodCallback);	

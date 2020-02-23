@@ -3,15 +3,15 @@
 #include <tf/tf.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/LaserScan.h>
-#include <mbzirc_husky/nextBrickPlacement.h>
+#include <mbzirc_husky_msgs/nextBrickPlacement.h>
 #include <geometry_msgs/Point.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
 #include <mbzirc_husky_msgs/Float64.h>
 #include <actionlib/server/simple_action_server.h>
-#include <mbzirc_husky/brickBuilt.h>
-#include <mbzirc_husky/removeInventory.h>
+#include <mbzirc_husky_msgs/brickBuilt.h>
+#include <mbzirc_husky_msgs/removeInventory.h>
 #include <mbzirc_husky/brickStackAction.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
@@ -23,14 +23,14 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <visualization_msgs/Marker.h>
-#include <mbzirc_husky/patternAlignement.h>
+#include <mbzirc_husky_msgs/patternAlignement.h>
 #include <wallpattern_detection/wallpattern_detectionConfig.h>
-#include <wallpattern_detection/detectedobject.h>
-#include <wallpattern_detection/ObjectWithType.h>
-#include <wallpattern_detection/ObjectWithTypeArray.h>
+#include <mbzirc_husky_msgs/detectedobject.h>
+#include <mbzirc_husky_msgs/ObjectWithType.h>
+#include <mbzirc_husky_msgs/ObjectWithTypeArray.h>
 #include <mbzirc_husky_msgs/wallPatternDetect.h>
 #include <mbzirc_husky_msgs/wallPatternPosition.h>
-#include <wallpattern_detection/wall_pattern_close.h>
+#include <mbzirc_husky_msgs/wall_pattern_close.h>
 
 float patternDistance = -1;
 float alignMoveDirection = 1;
@@ -488,7 +488,7 @@ int moveToNextPosition() {
 
 int fetchNextBrickData() {
   // query inventory for next brick
-  mbzirc_husky::nextBrickPlacement srv;
+  mbzirc_husky_msgs::nextBrickPlacement srv;
   srv.request.offset = 0.07;
   if (inventoryQueryClient.call(srv.request, srv.response)) {
     if (srv.response.brickType == -1) {
@@ -511,7 +511,7 @@ int fetchNextBrickData() {
 
 int eraseFromInventory() {
   ROS_WARN("BRICK ON POS %d, LAYER %d REMOVED FROM INVENTORY", next_storage_position, next_storage_layer);
-  mbzirc_husky::removeInventory srv;
+  mbzirc_husky_msgs::removeInventory srv;
   srv.request.layer    = next_storage_layer;
   srv.request.position = next_storage_position;
   inventoryRemoveClient.call(srv);
@@ -519,7 +519,7 @@ int eraseFromInventory() {
 }
 
 int placedBrickInventory() {
-  mbzirc_husky::brickBuilt inventSrv;
+  mbzirc_husky_msgs::brickBuilt inventSrv;
   inventSrv.request.fromLayer    = next_storage_layer;
   inventSrv.request.fromPosition = next_storage_position;
   inventSrv.request.wallLayer    = next_wall_layer;
@@ -536,7 +536,7 @@ int placedBrickInventory() {
 
 int switchDetection(bool on)
 {
-	wallpattern_detection::wall_pattern_close query;
+	mbzirc_husky_msgs::wall_pattern_close query;
 	query.request.activate = on;
 	patternSearchClientFront.call(query.request, query.response);
 	return 0;
@@ -544,7 +544,7 @@ int switchDetection(bool on)
 
 int switchSideDetection(bool on)
 {
-	wallpattern_detection::wall_pattern_close query;
+	mbzirc_husky_msgs::wall_pattern_close query;
 	query.request.activate = on;
 	patternSearchClientSide.call(query.request, query.response);
 	return 0;
@@ -780,7 +780,7 @@ bool wallAlign()
 	return true;
 }
 
-bool startWallCallBack(mbzirc_husky::patternAlignement::Request &req, mbzirc_husky::patternAlignement::Response &res)
+bool startWallCallBack(mbzirc_husky_msgs::patternAlignement::Request &req, mbzirc_husky_msgs::patternAlignement::Response &res)
 {
 	if (req.trigger) {
 		alignMoveDirection = -1;
@@ -845,12 +845,12 @@ int main(int argc, char **argv) {
   //disposeClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/dispose_brick");
 
   ros::ServiceServer goPatternStart = n.advertiseService("/start_pattern_alignement", startWallCallBack);
-  patternSearchClientFront = n.serviceClient<wallpattern_detection::wall_pattern_close>("detectPattern");
-  patternSearchClientSide = n.serviceClient<wallpattern_detection::wall_pattern_close>("start_top_wall_detector");
+  patternSearchClientFront = n.serviceClient<mbzirc_husky_msgs::wall_pattern_close>("detectPattern");
+  patternSearchClientSide = n.serviceClient<mbzirc_husky_msgs::wall_pattern_close>("start_top_wall_detector");
 
-  inventoryQueryClient  = n.serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
-  inventoryBuiltClient  = n.serviceClient<mbzirc_husky::brickBuilt>("/inventory/brickBuilt");
-  inventoryRemoveClient = n.serviceClient<mbzirc_husky::removeInventory>("/inventory/remove");
+  inventoryQueryClient  = n.serviceClient<mbzirc_husky_msgs::nextBrickPlacement>("/inventory/nextBrickPlacement");
+  inventoryBuiltClient  = n.serviceClient<mbzirc_husky_msgs::brickBuilt>("/inventory/brickBuilt");
+  inventoryRemoveClient = n.serviceClient<mbzirc_husky_msgs::removeInventory>("/inventory/remove");
   subscriberPatternFront       = node->subscribe("/wall_pattern_front", 1, &wallCallBackFront);
 
 //  brickDetectorClient = n.serviceClient<mbzirc_husky_msgs::brickDetect>("/detectBricks");
