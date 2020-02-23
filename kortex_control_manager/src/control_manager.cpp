@@ -789,11 +789,11 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
 
   ungrip();
 
-  if(end_effector_pose.pos.z() < 0.3){
-	  ROS_INFO("[%s]: Avoiding plexi before actual homing...", ros::this_node::getName().c_str());
-	  Pose3d goal_pose = end_effector_pose;
-	  goal_pose.pos.z() = 0.35;
-	  goToAction(goal_pose);
+  if (end_effector_pose.pos.z() < 0.3) {
+    ROS_INFO("[%s]: Avoiding plexi before actual homing...", ros::this_node::getName().c_str());
+    Pose3d goal_pose  = end_effector_pose;
+    goal_pose.pos.z() = 0.35;
+    goToAction(goal_pose);
   }
 
   bool goal_reached = goToAnglesAction(home_angles);
@@ -828,7 +828,7 @@ bool callbackHomingService([[maybe_unused]] std_srvs::Trigger::Request &req, std
     ROS_INFO("[%s]: Trying to home AGAIN", ros::this_node::getName().c_str());
     goal_reached = goToAnglesAction(home_angles);
   }
-  if(!goal_reached){
+  if (!goal_reached) {
     ROS_FATAL("[%s]: Failed to home arm!", ros::this_node::getName().c_str());
   }
   status      = IDLE;
@@ -1148,7 +1148,7 @@ bool callbackPrepareGrippingService(mbzirc_husky_msgs::Float64Request &req, mbzi
   ROS_INFO("[%s]: Assuming a default gripping pose", ros::this_node::getName().c_str());
   status = MOVING;
 
-  
+
   std::vector<double> goal_angles;
   for (int i = 0; i < DOF; i++) {
     goal_angles.push_back(gripping_angles[i]);
@@ -1432,7 +1432,9 @@ bool callbackPressBricksService([[maybe_unused]] std_srvs::TriggerRequest &req, 
 
 /* callbackPickupStorageService //{ */
 bool callbackPickupStorageService(mbzirc_husky_msgs::StoragePosition::Request &req, mbzirc_husky_msgs::StoragePosition::Response &res) {
-  last_command = Command::LIFT_STORAGE;
+  
+  last_command = Command::DESCEND_STORAGE;
+
   if (!is_initialized) {
     ROS_ERROR("[%s]: Cannot pickup brick from storage, not initialized!", ros::this_node::getName().c_str());
     res.success = false;
