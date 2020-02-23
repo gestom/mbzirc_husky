@@ -81,6 +81,8 @@ float fwSpeed = 0.1;
 int covarianceBricks = 500;
 int covariancePattern = 1500;
 
+bool podvod = false;
+
 int misdetections = 0;
 
 //brickStackLocation in map frame
@@ -182,9 +184,10 @@ double dist(double x1, double y1, double x2, double y2)
 
 void podvodCallback(const std_msgs::String::ConstPtr& msg)
 {	
-    brickStackLocationKnown = true;
-	
-    char* ch;
+	brickStackLocationKnown = true;
+	podvod = true;
+	ROS_INFO("PODVOD ACTIVATED");    
+	char* ch;
 	ch = strtok(strdup(msg->data.c_str()), " ");
 	int varIdx = 0;
 
@@ -199,10 +202,10 @@ void podvodCallback(const std_msgs::String::ConstPtr& msg)
 		else if(varIdx == 3)
 			brickStackOrangeY = atof(ch);
 		else if(varIdx == 4)
-        {
-            wallPatternLocationKnown = true;
+		{
+			wallPatternLocationKnown = true;
 			wallPatternLocationX = atof(ch);
-        }
+		}
 		else if(varIdx == 5)
 			wallPatternLocationY = atof(ch);
 		varIdx++;
@@ -743,9 +746,9 @@ void moveToBrickPile()
 {
 	//one is along, two is perp
     ROS_INFO("Approaching bricks");
-    moveToBrickPosition(-5.5, 1., -0.4, 1.5);
+    moveToBrickPosition(4, 3., -0.4, 1.5);
     ROS_INFO("Closer approach to bricks");
-    moveToBrickPosition(-4.5, .6, -0.0, 1);
+    moveToBrickPosition(2.5, 1.5, -0.0, 1);
     
 	usleep(10000000);
 
@@ -1111,12 +1114,28 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
     while (isTerminal(state) == false && ros::ok()){
         if(state == EXPLORINGBRICKS)
         {
-            if(brickStackLocationKnown && wallPatternLocationKnown)
+            if(podvod)
+            {
+                float dx = brickStackOrangeX - brickStackRedX;
+                float dy = brickStackOrangeY - brickStackRedY;
+
+                float theta = atan2(dy, dx);
+
+                tf2::Quaternion quat_tf;
+                quat_tf.setRPY(0, 0, theta); // orientationOffset + PI);
+                printf("POS: %f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
+                printf("WWW: %f %f %f\n" ,dx,dy,theta);
+
+                moveToMapPoint(brickStackRedX, brickStackRedY, quat_tf.z(), quat_tf.w(), 2);
+                state = FINAL;
+            }
+            /*if(brickStackLocationKnown && wallPatternLocationKnown)
             {
                 ROS_INFO("Locations already known, moving straight to them");
                 state = MOVINGTOBRICKS;
                 continue;
             }
+
 
             //check for candidate wall patterns
             if(!wallPatternLocationKnown)
@@ -1164,7 +1183,8 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                     else
                         ROS_INFO("Symbolic map call failed!");
                 }
-            }
+            }*/
+
 
             explore();
         }
@@ -1193,7 +1213,11 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
         }
         else if(state == MOVINGTOSTACKSITE)
         {
-            state = STACKAPPROACH;
+            if(podvod)
+            {
+                moveToMapPoint(wallPatternLocationX, wallPatternLocationY, 0, 1, 2);
+                state = FINAL;
+            }
         }
         else if(state == STACKAPPROACH)
         {

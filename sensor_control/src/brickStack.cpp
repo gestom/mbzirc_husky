@@ -43,7 +43,7 @@ ros::ServiceClient liftBrickClient;
 ros::ServiceClient prepareClient;
 ros::ServiceClient releaseClient;
 ros::ServiceClient placeClient;
-ros::ServiceClient disposeClient;
+//ros::ServiceClient disposeClient;
 ros::ServiceClient inventoryQueryClient;
 ros::ServiceClient inventoryBuiltClient;
 ros::ServiceClient inventoryRemoveClient;
@@ -180,6 +180,8 @@ int next_storage_layer;
 int next_wall_index;
 int next_wall_layer;
 int grasp_attempts = 0;
+
+bool wallAlign();
 
 void odoCallBack(const nav_msgs::OdometryConstPtr &msg) {
   robotOdoPose.pose.position.x  = msg->pose.pose.position.x;
@@ -465,6 +467,7 @@ int releaseBrick() {
   return -1;
 }
 
+/*
 int disposeBrick() {
   ROS_INFO("DISPOSING BRICK P%d, L%d", next_storage_position, next_storage_layer);
   mbzirc_husky_msgs::StoragePosition srv;
@@ -477,6 +480,7 @@ int disposeBrick() {
   ROS_INFO("BRICK DISPOSAL FAILED");
   return -1;
 }
+*/
 
 // TODO
 int moveToNextPosition() {
@@ -538,6 +542,14 @@ int switchDetection(bool on)
 	return 0;
 }
 
+int switchSideDetection(bool on)
+{
+	wallpattern_detection::wall_pattern_close query;
+	query.request.activate = on;
+	patternSearchClientSide.call(query.request, query.response);
+	return 0;
+}
+
 void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Server *as) {
   mbzirc_husky::brickStackResult result;
 
@@ -585,13 +597,14 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
             nextState = ARMRESET;
           break;
 	case TURNATPATTERN:
-	  if (turnRobot(M_PI/3))
+	  if (turnRobot(M_PI/3) == 0)
             nextState = ALIGNWITHPATTERN;
           else
             nextState = ARMRESET;
           break;
         case ALIGNWITHPATTERN:
-          if (resetArm() == 0)
+	  switchSideDetection(true);
+	  if (wallAlign())
             nextState = ARMTOSTORAGE;
           else
             nextState = ARMRESET;
@@ -615,7 +628,7 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
           if (grasp_attempts >= 3) {
             grasp_attempts = 0;
             ROS_WARN("BRICK GRASP FAILED 3 TIMES IN A ROW");
-            if (disposeBrick() == 0) {
+            /*if (disposeBrick() == 0) {
               eraseFromInventory();
               if (fetchNextBrickData() == -1) {
                 ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
@@ -629,6 +642,14 @@ void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Serv
               // TODO ignore bricks in the current position
               nextState = FAIL;
             }
+	    */
+	    eraseFromInventory();
+            if (fetchNextBrickData() == -1) {
+              ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+              nextState = SUCCESS;
+              break;
+            }
+            nextState = ARMTOSTORAGE;
           }
           break;
         case ARMPICKUP:
@@ -735,6 +756,30 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg)
   return;
 }
 
+bool wallAlign()
+{
+	alignMoveDirection = -1;
+	started_alignement      = false;
+	end_of_pattern          = false;
+	alignFinished = false;
+	pattern_end_accumulator = 0;
+	subscriberPattern       = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
+	for (int i = 0; i < 10; i++) {
+		usleep(20000);
+		ros::spinOnce();
+	}
+	if (started_alignement == false) {
+		subscriberPattern.shutdown();
+		return false;
+	}
+	while (alignFinished == false) {
+		usleep(10000);
+		ros::spinOnce();
+	}
+	subscriberPattern.shutdown();
+	return true;
+}
+
 bool startWallCallBack(mbzirc_husky::patternAlignement::Request &req, mbzirc_husky::patternAlignement::Response &res)
 {
 	if (req.trigger) {
@@ -797,7 +842,7 @@ int main(int argc, char **argv) {
   graspBrickClient = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/pickup_brick_storage");
   liftBrickClient  = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/lift_brick_storage");
   releaseClient    = n.serviceClient<std_srvs::Trigger>("/husky/gripper/ungrip");
-  disposeClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/dispose_brick");
+  //disposeClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/dispose_brick");
 
   ros::ServiceServer goPatternStart = n.advertiseService("/start_pattern_alignement", startWallCallBack);
   patternSearchClientFront = n.serviceClient<wallpattern_detection::wall_pattern_close>("detectPattern");

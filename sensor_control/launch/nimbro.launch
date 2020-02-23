@@ -4,8 +4,8 @@
   <!-- <node name="set_broadcast" pkg="mrs_general" type="set_broadcast_rc_variable.sh" output='screen' /> -->
 
   <!-- args corresponding to environment variables -->
-  <arg name="NAME" default="stibipet" />
-  <arg name="BROADCAST_IP" default="$(optenv BROADCAST_IP 192.168.0.255)" />
+  <arg name="NAME" default="huskyrobot" />
+  <arg name="BROADCAST_IP" default="$(optenv BROADCAST_IP 10.201.15.255)" />
 
     <!-- other args -->
   <arg name="service_response_timeout" default="3" />

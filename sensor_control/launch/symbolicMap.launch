@@ -3,7 +3,6 @@
   <node pkg="mbzirc_husky" type="symbolicMap" name="symbolicMap" respawn="false" output="screen">
     <param name="/path_file" value="$(find mbzirc_husky)/maps/arena/map-waypoints.txt"/>
     <param name="/corner_file" value="$(find mbzirc_husky)/maps/arena/map-corners.txt"/>
-
   </node>
 
 </launch>
