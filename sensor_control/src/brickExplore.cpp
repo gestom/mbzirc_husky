@@ -1312,7 +1312,7 @@ int main(int argc, char** argv)
 	brickPileDetectorClient = n.serviceClient<mbzirc_husky_msgs::brick_pile_trigger>("/start_brick_pile_detector");
 	wallSearchClient = n.serviceClient<mbzirc_husky_msgs::wallPatternDetect>("/searchForWallpattern");
     scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
-    podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
+    //podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
