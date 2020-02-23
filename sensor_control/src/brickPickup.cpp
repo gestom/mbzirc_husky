@@ -32,6 +32,7 @@ typedef actionlib::SimpleActionServer<mbzirc_husky::brickPickupAction> Server;
 Server *server;
 
 float moveDistance = 0.4;
+float turnDistance = 0.4;
 typedef enum{
 	NONE,
 	ROBOT_ALIGN_X_PHI,
@@ -41,6 +42,7 @@ typedef enum{
 	ROBOT_ALIGN_X,
 	ROBOT_MOVE_SCAN,
 	ROBOT_MOVE_ODO,
+	ROBOT_TURN_ODO,
 	BEHAVIOUR_NUMBER
 }EBehaviour;
 
@@ -53,6 +55,7 @@ const char *behStr[] = {
 	"aligning along X",
 	"moving along wall",
 	"moving by odometry",
+	"turning by odometry",
 	"number"
 };
 
@@ -87,6 +90,9 @@ const char *stateStr[] = {
 	"move to the green brick 2",
 	"move to the blue brick",
 	"move to the red brick 2 for pickup",
+	"leaving brick pile - 1 turn",
+	"leaving brick pile - 2 move",
+	"leaving brick pile - 3 turn",
 	"TERMINALSTATE",
 	"FINAL",
 	"STOPPING",
@@ -117,6 +123,9 @@ typedef enum{
 	MOVE_TO_BLUE_BRICK,	 //
 	MOVE_TO_RED_BRICK_1,	 //
 	MOVE_TO_RED_BRICK_2,	 //
+	LEAVING_BRICKS_1,	 //
+	LEAVING_BRICKS_2,	 //
+	LEAVING_BRICKS_3,	 //
 	TERMINALSTATE,	 	 //marks terminal state
 	FINAL,
 	STOPPING,
@@ -223,6 +232,19 @@ int updateRobotPositionold()
 		ROS_ERROR("%s",ex.what());
 		return -1;
 	}
+}
+
+int turnRobot(float distance, EBehaviour nextBeh = NONE) {
+  while (updateRobotPosition() < 0) {
+    usleep(50000);
+    ros::spinOnce();
+  }
+  anchorPose   = robotPose;
+  turnDistance = distance;
+  printf("Turn command:  %.3f\n", distance);
+  nextBehaviour = NONE;
+  behaviour     = ROBOT_TURN_ODO;
+  return 0;
 }
 
 int robotMoveOdo(const sensor_msgs::LaserScanConstPtr &msg)
@@ -571,6 +593,25 @@ void callbackBrickPose(const mbzirc_husky_msgs::brickPositionConstPtr &msg)
         return;
 }
 
+int robotTurnOdo(const sensor_msgs::LaserScanConstPtr &msg)
+{
+	spd.linear.x = spd.angular.z = 0;
+	float angleDiff  = tf::getYaw(anchorPose.pose.orientation) -  tf::getYaw(robotPose.pose.orientation);
+	if (angleDiff > +M_PI) angleDiff -= 2*M_PI;
+	if (angleDiff < -M_PI) angleDiff += 2*M_PI;
+	spd.angular.z = + 0.3;
+	printf("Turning done: %.3f %.3f\n", angleDiff, turnDistance);
+	if (turnDistance < 0){
+		spd.angular.z = -0.2;
+	}
+	if (fabs(angleDiff) > fabs(turnDistance)) {
+		spd.linear.x = spd.angular.z = 0;
+		behaviour                    = nextBehaviour;
+		return 0;
+	}
+	setSpeed(spd);
+	return 1;
+}
 
 void velodyneCallBack(const velodyne_msgs::VelodyneScanConstPtr &msg) 
 {
@@ -581,6 +622,7 @@ void velodyneCallBack(const velodyne_msgs::VelodyneScanConstPtr &msg)
 void scanCallBack(const sensor_msgs::LaserScanConstPtr &msg) 
 {
 	if (updateRobotPosition() < 0) return;
+	if (behaviour == ROBOT_TURN_ODO) robotTurnOdo(msg);
 	if (behaviour == ROBOT_MOVE_SCAN)  robotMoveScan(msg); 
 	if (behaviour == ROBOT_MOVE_TURN_MOVE)  robotMTM(msg); 
 	if (behaviour == ROBOT_MOVE_ODO)  robotMoveOdo(msg); 
@@ -784,6 +826,9 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
+				case LEAVING_BRICKS_1: turnRobot(-1.0); nextState = LEAVING_BRICKS_2;break; 
+				case LEAVING_BRICKS_2: moveRobot(-2.0); nextState = LEAVING_BRICKS_3;break; 
+				case LEAVING_BRICKS_3: turnRobot(1.0); nextState = FINAL;break; 
 				case APPROACH1: if (moveRobot(+2.6) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
 				case APPROACH2: if (moveRobot(-4.5) == 0) nextState =  APPROACH3; else nextState = IDLE; break;
 				case APPROACH3: if (moveRobot(1.6) == 0) nextState =  ARMRESET; else nextState = IDLE; break;
@@ -800,15 +845,15 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case BRICKSTORE: if (storeBrick() == 0){
 							 printf("STORAGE status %i\n",activeStorage);
-               if (activeStorage == num_bricks_desired)
-                 nextState = FINAL;
-	       else{
+               if (activeStorage == num_bricks_desired){
+                 nextState = LEAVING_BRICKS_1;
+	       }else{
 		       // CHICKEN strategy - take 1 red on the first run, then take 3 reds and 2 greens on the second run
 		       if (activeStorage == 1)  {nextState = MOVE_TO_RED_BRICK_1;}	// one red brick is removed from before, so after a red is picked up, go for the second red pile
 		       if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 	// after two reds, pick up green
 		       if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}	// go for second green
 		       if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;} 	// go back for one more red
-		       if (activeStorage == 5)  {nextState = FINAL;}
+		       if (activeStorage == 5)  {nextState = LEAVING_BRICKS_1;}
 
 		       /* 
 		       //ORIGINAL greedy strategy - take 4 reds, 2 greens and 1 blue
