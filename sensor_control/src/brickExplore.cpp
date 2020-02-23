@@ -1025,13 +1025,13 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 	goal.target_pose.pose.position.y = y;
 
 	//goal orientation
-	goal.target_pose.pose.orientation.z = 1;
-	goal.target_pose.pose.orientation.w = 0;
+	goal.target_pose.pose.orientation.z = orientationZ;
+	goal.target_pose.pose.orientation.w = orientationW;
 
 
     if(tolerance != 0)
     {
-	movebaseAC->sendGoal(goal);
+        movebaseAC->sendGoal(goal);
         while(ros::ok())
         {	
             usleep(500000);
@@ -1058,9 +1058,9 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
 
                 if (sqrt(dx*dx+dy*dy) < tolerance)
                 {
-			move_base_msgs::MoveBaseGoal goal2;
-			
-			movebaseAC->sendGoal(goal2);
+                    move_base_msgs::MoveBaseGoal goal2;
+
+                    movebaseAC->sendGoal(goal2);
                     break;
                 }
             }
@@ -1073,7 +1073,7 @@ int moveToMapPoint(float x, float y, float orientationZ, float orientationW, flo
     }
     else
     {
-	movebaseAC->sendGoalAndWait(goal);
+        movebaseAC->sendGoalAndWait(goal);
         actionlib::SimpleClientGoalState mbState = movebaseAC->getState();
         ROS_INFO("Move base state %s", mbState.getText());
 
@@ -1234,7 +1234,7 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 			tf2::Quaternion quat_tf;
 			quat_tf.setRPY(0, 0, theta); // orientationOffset + PI);
 
-			moveToMapPoint(wallPatternLocationX, wallPatternLocationY, 0, 1, 2);
+			moveToMapPoint(wallPatternLocationX, wallPatternLocationY, quat_tf.z(), quat_tf.w(), 0);
 			state = FINAL;
 		}
 	}
