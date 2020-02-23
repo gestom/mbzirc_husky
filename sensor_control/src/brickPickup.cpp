@@ -775,8 +775,7 @@ void actionServerCallback(const mbzirc_husky::brickPickupGoalConstPtr& goal, Ser
 ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node::getName().c_str(), num_bricks_desired);
 
 	mbzirc_husky::brickPickupResult result;
-	state = ARMRESET;	//TODO
-	state = APPROACH1;	//TODO
+	state = APPROACH1;
 	EState nextState = state;
 	EState recoveryState = state;
 	while (isTerminal(state) == false && ros::ok()) 
@@ -795,30 +794,34 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 				case ARMDESCENT: if (descentArm() == 0){ nextState = ARMPICKUP;} else nextState = ARMALIGNMENT; switchDetection(false); break;
 				case ARMPICKUP:  if (pickupBrick() == 0) nextState = ARMSTORAGE; else nextState = ARMALIGNMENT; break;
 				case ARMSTORAGE: if (prepareStorage() == 0) nextState = BRICKSTORE; else nextState = ARMPOSITIONING; break;
+				case MOVE_TO_RED_BRICK_1: moveRobot(0.4); robotXYMove = +1; nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.35); robotXYMove = +1; positionArm(); pushBricks(); nextState = ARMPOSITIONING; break;
+				case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
+				case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 				case BRICKSTORE: if (storeBrick() == 0){
 							 printf("STORAGE status %i\n",activeStorage);
                if (activeStorage == num_bricks_desired)
                  nextState = FINAL;
-               else{
-                // CHICKEN strategy - take 1 red on the first run, then take 3 reds and 2 greens on the second run
-                if (activeStorage == 1)  {nextState = MOVE_TO_RED_BRICK_1;}	// one red brick is removed from before, so after a red is picked up, go for the second red pile
-		if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 	// after two reds, pick up green
-		if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}	// go for second green
-		if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;} 	// go back for one more red
-		if (activeStorage == 5)  {nextState = FINAL;}
+	       else{
+		       // CHICKEN strategy - take 1 red on the first run, then take 3 reds and 2 greens on the second run
+		       if (activeStorage == 1)  {nextState = MOVE_TO_RED_BRICK_1;}	// one red brick is removed from before, so after a red is picked up, go for the second red pile
+		       if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 	// after two reds, pick up green
+		       if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}	// go for second green
+		       if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;} 	// go back for one more red
+		       if (activeStorage == 5)  {nextState = FINAL;}
 
-                 /* 
-                //ORIGINAL greedy strategy - take 4 reds, 2 greens and 1 blue
-							  if (activeStorage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
-							  if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 		//after the second red, allow only forward phi alignment 
-							  if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}		//after picking up green, allow only backward phi alignment 
-							  if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;}
-							  if (activeStorage == 5)  {nextState = ARMPOSITIONING;}
-							  if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
-							  if (activeStorage == 7)  {nextState = FINAL;}
-                */
-                
-              }
+		       /* 
+		       //ORIGINAL greedy strategy - take 4 reds, 2 greens and 1 blue
+		       if (activeStorage == 1)  {nextState = ARMPOSITIONING;}		//after the first red, only align along phi, then move forward
+		       if (activeStorage == 2)  {nextState = MOVE_TO_GREEN_BRICK_1;} 		//after the second red, allow only forward phi alignment 
+		       if (activeStorage == 3)  {nextState = MOVE_TO_GREEN_BRICK_2;}		//after picking up green, allow only backward phi alignment 
+		       if (activeStorage == 4)  {nextState = MOVE_TO_RED_BRICK_2;}
+		       if (activeStorage == 5)  {nextState = ARMPOSITIONING;}
+		       if (activeStorage == 6)  {nextState = MOVE_TO_BLUE_BRICK;}
+		       if (activeStorage == 7)  {nextState = FINAL;}
+		       */
+
+	       }
 						 }else { nextState = ARMRESET;} break;
 
         /* 
@@ -830,10 +833,6 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
         */
         
         // CHICKEN strategy
-        case MOVE_TO_RED_BRICK_1: moveRobot(0.4); robotXYMove = +1; nextState = ARMPOSITIONING; break;
-        case MOVE_TO_GREEN_BRICK_1: switchDetection(false); moveRobot(1.35); robotXYMove = +1; positionArm(); pushBricks(); nextState = ARMPOSITIONING; break;
-        case MOVE_TO_GREEN_BRICK_2: moveRobot(0.7); robotXYMove = -1; nextState = ARMPOSITIONING; break;
-        case MOVE_TO_RED_BRICK_2: switchDetection(false); moveRobot(-2.05); robotXYMove = +1; positionArm(); nextState = ARMPOSITIONING; break;
 			}
 		}
 		usleep(1200000);
