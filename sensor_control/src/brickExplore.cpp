@@ -1290,6 +1290,9 @@ void loadPodvod()
 	}
 	loadFile.close();
 	ROS_INFO("Finished loading podvod file");
+	ROS_INFO("%f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
+	ROS_INFO("%f %f %f %f", wallPatternLocationX, wallPatternLocationY, wallPatternOrX, wallPatternOrY);
+	podvod = true;
 }
 
 int main(int argc, char** argv)
