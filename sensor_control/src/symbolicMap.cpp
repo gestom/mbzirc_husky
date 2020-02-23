@@ -5,9 +5,9 @@
 #include <tf/transform_listener.h>
 #include <mbzirc_husky/boundsConfig.h>
 #include <mbzirc_husky/symbolicMapConfig.h>
-#include <mbzirc_husky/setPoi.h>
-#include <mbzirc_husky/getPoi.h>
-#include <mbzirc_husky/removePoi.h>
+#include <mbzirc_husky_msgs/setPoi.h>
+#include <mbzirc_husky_msgs/getPoi.h>
+#include <mbzirc_husky_msgs/removePoi.h>
 #include <visualization_msgs/Marker.h>
 #include <vector>
 #include <opencv2/core/types.hpp>
@@ -16,7 +16,7 @@
 #include <sstream>
 #include "order.h"
 #include <geometry_msgs/Point.h>
-#include <mbzirc_husky/symbolicMap.h>
+#include <mbzirc_husky_msgs/symbolicMap.h>
 
 ros::NodeHandle* pn;
 
@@ -26,7 +26,7 @@ ros::Publisher waypointPathVisualiser;
 ros::Publisher brickVisualiser;
 ros::Publisher symbolicMapPublisher;
 
-mbzirc_husky::symbolicMap symMsg;
+mbzirc_husky_msgs::symbolicMap symMsg;
 
 //Map reconfigure
 double map_width;
@@ -154,7 +154,7 @@ bool cornerCheck(std::vector<cv::Point2d> corn,cv::Point3d query){
 	double A2 = sqrt(u2*(u2-a2)*(u2-b2)*(u2-b3));
 	double A3 = sqrt(u3*(u3-a3)*(u3-b3)*(u3-b4));
 	double A4 = sqrt(u4*(u4-a4)*(u4-b4)*(u4-b1));
-	printf(" %f %f %f %f %f %f %f %f %f  ", A1,A2,A3,A4,area,A1+A2+A3+A4, u1,u2,u3,u4);
+	printf(" %f %f %f %f %f %f %f %f %f %f  ", A1,A2,A3,A4,area,A1+A2+A3+A4, u1,u2,u3,u4);
 	//Floating point 
 	if( abs(area - (A1+A2+A3+A4)) < 1){
 		return true;
@@ -182,7 +182,7 @@ bool isBanned(std::vector<cv::Point3d> banlist, cv::Point3d query){
 
 // Take incoming point from service
 // Point type - 0 waypoint, 1 Drone Pile, 2 Drone delivery, 3 robot delivery, 4 red bricks, 5 green, 6 blue, 7 orange 
-bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::Response &res)
+bool setPointCallback(mbzirc_husky_msgs::setPoi::Request &req, mbzirc_husky_msgs::setPoi::Response &res)
 {
 	//Test for inside in rectangle area
 	
@@ -478,7 +478,7 @@ bool setPointCallback(mbzirc_husky::setPoi::Request &req, mbzirc_husky::setPoi::
 
 }
 
-bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::Response &res){
+bool getPointCallback(mbzirc_husky_msgs::getPoi::Request &req, mbzirc_husky_msgs::getPoi::Response &res){
 	int incoming_type = req.type;
 	cv::Point3d point;
 
@@ -705,7 +705,7 @@ bool getPointCallback(mbzirc_husky::getPoi::Request &req, mbzirc_husky::getPoi::
 	return false;	
 }
 
-bool removePointCallback(mbzirc_husky::removePoi::Request &req, mbzirc_husky::removePoi::Response &res){
+bool removePointCallback(mbzirc_husky_msgs::removePoi::Request &req, mbzirc_husky_msgs::removePoi::Response &res){
 	int incoming_type = req.type;
 	cv::Point3d point;
 	point.x = req.x; 
@@ -1162,7 +1162,7 @@ int main(int argc, char** argv)
 	waypointRangeVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointRanges", 100);
 	waypointPathVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/waypointPath", 100);
 	brickVisualiser = n.advertise<visualization_msgs::Marker>("/symbolicMap/bricks", 100);
-	symbolicMapPublisher = n.advertise<mbzirc_husky::symbolicMap>("/symbolicMap/status",1);
+	symbolicMapPublisher = n.advertise<mbzirc_husky_msgs::symbolicMap>("/symbolicMap/status",1);
 	// service servers
 	ros::ServiceServer set_map_srv = n.advertiseService("set_map_poi", setPointCallback);
 	ros::ServiceServer get_map_srv = n.advertiseService("get_map_poi", getPointCallback);

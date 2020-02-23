@@ -12,10 +12,9 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int32.h>
 #include <dynamic_reconfigure/server.h>
-#include <wallpattern_detection/wallpattern_detectionConfig.h>
-#include <wallpattern_detection/detectedobject.h>
-#include <wallpattern_detection/ObjectWithType.h>
-#include <wallpattern_detection/ObjectWithTypeArray.h>
+#include <mbzirc_husky_msgs/detectedobject.h>
+#include <mbzirc_husky_msgs/ObjectWithType.h>
+#include <mbzirc_husky_msgs/ObjectWithTypeArray.h>
 #include <ros/package.h>
 #include <tf/transform_listener.h>
 #include "opencv2/ml/ml.hpp"
@@ -23,10 +22,10 @@
 #include <wallpattern_detection/wallpattern_detectionConfig.h>
 #include <mbzirc_husky_msgs/wallPatternPosition.h>
 #include <mbzirc_husky_msgs/Gen3ArmStatus.h>
-#include <mbzirc_husky/nextBrickPlacement.h>
+#include <mbzirc_husky_msgs/nextBrickPlacement.h>
 
-#include <mbzirc_husky/setPoi.h>
-#include <mbzirc_husky/getPoi.h>
+#include <mbzirc_husky_msgs/setPoi.h>
+#include <mbzirc_husky_msgs/getPoi.h>
 
 #include <sys/time.h>
 #include <stdlib.h>
@@ -124,7 +123,7 @@ int                                   frameExists     = 0;
 int                                   detectedObjects = 0;
 Mat                                   mask, frame, rframe, inFrame;
 SSegment                              segments[MAX_SEGMENTS];
-wallpattern_detection::detectedobject objectDescriptionArray[MAX_SEGMENTS];
+mbzirc_husky_msgs::detectedobject objectDescriptionArray[MAX_SEGMENTS];
 
 // LATER FILL FROM CONFIG FILE
 Mat distCoeffs = Mat_<double>(1, 5);
@@ -221,7 +220,7 @@ void saveColors() {
 }
 
 int reportPosition(STrackedObject object) {
-  mbzirc_husky::setPoi poi;
+  mbzirc_husky_msgs::setPoi poi;
   poi.request.type       = 3;
   poi.request.x          = object.x;
   poi.request.y          = object.y;
@@ -487,7 +486,7 @@ bool detect(mbzirc_husky_msgs::wallPatternDetect::Request &req, mbzirc_husky_msg
 	res.detected = detectionStrength;
 
 	// check if we have blue brick in the inventory
-	mbzirc_husky::nextBrickPlacement inventorySrv;
+	mbzirc_husky_msgs::nextBrickPlacement inventorySrv;
 	inventorySrv.request.offset = 0.0;
 	inventoryQueryClient.call(inventorySrv);
 	if (inventorySrv.response.brickType == 2) {
@@ -543,7 +542,7 @@ int main(int argc, char **argv) {
   turnArmClient              = n->serviceClient<mbzirc_husky_msgs::Float64>("/kinova/arm_manager/raise_camera");
   homeArmClient              = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/home_arm");
   holdBricksClient           = n->serviceClient<std_srvs::Trigger>("/kinova/arm_manager/press_bricks");
-  inventoryQueryClient       = n->serviceClient<mbzirc_husky::nextBrickPlacement>("/inventory/nextBrickPlacement");
+  inventoryQueryClient       = n->serviceClient<mbzirc_husky_msgs::nextBrickPlacement>("/inventory/nextBrickPlacement");
   imagePub                   = it->advertise("/searchWallResult", 1);
 
   // initialize dynamic reconfiguration feedback

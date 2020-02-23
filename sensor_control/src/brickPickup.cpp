@@ -3,12 +3,12 @@
 #include <std_msgs/String.h>
 #include <velodyne_msgs/VelodyneScan.h>
 #include <sensor_msgs/LaserScan.h>
-#include <mbzirc_husky/addInventory.h>
-#include <mbzirc_husky/brickPickupAction.h>
+#include <mbzirc_husky_msgs/addInventory.h>
 #include <mbzirc_husky_msgs/brickDetect.h>
 #include <mbzirc_husky_msgs/brickPosition.h>
 #include <mbzirc_husky_msgs/StoragePosition.h>
 #include <mbzirc_husky_msgs/Float64.h>
+#include <mbzirc_husky/brickPickupAction.h>
 #include <actionlib/server/simple_action_server.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Config.h>
@@ -789,7 +789,7 @@ int storeBrick()
   }
 	if (brickStoreClient.call(srv)) {
 		ROS_INFO("BRICK STORED IN POSITION %d", activeStorage);
-		mbzirc_husky::addInventory inventSrv;
+		mbzirc_husky_msgs::addInventory inventSrv;
 		inventSrv.request.position = srv.request.position;	
 		inventSrv.request.layer = srv.request.layer;	
 		if (inventSrv.request.position == 3) inventSrv.request.brickType = 2;
@@ -960,7 +960,7 @@ int main(int argc, char** argv)
 	rearrangeClient     = n.serviceClient<std_srvs::Trigger>("/kinova/arm_manager/push_bricks");
 	armStorageClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/goto_storage");
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
-	inventoryClient     = n.serviceClient<mbzirc_husky::addInventory>("/inventory/add");
+	inventoryClient     = n.serviceClient<mbzirc_husky_msgs::addInventory>("/inventory/add");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
 	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
 	velodynePub = n.advertise<velodyne_msgs::VelodyneScan>("/velodyne_packet_shot",10);

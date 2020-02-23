@@ -13,9 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
 	dynamic_reconfigure  
 	cv_bridge 
 	tf 
-	message_generation
 	mbzirc_husky_msgs
-	mbzirc_husky
 	)
 find_package(OpenCV REQUIRED)
 set(CMAKE_BUILD_TYPE Debug)
@@ -35,32 +33,6 @@ generate_dynamic_reconfigure_options(
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 # catkin_python_setup()
 
-#######################################
-## Declare ROS messages and services ##
-#######################################
-
-# Generate messages in the 'msg' folder
- add_message_files(
-   DIRECTORY msg
-   FILES
-   detectedobject.msg
-   ObjectWithType.msg
-   ObjectWithTypeArray.msg
- )
-
-# Generate services in the 'srv' folder
-add_service_files(
-		FILES
-		wall_pattern_close.srv
-)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-	DEPENDENCIES
-	geometry_msgs 
-	std_msgs 
-	)
-
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -72,7 +44,7 @@ generate_messages(
 catkin_package(
 #   INCLUDE_DIRS include
 #  LIBRARIES charging
-   CATKIN_DEPENDS message_runtime mbzirc_husky_msgs
+   CATKIN_DEPENDS mbzirc_husky_msgs
 #  DEPENDS system_lib
 )
 

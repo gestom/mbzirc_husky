@@ -20,11 +20,9 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs 
     image_transport
     tf
-    detector
     #    mrs_lib
     mbzirc_husky_msgs
     wallpattern_detection 
-    detector
     )
 
 find_package(PCL REQUIRED)
@@ -52,27 +50,6 @@ generate_dynamic_reconfigure_options(
 	cfg/symbolicMap.cfg
 	)
 
-add_service_files(
-  FILES
-  setPoi.srv
-  getPoi.srv
-  removePoi.srv
-  accessibleInventory.srv
-  addInventory.srv
-  getInventory.srv
-  removeInventory.srv
-  nextBrickPlacement.srv
-  brickBuilt.srv
-  debugFillInventory.srv
-  patternAlignement.srv
-)
-
-add_message_files(
-	FILES
-	symbolicMap.msg
-)	
-
-
 generate_messages(
     DEPENDENCIES
     std_msgs
@@ -81,7 +58,7 @@ generate_messages(
    )
 
 catkin_package(
-	CATKIN_DEPENDS message_runtime mbzirc_husky_msgs
+	CATKIN_DEPENDS mbzirc_husky_msgs
   )
 
 ###########
@@ -108,7 +85,7 @@ add_dependencies(brickDetector ${PROJECT_NAME}_generate_messages_cpp ${catkin_EX
 add_dependencies(fireExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(fireStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickStateMachine ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
-add_dependencies(brickExplore ${PROJECT_NAME}_generate_messages_cpp detector_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(brickExplore ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickPickup ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(brickStack ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 add_dependencies(symbolicMap ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})

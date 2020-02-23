@@ -3,7 +3,7 @@ project(detector)
 
 find_package(
   catkin REQUIRED COMPONENTS
-  mbzirc_husky REQUIRED
+  mbzirc_husky_msgs REQUIRED
   cmake_modules REQUIRED
   roscpp REQUIRED
   std_msgs 
@@ -11,7 +11,6 @@ find_package(
   geometry_msgs REQUIRED
   pcl_ros REQUIRED
   tf2 REQUIRED
-  message_generation REQUIRED
 )
 
 find_package(OpenCV REQUIRED)
@@ -24,17 +23,6 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-)
-
-add_service_files(
-        FILES
-        brick_pile_trigger.srv
-)
-
-generate_messages(
-        DEPENDENCIES
-        geometry_msgs
-        std_msgs
 )
 
 catkin_package()

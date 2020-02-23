@@ -22,6 +22,12 @@ add_message_files(DIRECTORY msg/ FILES
   brickGoal.msg
   brickCompleted.msg
   wallPatternPosition.msg
+  
+  detectedobject.msg
+  ObjectWithType.msg
+  ObjectWithTypeArray.msg
+	
+  symbolicMap.msg
 )
 
 add_service_files(DIRECTORY srv/ FILES
@@ -33,6 +39,23 @@ add_service_files(DIRECTORY srv/ FILES
   StoragePosition.srv
   wallPatternDetect.srv
   LowerBrick.srv
+  
+  brick_pile_trigger.srv
+	
+  wall_pattern_close.srv
+
+  getPoi.srv
+  setPoi.srv
+  removePoi.srv
+  
+  accessibleInventory.srv
+  addInventory.srv
+  getInventory.srv
+  removeInventory.srv
+  nextBrickPlacement.srv
+  brickBuilt.srv
+  debugFillInventory.srv
+  patternAlignement.srv
 )
 
 generate_messages(DEPENDENCIES

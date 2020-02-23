@@ -15,10 +15,9 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int32.h>
 #include <dynamic_reconfigure/server.h>
-#include <wallpattern_detection/wallpattern_detectionConfig.h>
-#include <wallpattern_detection/detectedobject.h>
-#include <wallpattern_detection/ObjectWithType.h>
-#include <wallpattern_detection/ObjectWithTypeArray.h>
+#include <mbzirc_husky_msgs/detectedobject.h>
+#include <mbzirc_husky_msgs/ObjectWithType.h>
+#include <mbzirc_husky_msgs/ObjectWithTypeArray.h>
 #include <ros/package.h>
 #include <tf/transform_listener.h>
 #include "opencv2/ml/ml.hpp"
@@ -39,7 +38,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <nav_msgs/Odometry.h>
 #include <random>
-#include <wallpattern_detection/wall_pattern_close.h>
+#include <mbzirc_husky_msgs/wall_pattern_close.h>
 #include <mbzirc_husky_msgs/Float64.h>
 #include <algorithm>
 
@@ -124,7 +123,7 @@ int frameExists = 0;
 int detectedObjects = 0;
 Mat mask,frame,rframe,inFrame;
 SSegment segments[MAX_SEGMENTS];
-wallpattern_detection::detectedobject objectDescriptionArray[MAX_SEGMENTS];
+mbzirc_husky_msgs::detectedobject objectDescriptionArray[MAX_SEGMENTS];
 
 // LATER FILL FROM CONFIG FILE
 Mat distCoeffs = Mat_<double>(1,5);
