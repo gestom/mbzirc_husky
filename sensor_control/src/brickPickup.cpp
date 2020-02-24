@@ -894,8 +894,8 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 			state = nextState;
 			switch (state){
 				case LEAVING_BRICKS_1: turnMoveRobot(-0.6,-0.3); resetArm(); nextState = LEAVING_BRICKS_2;break; 
-				case LEAVING_BRICKS_2: moveRobotOdo(-1.5); nextState = LEAVING_BRICKS_3;break; 
-				case LEAVING_BRICKS_3: turnRobot(0.6); nextState = FINAL;break; 
+				case LEAVING_BRICKS_2: moveRobotOdo(-2.5); nextState = LEAVING_BRICKS_3;break; 
+				case LEAVING_BRICKS_3: turnRobot(-0.6); nextState = FINAL;break; 
 				case APPROACH1: if (moveRobot(+2.6) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
 				case APPROACH2: if (moveRobot(-4.5,true) == 0) nextState =  APPROACH3; else nextState = IDLE; break;
 				case APPROACH3: if (moveRobot(1.6) == 0) nextState =  ARMRESET; else nextState = IDLE; break;
