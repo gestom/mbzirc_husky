@@ -11,4 +11,3 @@ global_costmap:
         - {name: map_layer, type: "costmap_2d::StaticLayer"}
         - {name: no_go_layer, type: "costmap_2d::StaticLayer"}
         - {name: obstacle_layer, type: "costmap_2d::ObstacleLayer"}
-        - {name: inflation_layer, type: "costmap_2d::InflationLayer"}

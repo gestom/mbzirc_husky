@@ -12,9 +12,6 @@ tmux send-keys 'roslaunch realsense2_camera rs_camera.launch'
 tmux select-layout tiled
 sleep 0.2
 tmux new-window -n:"Slam"
-tmux send-keys 'roslaunch mbzirc_husky gmapping.launch'
-tmux split-window
-sleep 0.2
 tmux send-keys 'roslaunch mbzirc_husky pathfinding.launch'
 tmux split-window -h
 sleep 0.2
@@ -56,7 +53,7 @@ sleep 0.2
 tmux send-keys 'rosrun mbzirc_husky brickDetector'
 tmux split-window 
 sleep 0.2
-tmux send-keys 'rosrun mbzirc_husky brickStateMachine'
+tmux send-keys 'roslaunch mbzirc_husky brickStateMachine.launch'
 tmux split-window -h
 sleep 0.2
 tmux send-keys 'rostopic echo /kinova/arm_manager/status'
@@ -78,3 +75,7 @@ tmux split-window -h
 tmux send-keys ''
 sleep 0.2
 tmux select-layout tiled
+tmux new-window -n:"Rosbag"
+tmux send-keys 'roslaunch mbzirc_husky rosbag.launch'
+tmux split-window -h
+tmux send-keys 'roslaunch mbzirc_husky camerarosbag.launch'

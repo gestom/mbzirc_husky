@@ -1136,7 +1136,10 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
                 printf("POS: %f %f %f %f", brickStackRedX, brickStackRedY, brickStackOrangeX, brickStackOrangeY);
                 printf("WWW: %f %f %f\n" ,dx,dy,theta);
 
-                moveToMapPoint(brickStackRedX, brickStackRedY, quat_tf.z(), quat_tf.w(), 0);
+                moveToMapPoint(brickStackRedX-4, brickStackRedY-5, quat_tf.z(), quat_tf.w(), 1);
+                moveToMapPoint(brickStackRedX-2.5, brickStackRedY-5.5, quat_tf.z(), quat_tf.w(), 1);
+                moveToMapPoint(brickStackRedX-1.4, brickStackRedY-5, quat_tf.z(), quat_tf.w(), 0.5);
+                moveToMapPoint(brickStackRedX, brickStackRedY, quat_tf.z(), quat_tf.w(), 1);
 
                 state = FINAL;
             }
@@ -1226,15 +1229,16 @@ void actionServerCallback(const mbzirc_husky::brickExploreGoalConstPtr &goal, Se
 	{
 		if(podvod)
 		{
-			float dx = wallPatternLocationX - wallPatternOrX;
-			float dy = wallPatternLocationY - wallPatternOrY;
+			float dx = wallPatternOrX - wallPatternLocationX;
+			float dy = wallPatternOrY - wallPatternLocationY;
 
 			float theta = atan2(dy, dx);
 
 			tf2::Quaternion quat_tf;
 			quat_tf.setRPY(0, 0, theta); // orientationOffset + PI);
 
-			moveToMapPoint(wallPatternLocationX, wallPatternLocationY, quat_tf.z(), quat_tf.w(), 0);
+			moveToMapPoint(wallPatternLocationX, wallPatternLocationY-5, quat_tf.z(), quat_tf.w(), 1);
+			moveToMapPoint(wallPatternLocationX, wallPatternLocationY, quat_tf.z(), quat_tf.w(), 1);
 			state = FINAL;
 		}
 	}
@@ -1317,9 +1321,9 @@ int main(int argc, char** argv)
     scan_sub = n.subscribe("/scanlocal",10, scanCallback);	
     //podvod_sub = n.subscribe("/podvod",10, podvodCallback);	
 	ransac_pub = n.advertise<std_msgs::String>("ransac/clusterer_reset",1);
-	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
-	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines",10);
-	preciseLocation = n.subscribe("/ransac/clusterer_str", 1, preciseLocationCallback);
+	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line_f",10);
+	point_two_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_two_lines_f",10);
+	preciseLocation = n.subscribe("/ransac/clusterer_str_f", 1, preciseLocationCallback);
 	point_of_inter_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/poi",10);
 	server = new Server(n, "brickExploreServer", boost::bind(&actionServerCallback, _1, server), false);
 	server->start();

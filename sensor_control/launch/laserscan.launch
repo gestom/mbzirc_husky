@@ -1,21 +1,24 @@
 <launch>
 
   <!--velo to laserscan-->
+
+	<!--min0.0 to max2.5 for mbzirc arena-->
+
+  <node pkg="tf" type="static_transform_publisher" name="static_tf_laser_to_velodyne" args="0 0 0.45 0 0 0 base_link velodyne 100"/>
+
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_node" args="cloud_in:=/velodyne_points" respawn="false">
-    <param name="range_min" value="1.2"/>
+    <param name="range_min" value="1.4"/>
     <param name="range_max" value="100"/>
-    <param name="min_height" value="0.0"/>
-    <param name="max_height" value="2.50"/>
+    <param name="min_height" value="0.4"/>
+    <param name="max_height" value="1.5"/>
     <param name="angle_increment" value="0.004360"/>
 
   </node>
-  <node pkg="tf" type="static_transform_publisher" name="static_tf_laser_to_velodyne" args="0 0 0.45 0 0 0 base_link velodyne 100"/>
-
   <!--velo to laserscan-->
   <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_node_local" args="cloud_in:=/velodyne_points" respawn="false">
     <param name="range_min" value="1.2"/>
     <param name="range_max" value="100"/>
-    <param name="min_height" value="-0.18"/>
+    <param name="min_height" value="-0.35"/>
     <param name="max_height" value="0.3"/>
     <param name="angle_increment" value="0.004360"/>
     <remap from="scan" to="scanlocal"/>

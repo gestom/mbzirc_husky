@@ -5,6 +5,8 @@
 #include <mbzirc_husky/brickPickupAction.h>
 #include <mbzirc_husky/brickStackAction.h>
 #include <std_srvs/Trigger.h>
+#include <std_srvs/Empty.h>
+#include <mbzirc_husky_msgs/getInventory.h>
 
 typedef enum{
     FINDINGBRICKS,
@@ -17,10 +19,12 @@ EState state = FINDINGBRICKS;
 //EState state = PICKINGUP;
 
 ros::ServiceClient armHomeClient;
+ros::ServiceClient clearCostmapClient;
+ros::ServiceClient inventoryClient;
 
 int pickupFailures = 0;
 int stackingFailures = 0;
-int numBricksToPickup = 5;
+int numBricksToPickup = 1;
 
 int main (int argc, char **argv) {
 
@@ -36,6 +40,8 @@ int main (int argc, char **argv) {
     std_srvs::Trigger srv;
     if(!armHomeClient.call(srv))
         ROS_ERROR("Error resetting arm position");
+    clearCostmapClient = n.serviceClient<std_srvs::Empty>("/move_base/clear_costmaps"); 
+    inventoryClient = n.serviceClient<mbzirc_husky_msgs::getInventory>("/inventory/get"); 
 
     actionlib::SimpleActionClient<mbzirc_husky::brickExploreAction> exploreAC("brickExploreServer", true);
     actionlib::SimpleActionClient<mbzirc_husky::brickPickupAction> pickupAC("brickPickupServer", true);
@@ -72,43 +78,61 @@ int main (int argc, char **argv) {
             }
         }
         else if(state == PICKINGUP)
-        {
-            //bricks found and approached, switch to brick pickup, which only has t seconds to run, then t seconds to recover before going back to exploration
-            ros::Duration totalMaxDuration = ros::Duration(750, 0);
-            ros::Duration recoveryTime = ros::Duration(10, 0);
+	{
+		//bricks found and approached, switch to brick pickup, which only has t seconds to run, then t seconds to recover before going back to exploration
+		ros::Duration totalMaxDuration = ros::Duration(750, 0);
+		ros::Duration recoveryTime = ros::Duration(10, 0);
 
-            mbzirc_husky::brickPickupGoal pickupGoal;
-            pickupGoal.num_bricks_desired = numBricksToPickup;
-            actionlib::SimpleClientGoalState pickupState = pickupAC.sendGoalAndWait(pickupGoal, totalMaxDuration, recoveryTime);
+		mbzirc_husky::brickPickupGoal pickupGoal;
+		pickupGoal.num_bricks_desired = numBricksToPickup;
+		actionlib::SimpleClientGoalState pickupState = pickupAC.sendGoalAndWait(pickupGoal, totalMaxDuration, recoveryTime);
 
-            if(pickupState != actionlib::SimpleClientGoalState::SUCCEEDED)
-            {
-                pickupFailures++;
-                int maxAttempts = 3;
-                if(pickupFailures <= maxAttempts)
-                {
-                    ROS_INFO("Pickup attempt %i/%i failed, trying again", pickupFailures, maxAttempts);
-                    state = FINDINGBRICKS;
-                }
-                else
-                {
-                    ROS_INFO("Pickup attempt %i/%i failed, going to build", pickupFailures, maxAttempts);
-                    state = FINDINGSTACKSITE;
-                    pickupFailures = 0;
-                }
-                ROS_INFO("Resetting arm");
-                armHomeClient.call(srv);
-            }
-            else
-            {
-                state = FINDINGSTACKSITE;
-                pickupFailures = 0;
-                numBricksToPickup = 5; // without one red and blue
-                ROS_INFO("Bricks pickup up successfully, moving to stack area and rearranging");
-            }
-        }
+		if(pickupState != actionlib::SimpleClientGoalState::SUCCEEDED)
+		{
+
+			mbzirc_husky_msgs::getInventory getInvSrv;
+			if(inventoryClient.call(getInvSrv))
+			{
+				if(getInvSrv.response.brickTypes.size())
+				{
+					state = FINDINGSTACKSITE;
+					pickupFailures = 0;
+					numBricksToPickup = 5; // without one red and blue
+					continue;
+				}
+			}
+
+			pickupFailures++;
+			int maxAttempts = 3;
+			if(pickupFailures <= maxAttempts)
+			{
+				ROS_INFO("Pickup attempt %i/%i failed, trying again", pickupFailures, maxAttempts);
+				state = FINDINGBRICKS;
+			}
+			else
+			{
+				ROS_INFO("Pickup attempt %i/%i failed, going to build", pickupFailures, maxAttempts);
+				state = FINDINGSTACKSITE;
+				pickupFailures = 0;
+			}
+			ROS_INFO("Resetting arm");
+			armHomeClient.call(srv);
+		}
+		else
+		{
+			state = FINDINGSTACKSITE;
+			pickupFailures = 0;
+			numBricksToPickup = 5; // without one red and blue
+			ROS_INFO("Bricks pickup up successfully, moving to stack area and rearranging");
+		}
+	}
         else if(state == FINDINGSTACKSITE)
         {
+		usleep(1000000);
+		
+		    std_srvs::Empty srvE;
+    		clearCostmapClient.call(srvE);
+	    usleep(2000000);
             //send message to move to brick stack area, and tell us when finished
             mbzirc_husky::brickExploreGoal exploreGoal;
             exploreGoal.goal = 2;

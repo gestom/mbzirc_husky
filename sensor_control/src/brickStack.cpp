@@ -32,6 +32,7 @@
 #include <mbzirc_husky_msgs/wallPatternPosition.h>
 #include <mbzirc_husky_msgs/wall_pattern_close.h>
 
+int numPlaced = 0;
 float              patternDistance    = -1;
 float              alignMoveDirection = 1;
 int                alignForwardMoves  = 1;
@@ -273,7 +274,7 @@ int robotMoveSearch(const sensor_msgs::LaserScanConstPtr &msg) {
       return 0;
     }
   } else {
-    spd.linear.x = (fabs(moveDistance) - dist + 0.1);
+    spd.linear.x = (fabs(moveDistance) - dist + 0.2);
   }
   if (moveDistance < 0)
     spd.linear.x = -spd.linear.x;
@@ -558,153 +559,157 @@ int switchSideDetection(bool on) {
 void actionServerCallback(const mbzirc_husky::brickStackGoalConstPtr &goal, Server *as) {
   mbzirc_husky::brickStackResult result;
 
-  nextState = ARMRESET;
+  nextState = PATTERNRESET;
   if (fetchNextBrickData() == -1) {
     ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
     nextState = SUCCESS;
   }
-
+  float movementDistance = 2.0;
   while (isTerminal(state) == false && ros::ok()) {
     printf("Active behaviour %s, active state %s\n", toStr(behaviour), toStr(state));
-    if (behaviour == NONE || state == ARMTOSTORAGE || state == ARMRESET || state == ARMGRASP || state == ARMPICKUP || state == ARMTOPLACEMENT ||
-        state == PATTERNRESET) {
-      state = nextState;
-      switch (state) {
-        case TEST1:
-          if (moveRobot(-2.5) == 0)
-            nextState = TEST2;
-          else
-            nextState = IDLE;
-          break;
-        case TEST2:
-          if (moveRobot(+2.5) == 0)
-            nextState = TEST1;
-          else
-            nextState = IDLE;
-          break;
-        case PATTERNRESET:
-          if (resetArm() == 0)
-            nextState = FINDPATTERN;
-          else
-            nextState = PATTERNRESET;
-        case ARMRESET:
-          if (resetArm() == 0)
-            nextState = ARMTOSTORAGE;
-          else
-            nextState = ARMRESET;
-          break;
-        case FINDPATTERN:
-          switchDetection(true);
-          if (moveAndSearch(2.0) == 0)
-            nextState = GOTOPATTERN;
-          else
-            nextState = PATTERNRESET;
-          break;
-        case GOTOPATTERN:
-          switchDetection(false);
-          if (moveRobot(0.3) == 0)
-            nextState = TURNATPATTERN;
-          else
-            nextState = PATTERNRESET;
-          break;
-        case TURNATPATTERN:
-          if (turnRobot(M_PI / 3) == 0)
-            nextState = ALIGNWITHPATTERN;
-          else
-            nextState = PATTERNRESET;
-          break;
-        case ALIGNWITHPATTERN:
-          switchSideDetection(true);
-          if (wallAlign())
-            nextState = ARMTOSTORAGE;
-          else
-            nextState = PATTERNRESET;
-          break;
-        case ARMTOSTORAGE:
-          if (grasp_attempts < 1)
-            moveRobot(robotMoveDistance);
-          if (armToStorage() == 0)
-            nextState = ARMGRASP;
-          else
-            nextState = ARMTOSTORAGE;
-          break;
-        case ARMGRASP:
-          ++grasp_attempts;
-          if (graspBrick() == 0) {
-            grasp_attempts = 0;
-            nextState      = ARMPICKUP;
-          } else {
-            nextState = ARMTOSTORAGE;
-          }
-          if (grasp_attempts >= 3) {
-            grasp_attempts = 0;
-            ROS_WARN("BRICK GRASP FAILED 3 TIMES IN A ROW");
-            /*if (disposeBrick() == 0) {
-              eraseFromInventory();
-              if (fetchNextBrickData() == -1) {
-                ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
-                nextState = SUCCESS;
-                break;
-              } else {
-                nextState = ARMTOSTORAGE;
-              }
-            } else {
-              ROS_FATAL("BRICK DISPOSAL UNSUCCESSFUL!");
-              // TODO ignore bricks in the current position
-              nextState = FAIL;
-            }
-            */
-            eraseFromInventory();
-            if (fetchNextBrickData() == -1) {
-              ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
-              nextState = SUCCESS;
-              break;
-            }
-            nextState = ARMTOSTORAGE;
-          }
-          break;
-        case ARMPICKUP:
-          if (liftBrick() == 0) {
-            nextState = ARMTOPLACEMENT;
-          } else
-            nextState = ARMTOSTORAGE;
-          break;
-        case ARMTOPLACEMENT:
-          if (positionArm() == 0) {
-            nextState = BRICKPLACE;
-          } else {
-            // disposeBrick(); // this is probably not necessary
-            eraseFromInventory();
-            if (fetchNextBrickData() == -1) {
-              ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
-              nextState = SUCCESS;
-              break;
-            }
-            nextState = ARMTOSTORAGE;
-          }
-          break;
-        case BRICKPLACE:
-          if (placeBrick() == 0) {
-            nextState = BRICKRELEASE;
-          } else {
-            nextState = ARMRESET;
-            eraseFromInventory();
-          }
-          break;
-        case BRICKRELEASE:
-          if (releaseBrick() == 0) {
-            nextState = ARMTOSTORAGE;
-            placedBrickInventory();
-          } else {
-            nextState = ARMTOSTORAGE;
-            eraseFromInventory();
-          }
-          if (fetchNextBrickData() == -1) {
-            ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
-            nextState = SUCCESS;
-            break;
-          }
-      }
+    if (behaviour == NONE || state == ARMTOSTORAGE || state == ARMRESET || state == ARMGRASP || state == ARMPICKUP || state == ARMTOPLACEMENT || state == PATTERNRESET) {
+	    state = nextState;
+	    switch (state) {
+		    case TEST1:
+			    if (moveRobot(-2.5) == 0)
+				    nextState = TEST2;
+			    else
+				    nextState = IDLE;
+			    break;
+		    case TEST2:
+			    if (moveRobot(+2.5) == 0)
+				    nextState = TEST1;
+			    else
+				    nextState = IDLE;
+			    break;
+		    case PATTERNRESET:
+			    if (resetArm() == 0)
+				    nextState = FINDPATTERN;
+			    else
+				    nextState = PATTERNRESET;
+			    break;
+		    case ARMRESET:
+			    if (resetArm() == 0)
+				    nextState = ARMTOSTORAGE;
+			    else
+				    nextState = ARMRESET;
+			    break;
+		    case FINDPATTERN:
+			    switchDetection(true);
+			    if (moveAndSearch(movementDistance) == 0)
+				    nextState = GOTOPATTERN;
+			    else{
+				    nextState = PATTERNRESET;
+				    movementDistance += 0.5;
+			    }
+			    break;
+		    case GOTOPATTERN:
+			    switchDetection(false);
+			    if (moveRobot(0.3) == 0)
+				    nextState = TURNATPATTERN;
+			    else
+				    nextState = PATTERNRESET;
+			    break;
+		    case TURNATPATTERN:
+			    if (turnRobot(M_PI / 3) == 0)
+				    nextState = ALIGNWITHPATTERN;
+			    else
+				    nextState = PATTERNRESET;
+			    break;
+		    case ALIGNWITHPATTERN:
+			    switchSideDetection(true);
+			    if (wallAlign())
+				    nextState = ARMTOSTORAGE;
+			    else
+				    nextState = PATTERNRESET;
+			    break;
+		    case ARMTOSTORAGE:
+			    if (grasp_attempts < 1){
+				    if (numPlaced == 0) moveRobot(0.1); else moveRobot(robotMoveDistance);
+			    }
+			    if (armToStorage() == 0)
+				    nextState = ARMGRASP;
+			    else
+				    nextState = ARMTOSTORAGE;
+			    break;
+		    case ARMGRASP:
+			    ++grasp_attempts;
+			    if (graspBrick() == 0) {
+				    grasp_attempts = 0;
+				    nextState      = ARMPICKUP;
+			    } else {
+				    nextState = ARMTOSTORAGE;
+			    }
+			    if (grasp_attempts >= 3) {
+				    grasp_attempts = 0;
+				    ROS_WARN("BRICK GRASP FAILED 3 TIMES IN A ROW");
+				    /*if (disposeBrick() == 0) {
+				      eraseFromInventory();
+				      if (fetchNextBrickData() == -1) {
+				      ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+				      nextState = SUCCESS;
+				      break;
+				      } else {
+				      nextState = ARMTOSTORAGE;
+				      }
+				      } else {
+				      ROS_FATAL("BRICK DISPOSAL UNSUCCESSFUL!");
+				    // TODO ignore bricks in the current position
+				    nextState = FAIL;
+				    }
+				    */
+				    eraseFromInventory();
+				    if (fetchNextBrickData() == -1) {
+					    ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+					    nextState = SUCCESS;
+					    break;
+				    }
+				    nextState = ARMTOSTORAGE;
+			    }
+			    break;
+		    case ARMPICKUP:
+			    if (liftBrick() == 0) {
+				    nextState = ARMTOPLACEMENT;
+			    } else
+				    nextState = ARMTOSTORAGE;
+			    break;
+		    case ARMTOPLACEMENT:
+			    if (positionArm() == 0) {
+				    nextState = BRICKPLACE;
+			    } else {
+				    // disposeBrick(); // this is probably not necessary
+				    eraseFromInventory();
+				    if (fetchNextBrickData() == -1) {
+					    ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+					    nextState = SUCCESS;
+					    break;
+				    }
+				    nextState = ARMTOSTORAGE;
+			    }
+			    break;
+		    case BRICKPLACE:
+			    if (placeBrick() == 0) {
+				    nextState = BRICKRELEASE;
+			    } else {
+				    nextState = ARMRESET;
+				    eraseFromInventory();
+				    numPlaced++;
+			    }
+			    break;
+		    case BRICKRELEASE:
+			    if (releaseBrick() == 0) {
+				    nextState = ARMTOSTORAGE;
+				    placedBrickInventory();
+			    } else {
+				    nextState = ARMTOSTORAGE;
+				    eraseFromInventory();
+			    }
+			    if (fetchNextBrickData() == -1) {
+				    ROS_INFO("[%s]: INVENTORY EMPTY, ABORTING BRICK STACK", ros::this_node::getName().c_str());
+				    nextState = SUCCESS;
+				    break;
+			    }
+	    }
     }
     usleep(1200000);
   }
@@ -725,6 +730,8 @@ void wallCallBackFront(const geometry_msgs::PointConstPtr &msg) {
   patternDistance = msg->y;
 }
 
+float patternReachTolerance = 0;
+
 void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
   started_alignement         = true;
   float                angle = msg->z;
@@ -732,10 +739,11 @@ void wallCallBack(const geometry_msgs::PointConstPtr &msg) {
   spd.angular.z = -angle + msg->y * alignMoveDirection;
   printf("%f %f %f %i %f\n", msg->x, msg->y, msg->z, pattern_end_accumulator, alignMoveDirection);
   if (end_of_pattern) {
-    if (fabs(msg->y) < 0.05) {
+    if (fabs(msg->y) < 0.05 + patternReachTolerance) {
       alignFinished = true;
     } else {
-      printf("Direction switch\n");
+      printf("Direction switch %f \n",patternReachTolerance);
+      patternReachTolerance+=0.01;
       alignMoveDirection      = 1;
       alignForwardMoves       = 0;
       end_of_pattern          = false;
@@ -796,6 +804,7 @@ bool startWallCallBack(mbzirc_husky_msgs::patternAlignement::Request &req, mbzir
     end_of_pattern          = false;
     alignFinished           = false;
     pattern_end_accumulator = 0;
+    patternReachTolerance = 0;
     subscriberPattern       = node->subscribe("/wall_pattern_line", 1, &wallCallBack);
     for (int i = 0; i < 10; i++) {
       usleep(200000);

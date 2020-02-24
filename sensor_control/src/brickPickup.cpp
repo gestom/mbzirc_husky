@@ -364,21 +364,69 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	int numPoints = 0;
 	float pX, pY;
 	float maxX,minX,maxY,minY;
-	minX = -0.0;
+	minX = -0.5;
 	maxX = +5.0;
 	minY = -3.0;
 	maxY = -0.4;
+	float lastPx = 1000;
+	float lastPy = 1000;	
 	for (int i = 0; i <= num_ranges; i++)
 	{
 		angle = scan_msg->angle_min+i*scan_msg->angle_increment;
 		pX = scan_msg->ranges[i]*cos(angle);
 		pY = scan_msg->ranges[i]*sin(angle);
-		if (pX < maxX && pX > - maxX && pY > minY && pY < maxY){
-			x[numPoints] = pX;
-			y[numPoints] = pY;
-			m[numPoints] = true;
-			numPoints++;
+		if (pX < maxX && pX > minX && pY > minY && pY < maxY)
+		{
+			float dx = (pX-lastPx); 
+			float dy = (pY-lastPy); 
+			if (sqrt(dx*dx+dy*dy) > 0.1){
+				x[numPoints] = pX;
+				y[numPoints] = pY;
+				m[numPoints] = true;
+				numPoints++;
+				lastPx = pX;
+				lastPy = pY;
+			}
 		}
+	}
+
+	int evalA,evalB = 0;
+	int max_iterations = 1000;
+	float a,b;
+	float maxA;
+	float maxB;
+	int maxEval,maxEvalA,maxEvalB;
+	maxEval = maxEvalA = maxEvalB =0;
+	for (int i = 0; i <= max_iterations; i++)
+	{
+		int aIndex = rand()%numPoints;
+		int bIndex = rand()%numPoints;
+		while (bIndex == aIndex) bIndex = rand()%numPoints;
+		if((x[bIndex]-x[aIndex]) == 0) continue;
+		a = atan2(y[bIndex]-y[aIndex],x[bIndex]-x[aIndex]);
+		b = y[bIndex]-sin(a)*x[bIndex];
+		evalA = evalB = 0;
+		for (int j = 0; j <= numPoints; j++){
+			if (fabs(sin(a)*x[j]-cos(a)*y[j]+b)<ransacTolerance && m[j]) evalA++;
+			if (fabs(sin(a)*x[j]-cos(a)*(y[j]+0.3)+b)<ransacTolerance && m[j]) evalB++;
+		}
+		if (maxEval < evalA+evalB){
+			maxEval=evalA+evalB;
+			maxEvalA = evalA;
+			maxEvalB = evalB;
+			maxA=a;
+			maxB=b;
+		}
+	}
+	int max_idx;
+	precise(&maxA,&maxB,x,y,numPoints);
+	if (maxA > M_PI/2){
+	       	maxA = maxA - M_PI;
+	       	maxB = -maxB;
+	}
+	if (maxA < - M_PI/2){
+	       	maxA = maxA + M_PI;
+	       	maxB = -maxB;
 	}
 
     //stop box
@@ -406,45 +454,6 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 		    return 0;
 	    }
     } 
-
-	int evalA,evalB = 0;
-	int max_iterations = 100;
-	float a,b;
-	float maxA;
-	float maxB;
-	int maxEval,maxEvalA,maxEvalB;
-	maxEval = maxEvalA = maxEvalB =0;
-	for (int i = 0; i <= max_iterations; i++)
-	{
-		int aIndex = rand()%num_ranges;
-		int bIndex = rand()%num_ranges;
-		while (bIndex == aIndex) bIndex = rand()%num_ranges;
-		if((x[bIndex]-x[aIndex]) == 0) continue;
-		a = atan2(y[bIndex]-y[aIndex],x[bIndex]-x[aIndex]);
-		b = y[bIndex]-sin(a)*x[bIndex];
-		evalA = evalB = 0;
-		for (int j = 0; j <= numPoints; j++){
-			if (fabs(sin(a)*x[j]-cos(a)*y[j]+b)<ransacTolerance && m[j]) evalA++;
-			if (fabs(sin(a)*x[j]-cos(a)*(y[j]+0.3)+b)<ransacTolerance && m[j]) evalB++;
-		}
-		if (maxEval < evalA+evalB){
-			maxEval=evalA+evalB;
-			maxEvalA = evalA;
-			maxEvalB = evalB;
-			maxA=a;
-			maxB=b;
-		}
-	}
-	int max_idx;
-	precise(&maxA,&maxB,x,y,numPoints);
-	if (maxA > M_PI/2){
-	       	maxA = maxA - M_PI;
-	       	maxB = -maxB;
-	}
-	if (maxA < - M_PI/2){
-	       	maxA = maxA + M_PI;
-	       	maxB = -maxB;
-	}
 
 
 
@@ -477,9 +486,10 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	float signMove = 1;
 	if (moveDistance < 0) signMove = -1;
 
-	if (maxEvalA + maxEvalB > 50) { spd.angular.z = maxA; spd.linear.x = 0.3;}
-	if (maxEvalA + maxEvalB > 100 && maxB < -1.3 || maxEvalA > 50 && maxEvalB > 50) {spd.angular.z = signMove*(0.67+maxB);} 
-	spd.linear.x = signMove*(fabs(moveDistance) - dist + 0.1);
+	if (maxEvalA + maxEvalB > 10) { spd.angular.z = 3*maxA; spd.linear.x = 0.3;}
+	if (maxEvalA + maxEvalB > 10 && maxB < -1.3 || maxEvalA > 10 && maxEvalB > 10) {spd.angular.z = 3*signMove*(0.67+maxB);}
+	spd.linear.x = signMove*(fabs(moveDistance) - dist + 0.1);//-fabs(spd.angular.z);
+	//if (spd.linear.x < 0) spd.linear.x = 0;
 
 	if (dist > fabs(moveDistance)) {
 		spd.linear.x = spd.angular.z = 0;
@@ -493,7 +503,16 @@ int robotMoveScan(const sensor_msgs::LaserScan::ConstPtr& scan_msg)
 	return 1;
 }
 
-
+int moveRobotOdo(float distance,EBehaviour nextBeh = NONE)
+{
+	updateRobotPosition();
+	anchorPose = robotPose;
+	moveDistance = distance;
+	printf("Move command:  %.3f\n",distance); 
+	nextBehaviour = nextBeh;
+	behaviour = ROBOT_MOVE_ODO;
+	return 0;
+}
 
 int moveRobot(float distance,bool checkGap = false,EBehaviour nextBeh = NONE)
 {
@@ -563,17 +582,21 @@ bool first = true;
 void odoCallBack(const nav_msgs::OdometryConstPtr &msg) 
 {
 	/*this is exclusively for testing*/
-	/*float aaa = tf::getYaw(msg->pose.pose.orientation);
+/*	float aaa = tf::getYaw(msg->pose.pose.orientation);
 	if (first){
 	       	uuu = aaa;
 		uux = msg->pose.pose.position.x;
 		uuy = msg->pose.pose.position.y;
 	}
 	first = false;
+	float angle = aaa-uuu;
+	if (angle > +M_PI) angle = angle -2*M_PI; 
+	if (angle < -M_PI) angle = angle +2*M_PI; 
 	float dx = uux-msg->pose.pose.position.x;
 	float dy = uuy-msg->pose.pose.position.y;
 	float dist = sqrt(dx*dx+dy*dy);
-	*/
+	printf("Dist: %f\n",angle);*/
+
 	robotOdoPose.pose.position.x = msg->pose.pose.position.x;
 	robotOdoPose.pose.position.y = msg->pose.pose.position.y;
 	robotOdoPose.pose.position.z = 0;
@@ -870,8 +893,8 @@ ROS_INFO("[%s]: BRICK PICKUP STARTED. GOAL IS TO LOAD %d BRICKS", ros::this_node
 		if (behaviour == NONE){
 			state = nextState;
 			switch (state){
-				case LEAVING_BRICKS_1: turnMoveRobot(-0.6,-0.3); nextState = LEAVING_BRICKS_2;break; 
-				case LEAVING_BRICKS_2: moveRobot(-1.5); nextState = LEAVING_BRICKS_3;break; 
+				case LEAVING_BRICKS_1: turnMoveRobot(-0.6,-0.3); resetArm(); nextState = LEAVING_BRICKS_2;break; 
+				case LEAVING_BRICKS_2: moveRobotOdo(-1.5); nextState = LEAVING_BRICKS_3;break; 
 				case LEAVING_BRICKS_3: turnRobot(0.6); nextState = FINAL;break; 
 				case APPROACH1: if (moveRobot(+2.6) == 0) nextState = APPROACH2; else nextState =  IDLE; break; 
 				case APPROACH2: if (moveRobot(-4.5,true) == 0) nextState =  APPROACH3; else nextState = IDLE; break;
@@ -962,7 +985,7 @@ int main(int argc, char** argv)
 	brickStoreClient    = n.serviceClient<mbzirc_husky_msgs::StoragePosition>("/kinova/arm_manager/store_brick");
 	inventoryClient     = n.serviceClient<mbzirc_husky_msgs::addInventory>("/inventory/add");
 	subscriberBrickPose = n.subscribe("/brickPosition", 1, &callbackBrickPose);
-	point_pub = n.advertise<sensor_msgs::PointCloud2>("ransac/correct_one_line",10);
+	point_pub = n.advertise<sensor_msgs::PointCloud2>("tom/correct_one_line",10);
 	velodynePub = n.advertise<velodyne_msgs::VelodyneScan>("/velodyne_packet_shot",10);
 	ros::ServiceServer service = n.advertiseService("shootVelodyne", shootVelodyne);
 
