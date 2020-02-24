@@ -26,8 +26,8 @@ align_x_max: 0.65
 align_y_min: -0.3
 align_y_max: 0.3
 
-gripper_threshold: 425 # TODO TUNE THIS ON OFFICIAL BRICKS
-placing_drop_height: 0.0 # [m] TODO the bricks will be dropped from this height during placing
+gripper_threshold: 355 # TODO TUNE THIS ON OFFICIAL BRICKS
+placing_drop_height: 0.2 # [m] TODO the bricks will be dropped from this height during placing
 
 align_timeout: 15.0 # [s]
 

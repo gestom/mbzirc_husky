@@ -186,6 +186,8 @@ double effort_threshold;
 double align_x_min, align_x_max, align_y_min, align_y_max;
 double placing_drop_height = 0.0;
 
+int bricks_placed = 0;
+
 Eigen::Vector3d camera_offset;
 
 // continuous status publishing
@@ -904,9 +906,13 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
 
   status = MOVING;
 
-  double placement_height = (camera_offset.z() + req.data + 0.02) - arm_base_to_ground + placing_drop_height;
-  ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f including %.2f m drop", ros::this_node::getName().c_str(), placement_height,
-           placing_drop_height);
+  double placement_height = (camera_offset.z() + req.data + 0.02) - arm_base_to_ground;
+  
+  if(bricks_placed > 0){
+	  placement_height += placing_drop_height;
+  }
+
+  ROS_INFO("[%s]: Placing brick down, target end effector height: %.2f", ros::this_node::getName().c_str(), placement_height);
 
   Pose3d goal_pose  = end_effector_pose;
   goal_pose.pos.z() = placement_height;
@@ -916,6 +922,10 @@ bool callbackPlaceBrickService(mbzirc_husky_msgs::Float64Request &req, mbzirc_hu
     ROS_ERROR("[%s]: Brick lost during motion!", ros::this_node::getName().c_str());
     res.success = false;
     return false;
+  }
+
+  if(goal_reached){
+  	bricks_placed++;
   }
 
   res.success = goal_reached;
